@@ -1,365 +1,417 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>直近60日の睡眠時間（充電/電源イベントから推定）</title>
-<style>
-  :root{
-    --bg:#0b1020;
-    --card:#121a33;
-    --ink:#dfe7ff;
-    --muted:#9bb0ffbb;
-    --accent:#5b8cff;
-    --ok:#4ade80;
-    --warn:#fbbf24;
-    --bad:#fb7185;
-  }
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif}
-  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-  h1{font-size:clamp(20px,3.8vw,28px);margin:0 0 12px}
-  .sub{color:var(--muted);font-size:14px;margin-bottom:18px}
-  .grid{display:grid;gap:12px}
-  .cards{display:grid;grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px}
-  .card{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:14px}
-  .flex{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
-  .pill{background:rgba(255,255,255,.08); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted)}
-  .topline{display:flex; align-items:center; justify-content:space-between; gap:12px}
-  .top{background:linear-gradient(180deg,rgba(91,140,255,.14),rgba(91,140,255,.05)); border:1px solid rgba(91,140,255,.35);}
-  .top h2{margin:.2rem 0 .4rem; font-size:20px}
-  .kv{font-size: clamp(26px,4.2vw,36px); letter-spacing:1px; font-variant-numeric: tabular-nums}
-  .kv small{font-size: 12px; color:var(--muted)}
-  .hint{font-size:12px;color:var(--muted)}
-  textarea, input[type=file], select{width:100%; box-sizing:border-box}
-  textarea{min-height:160px; background:#0e1530; color:var(--ink); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace; font-size:12px}
-  button{appearance:none; background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer}
-  button.ghost{background:transparent; border:1px solid rgba(255,255,255,.2)}
-  .row{display:flex; gap:8px; flex-wrap:wrap}
-  .row > *{flex:1}
-  .list{display:grid; gap:8px}
-  .item{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:10px}
-  .item h3{margin:.2rem 0 .4rem; font-size:16px}
-  .tag{font-size:11px; color:var(--muted)}
-  .muted{color:var(--muted)}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-  .choose{font-size:12px; margin-top:6px}
-  .src{font-size:11px; color:var(--muted)}
-  .footer{margin-top:24px; font-size:12px; color:var(--muted)}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>通販価格の中央値チェッカー</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#121a2f; --muted:#94a3b8; --text:#e6edf3; --accent:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; background:var(--bg); color:var(--text)}
+    header{padding:24px 16px; text-align:center}
+    header h1{margin:0; font-size: clamp(20px, 2.8vw, 28px)}
+    .wrap{max-width:980px; margin:0 auto; padding:0 16px 32px}
+    .card{background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); padding:16px; box-shadow: 0 10px 24px rgba(0,0,0,.3)}
+    .row{display:grid; grid-template-columns:1fr; gap:12px}
+    @media (min-width: 720px){ .row{grid-template-columns:1.2fr .8fr}}
+    label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px}
+    input[type="text"], input[type="number"], input[type="password"], textarea, select{
+      width:100%; padding:12px 14px; background:#0d1528; border:1px solid rgba(255,255,255,.08); color:var(--text); border-radius:12px; outline:none;
+    }
+    input::placeholder{color:#6b7280}
+    .controls{display:flex; flex-wrap:wrap; gap:12px; align-items:end}
+    .btn{appearance:none; border:none; padding:12px 16px; border-radius:12px; background:var(--accent); color:#06121f; font-weight:700; cursor:pointer}
+    .btn:disabled{opacity:.5; cursor:not-allowed}
+    .btn.secondary{background:transparent; color:var(--text); border:1px solid rgba(255,255,255,.18)}
+    .grid{display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:12px}
+    .item{background:#0d1528; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px}
+    .item a{color:#9cc8ff; text-decoration:none}
+    .tag{display:inline-block; padding:2px 8px; border-radius:999px; background:#0b1a34; color:#b8d2ff; font-size:12px}
+    .muted{color:var(--muted)}
+    .stats{display:grid; grid-template-columns: repeat(5,1fr); gap:8px}
+    .kpi{background:#0d1528; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; text-align:center}
+    .kpi b{display:block; font-size:20px}
+    .pill{display:inline-flex; gap:6px; align-items:center; padding:6px 10px; background:#0d1528; border:1px solid rgba(255,255,255,.1); border-radius:999px; font-size:12px}
+    details{border:1px dashed rgba(255,255,255,.18); border-radius:12px; padding:10px 12px}
+    footer{opacity:.7; font-size:12px; text-align:center; padding:16px}
+    .small{font-size:12px}
+    .warning{color:var(--warn)}
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>直近60日の睡眠時間（充電/電源イベントから推定）</h1>
-    <div class="sub">ルール：その日の <strong>最後の「充電開始」or「電源OFF」</strong> の遅い方 ⇒ <em>就寝</em>。その日の <strong>最初の「充電終了」or「電源ON」</strong> の早い方 ⇒ <em>起床</em>。タイムゾーンは端末ローカル（推奨：Asia/Tokyo）。</div>
-
-    <div class="grid">
-      <div class="card top" id="summaryCard">
-        <div class="topline">
-          <h2>60日中央値（起床 / 就寝）</h2>
+  <header>
+    <h1>通販価格の中央値チェッカー</h1>
+    <p class="muted small">商品名を入れて「中央値を調べる」を押すだけ。レビュー★3以上での絞り込みも可能。結果はIndexedDBに保存されます。</p>
+  </header>
+  <main class="wrap">
+    <section class="card">
+      <div class="row">
+        <div>
+          <label for="q">商品名</label>
+          <input id="q" type="text" placeholder="例）AirPods Pro 第2世代" />
+        </div>
+        <div>
+          <label for="source">検索先</label>
+          <select id="source">
+            <option value="both">楽天 + Yahoo</option>
+            <option value="rakuten">楽天市場</option>
+            <option value="yahoo">Yahoo!ショッピング</option>
+          </select>
+        </div>
+      </div>
+      <div class="controls" style="margin-top:12px">
+        <label class="pill"><input id="min3" type="checkbox" checked style="accent-color:#60a5fa" /> ★3.0以上のみ</label>
+        <label class="pill"><input id="inStockOnly" type="checkbox" checked style="accent-color:#60a5fa" /> 在庫ありのみ</label>
+        <label class="pill"><input id="newOnly" type="checkbox" style="accent-color:#60a5fa" /> 新品のみ</label>
+        <label class="pill">最大取得件数
+          <select id="limit" class="small" style="margin-left:6px">
+            <option>30</option>
+            <option selected>60</option>
+            <option>120</option>
+          </select>
+        </label>
+        <button id="run" class="btn">中央値を調べる</button>
+        <button id="clear" class="btn secondary">フォームをクリア</button>
+        <button id="historyBtn" class="btn secondary">履歴</button>
+      </div>
+      <details style="margin-top:12px">
+        <summary>APIキー設定（IndexedDBに安全に保存）</summary>
+        <div class="row" style="margin-top:10px">
           <div>
-            <label class="pill">タイムゾーン: <select id="tzSelect"></select></label>
+            <label for="rakutenId">楽天 applicationId</label>
+            <input id="rakutenId" type="password" placeholder="rakuten applicationId" />
+          </div>
+          <div>
+            <label for="yahooId">Yahoo! appid（Client ID）</label>
+            <input id="yahooId" type="password" placeholder="yahoo appid" />
           </div>
         </div>
-        <div class="kv" id="medianKVs">--:-- / --:-- <small id="counts"></small></div>
-        <div class="hint">入力データの範囲内で過去60日を集計。欠損日は除外します。</div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin:0 0 8px">イベント入力</h3>
-        <div class="row">
-          <div>
-            <textarea id="input" placeholder="例:\n2025-10-12 23:41, 充電開始\n2025-10-12 23:55, 電源OFF\n2025-10-13 07:05, 充電終了\n2025-10-13 07:12, 電源ON\n...\nサポート: '充電開始/充電終了/電源OFF/電源ON' や 'charge_start/end', 'power_on/off', 'plug/unplug', 'boot/shutdown' など多くの別名に対応"></textarea>
-            <div class="src">形式: <span class="mono">YYYY-MM-DD HH:mm, イベント名[, 任意メモ]</span> を1行1件。順不同でOK。</div>
-          </div>
+        <div class="controls" style="margin-top:10px">
+          <button id="saveKeys" class="btn secondary">キーを保存</button>
+          <span id="keyStatus" class="muted small"></span>
         </div>
-        <div class="row" style="margin-top:8px">
-          <button id="parseBtn">集計する</button>
-          <button class="ghost" id="sampleBtn">サンプルデータ挿入</button>
-          <button class="ghost" id="saveBtn">ローカル保存</button>
-          <button class="ghost" id="loadBtn">読み込み</button>
-          <button class="ghost" id="clearBtn">全消去</button>
-          <input id="file" type="file" accept=".txt,.csv" />
-        </div>
-        <div class="choose">ファイルは上記と同じ1行1イベントのプレーンテキスト/CSVを想定。</div>
-      </div>
+        <p class="muted small" style="margin-top:8px">※ 楽天APIはJSONPにも対応。フロントエンドからCORSに阻まれた場合はJSONPを利用します。Yahoo APIはCORS対応ですが、環境によっては制限があるため、必要に応じて簡易プロキシを用意してください。</p>
+      </details>
+    </section>
 
-      <div class="card">
-        <h3 style="margin:0 0 6px">日別結果（昨日 → 60日前）</h3>
-        <div id="list" class="list"></div>
+    <section id="result" class="card" style="margin-top:16px; display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap">
+        <h2 id="title" style="margin:0; font-size:20px"></h2>
+        <span id="meta" class="muted small"></span>
       </div>
-    </div>
+      <div class="stats" style="margin-top:12px">
+        <div class="kpi"><span class="muted small">件数</span><b id="kCount">-</b></div>
+        <div class="kpi"><span class="muted small">最安</span><b id="kMin">-</b></div>
+        <div class="kpi"><span class="muted small">第1四分位</span><b id="kQ1">-</b></div>
+        <div class="kpi"><span class="muted small">中央値</span><b id="kMedian">-</b></div>
+        <div class="kpi"><span class="muted small">第3四分位</span><b id="kQ3">-</b></div>
+      </div>
+      <div id="warn" class="small warning" style="margin-top:8px"></div>
+      <h3 style="margin-top:16px">取得した商品</h3>
+      <div id="items" class="grid"></div>
+    </section>
 
-    <div class="footer">※ このページは端末内で完結して動作します。データは送信されません。/ <strong>IndexedDB</strong> 保存に対応。</div>
-  </div>
+    <section class="card" style="margin-top:16px">
+      <h3 style="margin-top:0">履歴</h3>
+      <div id="history" class="grid"></div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <h3 style="margin-top:0">使い方と注意</h3>
+      <ul class="small">
+        <li>「APIキー設定」で <b>楽天 applicationId</b> と <b>Yahoo appid</b> を保存してからご利用ください。</li>
+        <li>★3.0以上で絞り込みをオンにすると、レビュー平均が3.0未満の結果を除外します（レビュー情報のある商品に限る）。</li>
+        <li>結果はIndexedDBに保存され、次回以降は履歴から呼び出せます。</li>
+        <li>中央値は外れ値耐性のための代表値です。必要に応じて第1/第3四分位も参考にしてください。</li>
+      </ul>
+      <p class="small muted">楽天・Yahoo!のAPI仕様は変更される場合があります。エラー時はAPIキーや利用制限（レートリミット）をご確認ください。</p>
+    </section>
+  </main>
+
+  <footer>
+    <span class="muted">© 2025 価格中央値チェッカー</span>
+  </footer>
 
 <script>
-(function(){
-  const inputEl = document.getElementById('input');
-  const listEl = document.getElementById('list');
-  const medianKVs = document.getElementById('medianKVs');
-  const countsEl = document.getElementById('counts');
-  const tzSelect = document.getElementById('tzSelect');
-  const DB_NAME = 'sleep_events_db_v1';
-  const STORE = 'kv';
-  const IDB_KEY = 'events_text';
-
-  // ===== IndexedDB helpers =====
-  function idbOpen(){
-    return new Promise((resolve, reject)=>{
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = ()=>{
-        const db = req.result;
-        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
-      };
-      req.onsuccess = ()=> resolve(req.result);
-      req.onerror = ()=> reject(req.error);
-    });
-  }
-  function idbGet(key){
-    return idbOpen().then(db=> new Promise((resolve,reject)=>{
-      const tx = db.transaction(STORE,'readonly');
-      const st = tx.objectStore(STORE);
-      const g = st.get(key);
-      g.onsuccess = ()=> resolve(g.result);
-      g.onerror = ()=> reject(g.error);
-    }));
-  }
-  function idbSet(key, val){
-    return idbOpen().then(db=> new Promise((resolve,reject)=>{
-      const tx = db.transaction(STORE,'readwrite');
-      const st = tx.objectStore(STORE);
-      const p = st.put(val, key);
-      p.onsuccess = ()=> resolve();
-      p.onerror = ()=> reject(p.error);
-    }));
-  }
-
-  // ===== Timezone handling =====
-  const allTimeZones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC'];
-  const defaultTZ = (allTimeZones.includes('Asia/Tokyo') ? 'Asia/Tokyo' : Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
-  for(const tz of allTimeZones){
-    const opt = document.createElement('option');
-    opt.value = tz; opt.textContent = tz; tzSelect.appendChild(opt);
-  }
-  tzSelect.value = defaultTZ;
-
-  function parseLine(line){
-    // Expected: YYYY-MM-DD HH:mm, label [, memo]
-    const m = line.trim().match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?\s*,\s*([^,]+)(?:,.*)?$/);
-    if(!m) return null;
-    const [_, d, hm, labelRaw] = m;
-    const label = normalizeLabel(labelRaw);
-    if(!label) return null;
-    return { iso: `${d}T${hm}:00`, label };
-  }
-
-  function normalizeLabel(s){
-    const t = s.trim().toLowerCase();
-    // Japanese
-    if(/充電開始|接続|差し込み/.test(s)) return 'charge_start';
-    if(/充電終了|取り外し|拔去|抜去/.test(s)) return 'charge_end';
-    if(/電源off|電源ｏｆｆ|シャットダウン|電源切|電源を切/.test(s)) return 'power_off';
-    if(/電源on|電源ｏｎ|起動|ブート|電源入|電源を入/.test(s)) return 'power_on';
-    // English & common synonyms
-    if(/charge[_ ]?start|start charging|plug|power_connected|usb_?plug(ged)?|connected to power/.test(t)) return 'charge_start';
-    if(/charge[_ ]?end|stop charging|unplug|power_disconnected|usb_?unplug(ged)?|disconnected from power/.test(t)) return 'charge_end';
-    if(/power[_ ]?off|shutdown|shut[_ ]?down|turn[_ ]?off|device off/.test(t)) return 'power_off';
-    if(/power[_ ]?on|boot|start[_ ]?up|turn[_ ]?on|device on/.test(t)) return 'power_on';
-    return null;
-  }
-
-  function toZonedDate(dateLike, timeZone){
-    // dateLike: ISO without timezone assumed local; treat as in selected TZ
-    const [datePart, timePart] = dateLike.split('T');
-    const [Y,M,D] = datePart.split('-').map(Number);
-    const [h,m,s] = (timePart||'00:00:00').split(':').map(Number);
-    // Construct UTC time that corresponds to this wall time in tz
-    const zdt = new Date(new Date(Date.UTC(Y,M-1,D,h||0,m||0,s||0)).toLocaleString('en-US',{timeZone}));
-    // But the above converts to local. Use Intl to get offset properly:
-    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-    const parts = fmt.formatToParts(new Date(Date.UTC(Y,M-1,D,h||0,m||0,s||0)));
-    const obj={}; for(const p of parts){obj[p.type]=p.value}
-    const local = new Date(Date.UTC(+obj.year, +obj.month-1, +obj.day, +obj.hour, +obj.minute, +obj.second));
-    return local; // returns a Date in real UTC that represents the tz wall time
-  }
-
-  function formatHM(date, tz){
-    const fmt = new Intl.DateTimeFormat('ja-JP',{timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:false});
-    return fmt.format(date);
-  }
-  function dateKey(date, tz){
-    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'});
-    return fmt.format(date); // YYYY-MM-DD
-  }
-  function minutesOfDay(date, tz){
-    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
-    const parts = fmt.formatToParts(date); const o={}; parts.forEach(p=>o[p.type]=p.value);
-    return (+o.hour)*60 + (+o.minute) + (+o.second)/60;
-  }
-  function median(nums){
-    if(!nums.length) return null; const a=[...nums].sort((x,y)=>x-y); const mid=Math.floor(a.length/2);
-    return (a.length%2? a[mid] : (a[mid-1]+a[mid])/2);
-  }
-
-  function parseTextToEvents(text, tz){
-    const events=[];
-    text.split(/\r?\n/).forEach(line=>{
-      if(!line.trim()) return;
-      const ev = parseLine(line);
-      if(ev){
-        const dt = toZonedDate(ev.iso, tz);
-        events.push({dt, label: ev.label});
+// ---------- IndexedDB ヘルパ ----------
+const DB_NAME = 'priceMedianDB';
+const DB_VER = 1;
+let db;
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = (e)=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains('keys')){
+        db.createObjectStore('keys', {keyPath:'id'});
       }
-    });
-    return events.sort((a,b)=>a.dt-b.dt);
-  }
-
-  function aggregate(events, tz){
-    // Build per-day buckets in selected tz
-    const perDay = new Map();
-    for(const ev of events){
-      const key = dateKey(ev.dt, tz);
-      if(!perDay.has(key)) perDay.set(key, []);
-      perDay.get(key).push(ev);
-    }
-    // For each day, compute bedtime/waketime per spec
-    const results = new Map();
-    for(const [key, arr] of perDay){
-      const sorted = arr.slice().sort((a,b)=>a.dt-b.dt);
-      let lastChargeStart = null, lastPowerOff = null;
-      let firstChargeEnd = null, firstPowerOn = null;
-      for(const ev of sorted){
-        if(ev.label==='charge_start') lastChargeStart = ev.dt;
-        if(ev.label==='power_off') lastPowerOff = ev.dt;
-        if(ev.label==='charge_end' && !firstChargeEnd) firstChargeEnd = ev.dt;
-        if(ev.label==='power_on' && !firstPowerOn) firstPowerOn = ev.dt;
+      if(!db.objectStoreNames.contains('queries')){
+        const s = db.createObjectStore('queries', {keyPath:'id'}); // id = hash(q + options)
+        s.createIndex('createdAt', 'createdAt');
       }
-      const bedtime = maxDate(lastChargeStart, lastPowerOff);
-      const waketime = minDate(firstChargeEnd, firstPowerOn);
-      if(bedtime || waketime){
-        results.set(key, {bedtime, waketime,
-          chosenBed: bedtime===lastChargeStart? '充電開始' : bedtime===lastPowerOff? '電源OFF' : null,
-          chosenWake: waketime===firstChargeEnd? '充電終了' : waketime===firstPowerOn? '電源ON' : null
-        });
+    };
+    req.onsuccess = ()=>{ db=req.result; resolve(db)};
+    req.onerror = ()=> reject(req.error);
+  });
+}
+function idbPut(store, value){
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  })
+}
+function idbGet(store, key){
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  })
+}
+function idbAll(store){
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  })
+}
+
+// ---------- ユーティリティ ----------
+const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+const fmt = (n)=> n.toLocaleString('ja-JP', {maximumFractionDigits:0});
+function hashId(str){
+  // 簡易ハッシュ（非暗号）
+  let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619)>>>0;}
+  return h.toString(16);
+}
+function median(arr){
+  if(!arr.length) return null;
+  const s = [...arr].sort((a,b)=>a-b);
+  const m = Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function quantile(arr, q){
+  if(!arr.length) return null;
+  const s = [...arr].sort((a,b)=>a-b);
+  const pos = (s.length-1)*q;
+  const base = Math.floor(pos), rest = pos - base;
+  return s[base+1] !== undefined ? s[base] + rest*(s[base+1]-s[base]) : s[base];
+}
+
+// ---------- API 呼び出し（楽天 JSONP / Yahoo Fetch） ----------
+async function rakutenSearchJSONP({appid, keyword, page, hits, hasReview, inStock}){
+  const params = new URLSearchParams({
+    applicationId: appid,
+    keyword,
+    page: String(page),
+    hits: String(hits),
+    format: 'json',
+    formatVersion: '2',
+    elements: 'itemName,itemPrice,itemUrl,reviewAverage,reviewCount,availability',
+    sort: '+itemPrice',
+    hasReviewFlag: hasReview ? '1' : '0',
+    availability: inStock ? '1' : '0'
+  });
+  return new Promise((resolve, reject)=>{
+    const cb = 'rakuten_cb_' + Math.random().toString(36).slice(2);
+    params.set('callback', cb);
+    const script = document.createElement('script');
+    script.src = `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601?${params.toString()}`;
+    window[cb] = (json)=>{ resolve(json); cleanup(); };
+    script.onerror = ()=>{ reject(new Error('Rakuten JSONP error')); cleanup(); };
+    function cleanup(){ delete window[cb]; script.remove(); }
+    document.body.appendChild(script);
+  });
+}
+
+async function yahooSearch({appid, query, start, results, inStock, condition}){
+  const params = new URLSearchParams({
+    appid,
+    query,
+    start: String(start),
+    results: String(results),
+    in_stock: inStock ? 'true':'false',
+  });
+  if(condition) params.set('condition', condition);
+  const url = `https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?${params.toString()}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Yahoo API error ' + res.status);
+  return res.json();
+}
+
+// ---------- 検索実行 ----------
+async function runSearch(){
+  const q = document.getElementById('q').value.trim();
+  const source = document.getElementById('source').value;
+  const min3 = document.getElementById('min3').checked;
+  const inStockOnly = document.getElementById('inStockOnly').checked;
+  const newOnly = document.getElementById('newOnly').checked;
+  const limit = parseInt(document.getElementById('limit').value,10);
+  if(!q){ alert('商品名を入力してください'); return; }
+
+  const keys = await idbGet('keys','apiKeys') || {};
+  const rakutenId = keys.rakutenId || '';
+  const yahooId = keys.yahooId || '';
+
+  const useRakuten = source==='rakuten' || source==='both';
+  const useYahoo   = source==='yahoo'   || source==='both';
+  if(useRakuten && !rakutenId){ alert('楽天 applicationId を設定してください'); return; }
+  if(useYahoo && !yahooId){ alert('Yahoo appid を設定してください'); return; }
+
+  setLoading(true);
+  let items = [];
+  let errors = [];
+  try{
+    // 楽天: 30件/ページ → 最大4ページ
+    if(useRakuten){
+      const per = 30; const pages = Math.min(4, Math.ceil(limit/per));
+      for(let p=1;p<=pages;p++){
+        try{
+          const json = await rakutenSearchJSONP({appid: rakutenId, keyword:q, page:p, hits:per, hasReview:min3, inStock:inStockOnly});
+          const arr = (json.items||[]).map(it=>({
+            source:'rakuten',
+            name: it.itemName,
+            url: it.itemUrl,
+            price: Number(it.itemPrice),
+            rating: it.reviewAverage != null ? Number(it.reviewAverage) : null,
+            reviews: it.reviewCount != null ? Number(it.reviewCount) : null,
+            inStock: String(it.availability) === '1'
+          }));
+          items.push(...arr);
+          await sleep(120);
+        }catch(e){ errors.push('Rakuten p'+p+': '+e.message); }
       }
     }
-    return results; // Map date => {bedtime, waketime}
-  }
-
-  function maxDate(a,b){ if(a&&b) return (a>b? a:b); return a||b||null; }
-  function minDate(a,b){ if(a&&b) return (a<b? a:b); return a||b||null; }
-
-  function buildRangeDays(tz, days=60){
-    const arr=[]; const now = new Date();
-    for(let i=1;i<=days;i++){
-      const d = new Date(now); d.setDate(now.getDate()-i); // yesterday -> N days ago
-      arr.push(dateKey(d,tz));
-    }
-    return arr; // array of YYYY-MM-DD
-  }
-
-  function relLabel(i){ // 1=昨日, 2=一昨日, else N日前
-    if(i===1) return '昨日';
-    if(i===2) return '一昨日';
-    return `${i}日前`;
-  }
-
-  function render(results, tz){
-    // Medians across up to last 60 days
-    const days = buildRangeDays(tz, 60);
-    const bedMins=[], wakeMins=[];
-    listEl.innerHTML='';
-
-    days.forEach((d,iIdx)=>{
-      const r = results.get(d);
-      const idx=iIdx+1; // 1..60
-      const title = `${relLabel(idx)}（${d}）`;
-      const item = document.createElement('div'); item.className='item';
-      const h = document.createElement('h3'); h.textContent = title; item.appendChild(h);
-      const p = document.createElement('div');
-      if(r && (r.bedtime||r.waketime)){
-        let bedStr = r.bedtime? `${formatHM(r.bedtime,tz)}（${r.chosenBed}）` : '—';
-        let wakeStr = r.waketime? `${formatHM(r.waketime,tz)}（${r.chosenWake}）` : '—';
-        p.innerHTML = `就寝: <strong>${bedStr}</strong>　/　起床: <strong>${wakeStr}</strong>`;
-        if(r.bedtime) bedMins.push(minutesOfDay(r.bedtime,tz));
-        if(r.waketime) wakeMins.push(minutesOfDay(r.waketime,tz));
-      } else {
-        p.innerHTML = '<span class="muted">データなし</span>';
+    // Yahoo: 最大50件/ページ
+    if(useYahoo){
+      const per = 50; const pages = Math.min(3, Math.ceil(limit/per));
+      for(let i=0;i<pages;i++){
+        try{
+          const json = await yahooSearch({appid:yahooId, query:q, start:i*per+1, results:per, inStock:inStockOnly, condition: newOnly? 'new': undefined});
+          const arr = (json.hits||[]).map(h=>({
+            source:'yahoo',
+            name: h.name,
+            url: h.url,
+            price: Number(h.price ?? h.priceLabel?.defaultPrice ?? h.taxExcludePrice ?? 0),
+            rating: h.review?.rate != null ? Number(h.review.rate) : null,
+            reviews: h.review?.count != null ? Number(h.review.count) : null,
+            inStock: Boolean(h.inStock)
+          }));
+          items.push(...arr);
+          await sleep(120);
+        }catch(e){ errors.push('Yahoo page'+(i+1)+': '+e.message); }
       }
-      item.appendChild(p);
-      listEl.appendChild(item);
-    });
-
-    const medWake = median(wakeMins); const medBed = median(bedMins);
-    function mm2hhmm(x){ if(x==null) return '--:--'; const h=Math.floor(x/60).toString().padStart(2,'0'); const m=Math.round(x%60).toString().padStart(2,'0'); return `${h}:${m}`; }
-    medianKVs.textContent = `${mm2hhmm(medWake)} / ${mm2hhmm(medBed)}`;
-    countsEl.textContent = `（起床${wakeMins.length}日・就寝${bedMins.length}日で算出）`;
-  }
-
-  function parseAndRender(){
-    const tz = tzSelect.value;
-    const events = parseTextToEvents(inputEl.value, tz);
-    const results = aggregate(events, tz);
-    render(results, tz);
-  }
-
-  // ===== Sample data generator (last ~7 days) =====
-  function makeSample(){
-    const tz = tzSelect.value;
-    const now = new Date();
-    const lines=[];
-    function mk(dayOffset, bedH, bedM, wakeH, wakeM){
-      const d = new Date(now); d.setDate(d.getDate()-dayOffset);
-      const dStr = (n)=> String(n).padStart(2,'0');
-      const y=d.getFullYear(), m=dStr(d.getMonth()+1), dd=dStr(d.getDate());
-      const bed = `${y}-${m}-${dd} ${dStr(bedH)}:${dStr(bedM)}`;
-      const wake = `${y}-${m}-${dd} ${dStr(wakeH)}:${dStr(wakeM)}`;
-      lines.push(`${bed}, 充電開始`);
-      lines.push(`${bed}, 電源OFF`);
-      lines.push(`${wake}, 充電終了`);
-      lines.push(`${wake}, 電源ON`);
     }
-    // Create semi-random days 1..10 ago
-    for(let k=1;k<=10;k++){
-      const bedH = 23 + Math.floor(Math.random()*2); // 23-24
-      const bedM = Math.floor(Math.random()*60);
-      const wakeH = 6 + Math.floor(Math.random()*2); // 6-7
-      const wakeM = Math.floor(Math.random()*60);
-      mk(k, bedH%24, bedM, wakeH%24, wakeM);
-    }
-    inputEl.value = lines.join('\n');
+  } finally{ setLoading(false); }
+
+  // フィルタリング
+  items = items.filter(x=> Number.isFinite(x.price) && x.price>0);
+  if(min3){ items = items.filter(x=> x.rating==null || x.rating>=3.0); }
+  if(inStockOnly){ items = items.filter(x=> x.inStock); }
+
+  // 集計
+  const prices = items.map(x=>x.price);
+  const stats = {
+    count: prices.length,
+    min: prices.length? Math.min(...prices): null,
+    q1: quantile(prices, 0.25),
+    median: median(prices),
+    q3: quantile(prices, 0.75)
+  };
+
+  // 保存（履歴）
+  const options = {source, min3, inStockOnly, newOnly, limit};
+  const id = hashId(JSON.stringify({q, options}));
+  const record = {id, q, options, createdAt: Date.now(), items, stats};
+  await idbPut('queries', record);
+  render(record, errors);
+  await renderHistory();
+}
+
+function setLoading(state){
+  const btn = document.getElementById('run');
+  btn.disabled = state;
+  btn.textContent = state ? '検索中…' : '中央値を調べる';
+}
+
+function render(data, errors){
+  const res = document.getElementById('result');
+  res.style.display = 'block';
+  document.getElementById('title').textContent = `「${data.q}」の価格統計`;
+  document.getElementById('meta').textContent = new Date(data.createdAt).toLocaleString('ja-JP');
+  document.getElementById('kCount').textContent = fmt(data.stats.count||0);
+  document.getElementById('kMin').textContent = data.stats.min!=null? `¥${fmt(data.stats.min)}` : '-';
+  document.getElementById('kQ1').textContent = data.stats.q1!=null? `¥${fmt(Math.round(data.stats.q1))}` : '-';
+  document.getElementById('kMedian').textContent = data.stats.median!=null? `¥${fmt(Math.round(data.stats.median))}` : '-';
+  document.getElementById('kQ3').textContent = data.stats.q3!=null? `¥${fmt(Math.round(data.stats.q3))}` : '-';
+
+  const warn = document.getElementById('warn');
+  warn.textContent = '';
+  if((data.stats.count||0) < 8){ warn.textContent = '件数が少ないため、中央値の信頼性が低い可能性があります。検索語を調整してください。'; }
+  if(errors && errors.length){ warn.textContent += (warn.textContent? ' ':'') + '一部取得に失敗：' + errors.join(' / '); }
+
+  const grid = document.getElementById('items');
+  grid.innerHTML='';
+  for(const it of data.items){
+    const el = document.createElement('div');
+    el.className='item';
+    el.innerHTML = `
+      <div class="muted small">${it.source==='rakuten'?'楽天市場':'Yahoo!'}</div>
+      <div style="font-weight:700; margin:4px 0 6px"><a href="${it.url}" target="_blank" rel="noopener">${it.name}</a></div>
+      <div><span class="tag">¥${fmt(it.price)}</span>
+        <span class="muted small" style="margin-left:8px">${it.rating!=null? `★${it.rating.toFixed(1)} (${it.reviews??0})` : 'レビュー情報なし'}</span>
+      </div>
+    `;
+    grid.appendChild(el);
   }
+}
 
-  // ===== File IO & LocalStorage =====
-  document.getElementById('file').addEventListener('change', (e)=>{
-    const f = e.target.files[0]; if(!f) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{ inputEl.value = reader.result; parseAndRender(); };
-    reader.readAsText(f);
-  });
-  document.getElementById('saveBtn').addEventListener('click', ()=>{
-    idbSet(IDB_KEY, inputEl.value||'').then(()=>{
-    alert('保存しました（この端末のIndexedDBに保存）');
-  }).catch(err=>{
-    console.error(err);
-    alert('保存に失敗しました');
-  });
-  });
-  document.getElementById('loadBtn').addEventListener('click', ()=>{
-    idbGet(IDB_KEY).then(v=>{ inputEl.value = v||''; parseAndRender(); }).catch(err=>{ console.error(err); parseAndRender(); });
-  });
-  document.getElementById('clearBtn').addEventListener('click', ()=>{
-    inputEl.value=''; parseAndRender();
-  });
+async function renderHistory(){
+  const list = await idbAll('queries');
+  list.sort((a,b)=> b.createdAt - a.createdAt);
+  const area = document.getElementById('history');
+  area.innerHTML='';
+  for(const rec of list.slice(0,30)){
+    const el = document.createElement('div');
+    el.className='item';
+    const opt = [];
+    if(rec.options.min3) opt.push('★3+');
+    if(rec.options.inStockOnly) opt.push('在庫');
+    if(rec.options.newOnly) opt.push('新品');
+    el.innerHTML = `
+      <div class="small muted">${new Date(rec.createdAt).toLocaleString('ja-JP')}</div>
+      <div style="font-weight:700; margin:4px 0">${rec.q}</div>
+      <div class="small muted">${rec.options.source} / ${opt.join(', ')||'－'} / n=${rec.stats.count}</div>
+      <div style="margin-top:6px"><button class="btn secondary small" data-id="${rec.id}">再表示</button></div>
+    `;
+    el.querySelector('button').addEventListener('click', ()=> render(rec));
+    area.appendChild(el);
+  }
+}
 
-  // ===== Wire events =====
-  document.getElementById('parseBtn').addEventListener('click', parseAndRender);
-  document.getElementById('sampleBtn').addEventListener('click', ()=>{ makeSample(); parseAndRender(); });
-  tzSelect.addEventListener('change', parseAndRender);
-
-  // Auto-load from IndexedDB if exists
-  idbGet(IDB_KEY).then(initVal=>{ if(initVal){ inputEl.value = initVal; } parseAndRender(); }).catch(()=>{ parseAndRender(); });
+// ---------- 初期化 ----------
+(async function(){
+  await openDB();
+  await renderHistory();
+  const keys = await idbGet('keys','apiKeys');
+  if(keys){ rakutenId.value = keys.rakutenId || ''; yahooId.value = keys.yahooId || ''; }
 })();
+
+// ---------- イベント ----------
+run.addEventListener('click', runSearch);
+clear.addEventListener('click', ()=>{ q.value=''; q.focus(); });
+historyBtn.addEventListener('click', renderHistory);
+saveKeys.addEventListener('click', async ()=>{
+  await idbPut('keys', {id:'apiKeys', rakutenId: rakutenId.value.trim(), yahooId: yahooId.value.trim()});
+  keyStatus.textContent = '保存しました';
+  setTimeout(()=> keyStatus.textContent='', 1500);
+});
 </script>
 </body>
 </html>
