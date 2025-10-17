@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>直近60日の睡眠時間（充電/電源イベントから推定）</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --card:#121a33;
+    --ink:#dfe7ff;
+    --muted:#9bb0ffbb;
+    --accent:#5b8cff;
+    --ok:#4ade80;
+    --warn:#fbbf24;
+    --bad:#fb7185;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif}
+  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+  h1{font-size:clamp(20px,3.8vw,28px);margin:0 0 12px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .grid{display:grid;gap:12px}
+  .cards{display:grid;grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:14px}
+  .flex{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .pill{background:rgba(255,255,255,.08); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted)}
+  .topline{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .top{background:linear-gradient(180deg,rgba(91,140,255,.14),rgba(91,140,255,.05)); border:1px solid rgba(91,140,255,.35);}
+  .top h2{margin:.2rem 0 .4rem; font-size:20px}
+  .kv{font-size: clamp(26px,4.2vw,36px); letter-spacing:1px; font-variant-numeric: tabular-nums}
+  .kv small{font-size: 12px; color:var(--muted)}
+  .hint{font-size:12px;color:var(--muted)}
+  textarea, input[type=file], select{width:100%; box-sizing:border-box}
+  textarea{min-height:160px; background:#0e1530; color:var(--ink); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono", monospace; font-size:12px}
+  button{appearance:none; background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer}
+  button.ghost{background:transparent; border:1px solid rgba(255,255,255,.2)}
+  .row{display:flex; gap:8px; flex-wrap:wrap}
+  .row > *{flex:1}
+  .list{display:grid; gap:8px}
+  .item{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:10px}
+  .item h3{margin:.2rem 0 .4rem; font-size:16px}
+  .tag{font-size:11px; color:var(--muted)}
+  .muted{color:var(--muted)}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+  .choose{font-size:12px; margin-top:6px}
+  .src{font-size:11px; color:var(--muted)}
+  .footer{margin-top:24px; font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>直近60日の睡眠時間（充電/電源イベントから推定）</h1>
+    <div class="sub">ルール：その日の <strong>最後の「充電開始」or「電源OFF」</strong> の遅い方 ⇒ <em>就寝</em>。その日の <strong>最初の「充電終了」or「電源ON」</strong> の早い方 ⇒ <em>起床</em>。タイムゾーンは端末ローカル（推奨：Asia/Tokyo）。</div>
+
+    <div class="grid">
+      <div class="card top" id="summaryCard">
+        <div class="topline">
+          <h2>60日中央値（起床 / 就寝）</h2>
+          <div>
+            <label class="pill">タイムゾーン: <select id="tzSelect"></select></label>
+          </div>
+        </div>
+        <div class="kv" id="medianKVs">--:-- / --:-- <small id="counts"></small></div>
+        <div class="hint">入力データの範囲内で過去60日を集計。欠損日は除外します。</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 8px">イベント入力</h3>
+        <div class="row">
+          <div>
+            <textarea id="input" placeholder="例:\n2025-10-12 23:41, 充電開始\n2025-10-12 23:55, 電源OFF\n2025-10-13 07:05, 充電終了\n2025-10-13 07:12, 電源ON\n...\nサポート: '充電開始/充電終了/電源OFF/電源ON' や 'charge_start/end', 'power_on/off', 'plug/unplug', 'boot/shutdown' など多くの別名に対応"></textarea>
+            <div class="src">形式: <span class="mono">YYYY-MM-DD HH:mm, イベント名[, 任意メモ]</span> を1行1件。順不同でOK。</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="parseBtn">集計する</button>
+          <button class="ghost" id="sampleBtn">サンプルデータ挿入</button>
+          <button class="ghost" id="saveBtn">ローカル保存</button>
+          <button class="ghost" id="loadBtn">読み込み</button>
+          <button class="ghost" id="clearBtn">全消去</button>
+          <input id="file" type="file" accept=".txt,.csv" />
+        </div>
+        <div class="choose">ファイルは上記と同じ1行1イベントのプレーンテキスト/CSVを想定。</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 6px">日別結果（昨日 → 60日前）</h3>
+        <div id="list" class="list"></div>
+      </div>
+    </div>
+
+    <div class="footer">※ このページは端末内で完結して動作します。データは送信されません。/ <strong>IndexedDB</strong> 保存に対応。</div>
+  </div>
+
+<script>
+(function(){
+  const inputEl = document.getElementById('input');
+  const listEl = document.getElementById('list');
+  const medianKVs = document.getElementById('medianKVs');
+  const countsEl = document.getElementById('counts');
+  const tzSelect = document.getElementById('tzSelect');
+  const DB_NAME = 'sleep_events_db_v1';
+  const STORE = 'kv';
+  const IDB_KEY = 'events_text';
+
+  // ===== IndexedDB helpers =====
+  function idbOpen(){
+    return new Promise((resolve, reject)=>{
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = ()=>{
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+  function idbGet(key){
+    return idbOpen().then(db=> new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readonly');
+      const st = tx.objectStore(STORE);
+      const g = st.get(key);
+      g.onsuccess = ()=> resolve(g.result);
+      g.onerror = ()=> reject(g.error);
+    }));
+  }
+  function idbSet(key, val){
+    return idbOpen().then(db=> new Promise((resolve,reject)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      const st = tx.objectStore(STORE);
+      const p = st.put(val, key);
+      p.onsuccess = ()=> resolve();
+      p.onerror = ()=> reject(p.error);
+    }));
+  }
+
+  // ===== Timezone handling =====
+  const allTimeZones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC'];
+  const defaultTZ = (allTimeZones.includes('Asia/Tokyo') ? 'Asia/Tokyo' : Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  for(const tz of allTimeZones){
+    const opt = document.createElement('option');
+    opt.value = tz; opt.textContent = tz; tzSelect.appendChild(opt);
+  }
+  tzSelect.value = defaultTZ;
+
+  function parseLine(line){
+    // Expected: YYYY-MM-DD HH:mm, label [, memo]
+    const m = line.trim().match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?\s*,\s*([^,]+)(?:,.*)?$/);
+    if(!m) return null;
+    const [_, d, hm, labelRaw] = m;
+    const label = normalizeLabel(labelRaw);
+    if(!label) return null;
+    return { iso: `${d}T${hm}:00`, label };
+  }
+
+  function normalizeLabel(s){
+    const t = s.trim().toLowerCase();
+    // Japanese
+    if(/充電開始|接続|差し込み/.test(s)) return 'charge_start';
+    if(/充電終了|取り外し|拔去|抜去/.test(s)) return 'charge_end';
+    if(/電源off|電源ｏｆｆ|シャットダウン|電源切|電源を切/.test(s)) return 'power_off';
+    if(/電源on|電源ｏｎ|起動|ブート|電源入|電源を入/.test(s)) return 'power_on';
+    // English & common synonyms
+    if(/charge[_ ]?start|start charging|plug|power_connected|usb_?plug(ged)?|connected to power/.test(t)) return 'charge_start';
+    if(/charge[_ ]?end|stop charging|unplug|power_disconnected|usb_?unplug(ged)?|disconnected from power/.test(t)) return 'charge_end';
+    if(/power[_ ]?off|shutdown|shut[_ ]?down|turn[_ ]?off|device off/.test(t)) return 'power_off';
+    if(/power[_ ]?on|boot|start[_ ]?up|turn[_ ]?on|device on/.test(t)) return 'power_on';
+    return null;
+  }
+
+  function toZonedDate(dateLike, timeZone){
+    // dateLike: ISO without timezone assumed local; treat as in selected TZ
+    const [datePart, timePart] = dateLike.split('T');
+    const [Y,M,D] = datePart.split('-').map(Number);
+    const [h,m,s] = (timePart||'00:00:00').split(':').map(Number);
+    // Construct UTC time that corresponds to this wall time in tz
+    const zdt = new Date(new Date(Date.UTC(Y,M-1,D,h||0,m||0,s||0)).toLocaleString('en-US',{timeZone}));
+    // But the above converts to local. Use Intl to get offset properly:
+    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    const parts = fmt.formatToParts(new Date(Date.UTC(Y,M-1,D,h||0,m||0,s||0)));
+    const obj={}; for(const p of parts){obj[p.type]=p.value}
+    const local = new Date(Date.UTC(+obj.year, +obj.month-1, +obj.day, +obj.hour, +obj.minute, +obj.second));
+    return local; // returns a Date in real UTC that represents the tz wall time
+  }
+
+  function formatHM(date, tz){
+    const fmt = new Intl.DateTimeFormat('ja-JP',{timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:false});
+    return fmt.format(date);
+  }
+  function dateKey(date, tz){
+    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'});
+    return fmt.format(date); // YYYY-MM-DD
+  }
+  function minutesOfDay(date, tz){
+    const fmt = new Intl.DateTimeFormat('en-CA',{timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+    const parts = fmt.formatToParts(date); const o={}; parts.forEach(p=>o[p.type]=p.value);
+    return (+o.hour)*60 + (+o.minute) + (+o.second)/60;
+  }
+  function median(nums){
+    if(!nums.length) return null; const a=[...nums].sort((x,y)=>x-y); const mid=Math.floor(a.length/2);
+    return (a.length%2? a[mid] : (a[mid-1]+a[mid])/2);
+  }
+
+  function parseTextToEvents(text, tz){
+    const events=[];
+    text.split(/\r?\n/).forEach(line=>{
+      if(!line.trim()) return;
+      const ev = parseLine(line);
+      if(ev){
+        const dt = toZonedDate(ev.iso, tz);
+        events.push({dt, label: ev.label});
+      }
+    });
+    return events.sort((a,b)=>a.dt-b.dt);
+  }
+
+  function aggregate(events, tz){
+    // Build per-day buckets in selected tz
+    const perDay = new Map();
+    for(const ev of events){
+      const key = dateKey(ev.dt, tz);
+      if(!perDay.has(key)) perDay.set(key, []);
+      perDay.get(key).push(ev);
+    }
+    // For each day, compute bedtime/waketime per spec
+    const results = new Map();
+    for(const [key, arr] of perDay){
+      const sorted = arr.slice().sort((a,b)=>a.dt-b.dt);
+      let lastChargeStart = null, lastPowerOff = null;
+      let firstChargeEnd = null, firstPowerOn = null;
+      for(const ev of sorted){
+        if(ev.label==='charge_start') lastChargeStart = ev.dt;
+        if(ev.label==='power_off') lastPowerOff = ev.dt;
+        if(ev.label==='charge_end' && !firstChargeEnd) firstChargeEnd = ev.dt;
+        if(ev.label==='power_on' && !firstPowerOn) firstPowerOn = ev.dt;
+      }
+      const bedtime = maxDate(lastChargeStart, lastPowerOff);
+      const waketime = minDate(firstChargeEnd, firstPowerOn);
+      if(bedtime || waketime){
+        results.set(key, {bedtime, waketime,
+          chosenBed: bedtime===lastChargeStart? '充電開始' : bedtime===lastPowerOff? '電源OFF' : null,
+          chosenWake: waketime===firstChargeEnd? '充電終了' : waketime===firstPowerOn? '電源ON' : null
+        });
+      }
+    }
+    return results; // Map date => {bedtime, waketime}
+  }
+
+  function maxDate(a,b){ if(a&&b) return (a>b? a:b); return a||b||null; }
+  function minDate(a,b){ if(a&&b) return (a<b? a:b); return a||b||null; }
+
+  function buildRangeDays(tz, days=60){
+    const arr=[]; const now = new Date();
+    for(let i=1;i<=days;i++){
+      const d = new Date(now); d.setDate(now.getDate()-i); // yesterday -> N days ago
+      arr.push(dateKey(d,tz));
+    }
+    return arr; // array of YYYY-MM-DD
+  }
+
+  function relLabel(i){ // 1=昨日, 2=一昨日, else N日前
+    if(i===1) return '昨日';
+    if(i===2) return '一昨日';
+    return `${i}日前`;
+  }
+
+  function render(results, tz){
+    // Medians across up to last 60 days
+    const days = buildRangeDays(tz, 60);
+    const bedMins=[], wakeMins=[];
+    listEl.innerHTML='';
+
+    days.forEach((d,iIdx)=>{
+      const r = results.get(d);
+      const idx=iIdx+1; // 1..60
+      const title = `${relLabel(idx)}（${d}）`;
+      const item = document.createElement('div'); item.className='item';
+      const h = document.createElement('h3'); h.textContent = title; item.appendChild(h);
+      const p = document.createElement('div');
+      if(r && (r.bedtime||r.waketime)){
+        let bedStr = r.bedtime? `${formatHM(r.bedtime,tz)}（${r.chosenBed}）` : '—';
+        let wakeStr = r.waketime? `${formatHM(r.waketime,tz)}（${r.chosenWake}）` : '—';
+        p.innerHTML = `就寝: <strong>${bedStr}</strong>　/　起床: <strong>${wakeStr}</strong>`;
+        if(r.bedtime) bedMins.push(minutesOfDay(r.bedtime,tz));
+        if(r.waketime) wakeMins.push(minutesOfDay(r.waketime,tz));
+      } else {
+        p.innerHTML = '<span class="muted">データなし</span>';
+      }
+      item.appendChild(p);
+      listEl.appendChild(item);
+    });
+
+    const medWake = median(wakeMins); const medBed = median(bedMins);
+    function mm2hhmm(x){ if(x==null) return '--:--'; const h=Math.floor(x/60).toString().padStart(2,'0'); const m=Math.round(x%60).toString().padStart(2,'0'); return `${h}:${m}`; }
+    medianKVs.textContent = `${mm2hhmm(medWake)} / ${mm2hhmm(medBed)}`;
+    countsEl.textContent = `（起床${wakeMins.length}日・就寝${bedMins.length}日で算出）`;
+  }
+
+  function parseAndRender(){
+    const tz = tzSelect.value;
+    const events = parseTextToEvents(inputEl.value, tz);
+    const results = aggregate(events, tz);
+    render(results, tz);
+  }
+
+  // ===== Sample data generator (last ~7 days) =====
+  function makeSample(){
+    const tz = tzSelect.value;
+    const now = new Date();
+    const lines=[];
+    function mk(dayOffset, bedH, bedM, wakeH, wakeM){
+      const d = new Date(now); d.setDate(d.getDate()-dayOffset);
+      const dStr = (n)=> String(n).padStart(2,'0');
+      const y=d.getFullYear(), m=dStr(d.getMonth()+1), dd=dStr(d.getDate());
+      const bed = `${y}-${m}-${dd} ${dStr(bedH)}:${dStr(bedM)}`;
+      const wake = `${y}-${m}-${dd} ${dStr(wakeH)}:${dStr(wakeM)}`;
+      lines.push(`${bed}, 充電開始`);
+      lines.push(`${bed}, 電源OFF`);
+      lines.push(`${wake}, 充電終了`);
+      lines.push(`${wake}, 電源ON`);
+    }
+    // Create semi-random days 1..10 ago
+    for(let k=1;k<=10;k++){
+      const bedH = 23 + Math.floor(Math.random()*2); // 23-24
+      const bedM = Math.floor(Math.random()*60);
+      const wakeH = 6 + Math.floor(Math.random()*2); // 6-7
+      const wakeM = Math.floor(Math.random()*60);
+      mk(k, bedH%24, bedM, wakeH%24, wakeM);
+    }
+    inputEl.value = lines.join('\n');
+  }
+
+  // ===== File IO & LocalStorage =====
+  document.getElementById('file').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ inputEl.value = reader.result; parseAndRender(); };
+    reader.readAsText(f);
+  });
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    idbSet(IDB_KEY, inputEl.value||'').then(()=>{
+    alert('保存しました（この端末のIndexedDBに保存）');
+  }).catch(err=>{
+    console.error(err);
+    alert('保存に失敗しました');
+  });
+  });
+  document.getElementById('loadBtn').addEventListener('click', ()=>{
+    idbGet(IDB_KEY).then(v=>{ inputEl.value = v||''; parseAndRender(); }).catch(err=>{ console.error(err); parseAndRender(); });
+  });
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    inputEl.value=''; parseAndRender();
+  });
+
+  // ===== Wire events =====
+  document.getElementById('parseBtn').addEventListener('click', parseAndRender);
+  document.getElementById('sampleBtn').addEventListener('click', ()=>{ makeSample(); parseAndRender(); });
+  tzSelect.addEventListener('change', parseAndRender);
+
+  // Auto-load from IndexedDB if exists
+  idbGet(IDB_KEY).then(initVal=>{ if(initVal){ inputEl.value = initVal; } parseAndRender(); }).catch(()=>{ parseAndRender(); });
+})();
+</script>
+</body>
+</html>
