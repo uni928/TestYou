@@ -3,378 +3,195 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>文字スワップ - スマホ間テキスト転送</title>
-  <meta name="description" content="QRコード／リンク共有／カメラ読み取りで、スマホ間でテキストをやり取りできるワンファイルHTML。" />
-  <!-- Tailwind CDN -->
+  <title>QRスキャン → 自動アクセス</title>
+  <meta name="description" content="アクセスするとカメラが立ち上がり、QRコードを読み込むと自動で該当URLへ遷移するワンファイルHTML" />
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- QR生成用ライブラリ -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- QR読み取り用ライブラリ（カメラ映像→QRデコード） -->
+  <!-- jsQR for QR decoding -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
     :root { color-scheme: light dark; }
-    html, body { height: 100%; }
-    body { font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans JP', sans-serif; }
-
-    /* 背景：アニメ付きグラデーション */
-    .bg-animated {
-      background: radial-gradient(1200px 600px at 10% 10%, rgba(99,102,241,.35), transparent 60%),
-                  radial-gradient(800px 500px at 90% 20%, rgba(16,185,129,.3), transparent 60%),
-                  radial-gradient(900px 600px at 40% 90%, rgba(236,72,153,.25), transparent 60%),
-                  linear-gradient(120deg, #0f172a, #111827 35%, #0b1220);
-      background-size: 300% 300%;
-      animation: gradientShift 18s ease infinite;
-    }
-    @keyframes gradientShift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    /* ガラス風カード */
-    .glass {
-      backdrop-filter: blur(16px) saturate(120%);
-      -webkit-backdrop-filter: blur(16px) saturate(120%);
-      background-color: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-    }
-    .text-gradient {
-      background: linear-gradient(90deg, #a78bfa, #34d399, #60a5fa, #f472b6);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-    .btn {
-      @apply w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition active:scale-[.98];
-    }
-    .btn-primary { @apply bg-indigo-500 hover:bg-indigo-400 text-white; }
-    .btn-ghost   { @apply bg-white/10 hover:bg-white/15 text-white; }
-    .btn-outline { @apply border border-white/20 hover:bg-white/10 text-white; }
-
-    /* カメラプレビューの角丸＆枠 */
-    #videoPreview { border-radius: 1rem; border: 1px dashed rgba(255,255,255,.25); }
-
-    /* iOS のスクロール時に余白が出ないように */
+    body { background: radial-gradient(1000px 600px at 15% 10%, rgba(99,102,241,.25), transparent 60%),
+                         radial-gradient(800px 500px at 90% 20%, rgba(16,185,129,.22), transparent 60%),
+                         linear-gradient(120deg, #0f172a, #0b1220); }
+    .glass { backdrop-filter: blur(16px) saturate(120%); background-color: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+    #video { border-radius: 1.25rem; }
+    .scan-frame { box-shadow: 0 0 0 9999px rgba(0,0,0,.35) inset; border: 2px solid rgba(255,255,255,.7); border-radius: 1rem; }
     .safe { padding-bottom: env(safe-area-inset-bottom); }
   </style>
 </head>
-<body class="bg-animated text-white min-h-screen">
-  <header class="px-4 pt-8 pb-2 md:px-8">
-    <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
-      <span class="text-gradient">文字スワップ</span>
-      <span class="opacity-80 text-base md:text-lg align-middle ml-2">— スマホ間テキスト転送</span>
-    </h1>
-  </header>
+<body class="text-white min-h-screen">
+  <main class="px-4 pt-6 pb-10 md:px-8 safe">
+    <div class="max-w-xl mx-auto">
+      <header class="mb-4">
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight">QRスキャン → 自動アクセス</h1>
+        <p class="text-sm opacity-80 mt-1">ページを開くとカメラが起動します。QRにURLが含まれていれば自動でそのページへ移動します。</p>
+      </header>
 
-  <main class="px-4 md:px-8 safe">
-    <section class="glass rounded-3xl p-5 md:p-8 shadow-xl">
-      <!-- タブ切替 -->
-      <div class="flex flex-wrap gap-2 mb-5">
-        <button id="tabSend" class="btn btn-ghost" aria-selected="true">送る（QR / リンク）</button>
-        <button id="tabScan" class="btn btn-ghost">受け取る（カメラでQR読取）</button>
-        <button id="tabHelp" class="btn btn-ghost">使い方</button>
-      </div>
-
-      <!-- 送信タブ -->
-      <div id="panelSend" class="grid gap-5 md:grid-cols-2">
-        <div class="space-y-4">
-          <label class="block text-sm opacity-90">送りたいテキスト</label>
-          <textarea id="inputText" class="w-full rounded-2xl bg-white/5 border border-white/10 p-4 min-h-[8rem] focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="ここにテキストを入力"></textarea>
-          <div class="flex items-center justify-between text-xs opacity-80">
-            <span id="charCount">0 文字</span>
-            <span>ヒント：長文はQRが細かくなるため、リンク共有が扱いやすいです。</span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 mt-2">
-            <button class="btn btn-primary" id="btnMakeQR">
-              <!-- QR icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3z"/><path d="M15 15h3v3h-3z"/><path d="M18 18h3v3h-3z"/><path d="M15 21v-3"/></svg>
-              QRを作る
-            </button>
-            <button class="btn btn-outline" id="btnFullQR">フルスクリーンQR</button>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3 mt-2">
-            <button class="btn btn-outline" id="btnCopy">テキストをコピー</button>
-            <button class="btn btn-outline" id="btnCopyLink">リンクをコピー</button>
-            <button class="btn btn-outline" id="btnShare">リンクを共有</button>
+      <section class="glass rounded-2xl p-4 md:p-5">
+        <div class="relative">
+          <video id="video" class="w-full aspect-square object-cover"></video>
+          <div class="absolute inset-6 scan-frame pointer-events-none"></div>
+          <div class="absolute left-3 bottom-3 right-3 flex gap-2">
+            <button id="btnStart" class="flex-1 bg-white/15 hover:bg-white/25 rounded-xl py-2 text-sm hidden">カメラ開始</button>
+            <button id="btnTorch" class="w-28 bg-white/15 hover:bg-white/25 rounded-xl py-2 text-sm hidden">ライト</button>
+            <button id="btnSwitch" class="w-28 bg-white/15 hover:bg-white/25 rounded-xl py-2 text-sm hidden">前/背面</button>
           </div>
         </div>
-
-        <div class="space-y-3">
-          <div id="qrContainer" class="w-full aspect-square bg-white rounded-2xl grid place-items-center overflow-hidden">
-            <div class="text-center text-slate-700">
-              <p class="font-semibold">ここにQRコードが表示されます</p>
-              <p class="text-xs opacity-70 mt-1">テキストを入力して「QRを作る」を押してください</p>
-            </div>
-          </div>
-          <div class="text-xs opacity-80">
-            <p>リンク形式：<span id="linkPreview" class="break-all"></span></p>
+        <p id="status" class="text-xs opacity-80 mt-3">初期化中…</p>
+        <div id="fallback" class="hidden mt-3 text-sm opacity-90">
+          <p class="mb-1">カメラ起動に失敗しました。下のボタンで再試行してください。</p>
+          <button id="btnRetry" class="bg-indigo-500 hover:bg-indigo-400 rounded-xl px-4 py-2 text-white text-sm">再試行</button>
+        </div>
+        <div id="resultBox" class="hidden mt-3 text-sm">
+          <p class="opacity-80">読み取り結果：</p>
+          <p id="plainText" class="mt-1 break-words bg-white/10 rounded-lg p-2"></p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button id="btnOpenAnyway" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl px-4 py-2 text-sm">この内容で開く</button>
+            <button id="btnCopy" class="bg-white/15 hover:bg-white/25 rounded-xl px-4 py-2 text-sm">コピー</button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 受信タブ（QRスキャン） -->
-      <div id="panelScan" class="hidden grid gap-5 md:grid-cols-2">
-        <div class="space-y-4 order-2 md:order-1">
-          <label class="block text-sm opacity-90">読み取ったテキスト</label>
-          <textarea id="scanResult" class="w-full rounded-2xl bg-white/5 border border-white/10 p-4 min-h-[8rem] focus:outline-none" placeholder="ここに読み取った文字が表示されます" readonly></textarea>
-          <div class="grid grid-cols-2 gap-3">
-            <button class="btn btn-primary" id="btnCopyScanned">コピー</button>
-            <button class="btn btn-outline" id="btnStop">カメラを停止</button>
-          </div>
-          <p class="text-xs opacity-80">※ 読み取りに成功すると自動で停止します。</p>
-        </div>
-        <div class="space-y-3 order-1 md:order-2">
-          <div class="relative">
-            <video id="videoPreview" class="w-full aspect-square object-cover"></video>
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div class="w-2/3 h-2/3 rounded-2xl border-2 border-white/70"></div>
-            </div>
-            <button id="btnStart" class="btn btn-ghost absolute bottom-3 left-3">カメラ開始</button>
-            <button id="btnTorch" class="btn btn-ghost absolute bottom-3 right-3 hidden">ライト</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 使い方タブ -->
-      <div id="panelHelp" class="hidden">
-        <ol class="list-decimal list-inside space-y-2 text-sm opacity-95">
-          <li><strong>送る側：</strong>テキストを入力 → 「QRを作る」 → 相手のスマホで「受け取る」タブからカメラで読み取り。</li>
-          <li><strong>リンク共有：</strong>「リンクをコピー」または「リンクを共有」で各種アプリに送信。受け取り側はリンクを開くだけでテキストが表示されます。</li>
-          <li><strong>長文のコツ：</strong>QRが細かすぎる場合はリンク共有がおすすめです。</li>
-          <li>このページは端末保存（localStorage / IndexedDB）を使用しません。権限はカメラ利用時のみ求められます。</li>
-        </ol>
-      </div>
-    </section>
-
-    <footer class="text-xs opacity-70 mt-6 text-center">
-      <p>© 2025 文字スワップ — オフラインでも動く単一HTML</p>
-    </footer>
+      <footer class="text-xs opacity-70 mt-6 text-center">© 2025 QR Jump</footer>
+    </div>
   </main>
 
-  <!-- フルスクリーンQR用モーダル -->
-  <dialog id="qrDialog" class="backdrop:bg-black/60 rounded-3xl p-0 w-[92vw] max-w-[520px]">
-    <div class="bg-white text-slate-800 rounded-3xl overflow-hidden">
-      <div class="p-4 flex items-center justify-between border-b">
-        <h2 class="font-semibold">QRを表示</h2>
-        <button id="btnCloseDialog" class="text-slate-500 hover:text-slate-800 p-2" aria-label="閉じる">✕</button>
-      </div>
-      <div class="p-4">
-        <div id="qrBig" class="w-full aspect-square"></div>
-        <p class="text-xs mt-3 break-all">リンク：<span id="linkInDialog"></span></p>
-      </div>
-    </div>
-  </dialog>
-
   <script>
-    const inputText = document.getElementById('inputText');
-    const charCount = document.getElementById('charCount');
-    const linkPreview = document.getElementById('linkPreview');
-    const btnMakeQR = document.getElementById('btnMakeQR');
-    const btnFullQR = document.getElementById('btnFullQR');
-    const btnCopy = document.getElementById('btnCopy');
-    const btnCopyLink = document.getElementById('btnCopyLink');
-    const btnShare = document.getElementById('btnShare');
-    const qrContainer = document.getElementById('qrContainer');
-
-    const panelSend = document.getElementById('panelSend');
-    const panelScan = document.getElementById('panelScan');
-    const panelHelp = document.getElementById('panelHelp');
-    const tabSend = document.getElementById('tabSend');
-    const tabScan = document.getElementById('tabScan');
-    const tabHelp = document.getElementById('tabHelp');
-
-    const qrDialog = document.getElementById('qrDialog');
-    const qrBig = document.getElementById('qrBig');
-    const linkInDialog = document.getElementById('linkInDialog');
-    const btnCloseDialog = document.getElementById('btnCloseDialog');
-
-    const scanResult = document.getElementById('scanResult');
-    const videoPreview = document.getElementById('videoPreview');
+    const video = document.getElementById('video');
+    const statusEl = document.getElementById('status');
     const btnStart = document.getElementById('btnStart');
-    const btnStop = document.getElementById('btnStop');
+    const btnRetry = document.getElementById('btnRetry');
     const btnTorch = document.getElementById('btnTorch');
-    const btnCopyScanned = document.getElementById('btnCopyScanned');
+    const btnSwitch = document.getElementById('btnSwitch');
+    const fallback = document.getElementById('fallback');
+    const resultBox = document.getElementById('resultBox');
+    const plainText = document.getElementById('plainText');
+    const btnOpenAnyway = document.getElementById('btnOpenAnyway');
+    const btnCopy = document.getElementById('btnCopy');
 
-    let qr;
-    let qrLarge;
+    let stream, track, useFacingMode = 'environment', rafId;
 
-    // --- タブ切替 ---
-    function showPanel(which){
-      for (const [tab, panel] of [[tabSend,panelSend],[tabScan,panelScan],[tabHelp,panelHelp]]){
-        const active = (panel === which);
-        panel.classList.toggle('hidden', !active);
-        tab.setAttribute('aria-selected', active);
-        tab.classList.toggle('bg-white/20', active);
-      }
-    }
-    tabSend.addEventListener('click', ()=> showPanel(panelSend));
-    tabScan.addEventListener('click', ()=> showPanel(panelScan));
-    tabHelp.addEventListener('click', ()=> showPanel(panelHelp));
-
-    // --- 文字数 ---
-    function updateCount(){ charCount.textContent = `${inputText.value.length} 文字`; updateLink(); }
-    inputText.addEventListener('input', updateCount);
-
-    // --- リンク生成（ハッシュ） ---
-    function buildLink(){
-      const base = location.href.split('#')[0];
-      const text = encodeURIComponent(inputText.value);
-      return `${base}#t=${text}`;
-    }
-    function updateLink(){ linkPreview.textContent = buildLink(); }
-
-    // --- QR生成 ---
-    function clearQR(target){ target.innerHTML = ''; }
-    function makeQR(target, text){
-      clearQR(target);
-      const size = target.clientWidth || 300;
-      return new QRCode(target, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
-    }
-    btnMakeQR.addEventListener('click', ()=>{
-      const link = buildLink();
-      qr = makeQR(qrContainer, link);
-    });
-
-    // --- フルスクリーンQR ---
-    btnFullQR.addEventListener('click', ()=>{
-      const link = buildLink();
-      qrLarge = makeQR(qrBig, link);
-      linkInDialog.textContent = link;
-      if (typeof qrDialog.showModal === 'function') qrDialog.showModal();
-    });
-    btnCloseDialog.addEventListener('click', ()=>{
-      qrDialog.close();
-      clearQR(qrBig);
-      qrLarge = null;
-    });
-
-    // --- 共有／コピー ---
-    btnCopy.addEventListener('click', async()=>{
-      try{ await navigator.clipboard.writeText(inputText.value); toast('テキストをコピーしました'); }catch{ toast('コピーに失敗しました'); }
-    });
-    btnCopyLink.addEventListener('click', async()=>{
-      try{ await navigator.clipboard.writeText(buildLink()); toast('リンクをコピーしました'); }catch{ toast('コピーに失敗しました'); }
-    });
-    btnShare.addEventListener('click', async()=>{
-      const url = buildLink();
-      if (navigator.share){
-        try{ await navigator.share({ title: '文字スワップ', text: 'このリンクからテキストを受け取れます', url }); }
-        catch(e){ /* キャンセル等 */ }
-      } else {
-        try{ await navigator.clipboard.writeText(url); toast('共有非対応のためリンクをコピーしました'); }catch{ toast('コピーに失敗しました'); }
-      }
-    });
-
-    // --- 起動時：ハッシュから自動読込 ---
-    function readFromHash(){
-      const h = new URL(location.href).hash;
-      if (h.startsWith('#t=')){
-        const t = decodeURIComponent(h.slice(3));
-        inputText.value = t;
-        updateCount();
-        // 受信タブにも反映
-        scanResult.value = t;
+    function looksLikeURL(s){
+      try { new URL(s); return true; } catch(e) {
+        // プロトコルなしの www. やドメインっぽい文字列
+        return /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]*)?$/i.test(s);
       }
     }
 
-    // --- トースト ---
-    let toastTimer;
-    function toast(msg){
-      let el = document.getElementById('toast');
-      if (!el){
-        el = document.createElement('div');
-        el.id = 'toast';
-        el.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 bg-white/90 text-slate-900 rounded-full px-4 py-2 text-sm shadow-lg';
-        document.body.appendChild(el);
+    function normalizeURL(s){
+      try { return new URL(s).toString(); } catch(e){
+        return s.startsWith('http') ? s : 'https://' + s;
       }
-      el.textContent = msg;
-      el.style.opacity = '1';
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=> el.style.opacity = '0', 1600);
     }
-
-    // --- カメラ＆QR読み取り ---
-    let stream; let rafId; let torchOn = false; let track;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
 
     async function startCamera(){
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        videoPreview.srcObject = stream;
-        await videoPreview.play();
+      stopCamera();
+      statusEl.textContent = 'カメラ起動中…';
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFacingMode } });
+        video.srcObject = stream; await video.play();
         track = stream.getVideoTracks()[0];
-        const caps = track.getCapabilities?.() || {};
-        if (caps.torch){ btnTorch.classList.remove('hidden'); }
+        const caps = (track.getCapabilities && track.getCapabilities()) || {};
+        if (caps.torch) btnTorch.classList.remove('hidden'); else btnTorch.classList.add('hidden');
+        btnSwitch.classList.remove('hidden');
+        btnStart.classList.add('hidden');
+        fallback.classList.add('hidden');
+        statusEl.textContent = '読み取り待機中…';
         scanLoop();
-      } catch (e){ toast('カメラを開始できませんでした'); }
+      } catch(err){
+        console.warn(err);
+        statusEl.textContent = 'カメラを開始できませんでした。';
+        btnStart.classList.remove('hidden');
+        fallback.classList.remove('hidden');
+      }
     }
 
     function stopCamera(){
       if (rafId) cancelAnimationFrame(rafId);
-      if (videoPreview.srcObject){
-        videoPreview.pause();
-        videoPreview.srcObject.getTracks().forEach(t => t.stop());
-        videoPreview.srcObject = null;
+      if (video.srcObject){
+        video.pause();
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
       }
-      btnTorch.classList.add('hidden');
-      torchOn = false; track = null;
     }
 
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
     function scanLoop(){
-      const vw = videoPreview.videoWidth;
-      const vh = videoPreview.videoHeight;
+      const vw = video.videoWidth, vh = video.videoHeight;
       if (!vw || !vh){ rafId = requestAnimationFrame(scanLoop); return; }
       const size = Math.min(vw, vh);
-      const sx = (vw - size)/2; const sy = (vh - size)/2;
+      const sx = (vw - size)/2, sy = (vh - size)/2;
       canvas.width = size; canvas.height = size;
-      ctx.drawImage(videoPreview, sx, sy, size, size, 0, 0, size, size);
-      const imgData = ctx.getImageData(0,0,size,size);
-      const code = jsQR(imgData.data, size, size, { inversionAttempts: 'dontInvert' });
+      ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+      const img = ctx.getImageData(0,0,size,size);
+      const code = jsQR(img.data, size, size, { inversionAttempts: 'dontInvert' });
       if (code && code.data){
-        stopCamera();
-        try {
-          const url = new URL(code.data);
-          if (url.hash.startsWith('#t=')){
-            const text = decodeURIComponent(url.hash.slice(3));
-            scanResult.value = text; inputText.value = text; updateCount();
-            toast('読み取りに成功しました');
-            return;
-          }
-        } catch(e) { /* QRがURLでない場合もある */ }
-        // そのままテキストとして扱う
-        scanResult.value = code.data; inputText.value = code.data; updateCount();
-        toast('読み取りに成功しました');
-        return;
+        handleDecoded(code.data);
+        return; // 停止
       }
       rafId = requestAnimationFrame(scanLoop);
     }
 
+    function handleDecoded(data){
+      stopCamera();
+      const content = data.trim();
+      if (looksLikeURL(content)){
+        const url = normalizeURL(content);
+        statusEl.textContent = 'URLを検出しました。移動します…';
+        // 直ちに遷移
+        window.location.assign(url);
+      } else {
+        // URLでない場合は表示と操作を提供
+        plainText.textContent = content;
+        resultBox.classList.remove('hidden');
+        statusEl.textContent = 'テキストを検出しました。開く/コピーを選択できます。';
+        btnOpenAnyway.onclick = () => {
+          const maybe = prompt('開きたいURLを入力してください（検出結果を元に編集可能）', content);
+          if (maybe){ window.location.assign(normalizeURL(maybe)); }
+        };
+        btnCopy.onclick = async () => {
+          try { await navigator.clipboard.writeText(content); flashToast('コピーしました'); } catch {}
+        };
+      }
+    }
+
     btnStart.addEventListener('click', startCamera);
-    btnStop.addEventListener('click', stopCamera);
+    btnRetry.addEventListener('click', startCamera);
+    btnSwitch.addEventListener('click', async()=>{
+      useFacingMode = (useFacingMode === 'environment') ? 'user' : 'environment';
+      await startCamera();
+    });
     btnTorch.addEventListener('click', async()=>{
       if (!track) return;
-      torchOn = !torchOn;
-      try { await track.applyConstraints({ advanced: [{ torch: torchOn }] }); }
-      catch { /* 非対応端末 */ }
+      try {
+        const caps = track.getCapabilities && track.getCapabilities();
+        if (caps && caps.torch){
+          const current = track.getSettings && track.getSettings();
+          const next = !(current && current.torch);
+          await track.applyConstraints({ advanced: [{ torch: next }] });
+        }
+      } catch {}
     });
 
-    btnCopyScanned.addEventListener('click', async()=>{
-      try{ await navigator.clipboard.writeText(scanResult.value); toast('コピーしました'); }catch{ toast('コピーに失敗しました'); }
-    });
+    // トースト
+    let toastTimer; 
+    function flashToast(msg){
+      let el = document.getElementById('toast');
+      if (!el){
+        el = document.createElement('div');
+        el.id = 'toast';
+        el.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 bg-white/95 text-slate-900 rounded-full px-4 py-2 text-sm shadow-xl';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg; el.style.opacity = '1';
+      clearTimeout(toastTimer); toastTimer = setTimeout(()=> el.style.opacity='0', 1500);
+    }
 
-    // 初期化
-    readFromHash();
-    updateCount();
-    showPanel(panelSend);
-
-    // 画面サイズ変更時にQRを作り直す（サイズ合わせ）
-    window.addEventListener('resize', ()=>{
-      if (inputText.value && qr){ qr = makeQR(qrContainer, buildLink()); }
-      if (qrDialog.open && qrLarge){ qrLarge = makeQR(qrBig, buildLink()); }
-    });
+    // ページ表示時に自動起動（ユーザー操作が必要な環境では失敗するのでボタン表示）
+    window.addEventListener('load', startCamera);
+    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible' && !video.srcObject) startCamera(); });
   </script>
 </body>
 </html>
