@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR テキスト受け渡し</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --accent: #6ad0ff;
+      --accent-2: #8bffb0;
+      --text: #e9f0ff;
+      --muted: #b9c6e2;
+      --danger: #ff6a8b;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", sans-serif;
+      background: radial-gradient(1200px 800px at 20% -10%, #15305a 0, transparent 50%),
+                  radial-gradient(1000px 700px at 120% 10%, #0f4a3f 0, transparent 40%),
+                  var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+    .container {
+      max-width: 960px; margin: 40px auto; padding: 0 16px;
+    }
+    .header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;
+    }
+    .title { font-size: clamp(22px, 4vw, 32px); font-weight: 800; letter-spacing: .3px; }
+    .subtitle { color: var(--muted); font-size: 14px; }
+
+    .tabs {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .tab-headers { display: grid; grid-template-columns: 1fr 1fr; }
+    .tab-headers button {
+      appearance: none; border: 0; background: transparent; color: var(--muted);
+      padding: 14px 16px; font-weight: 700; font-size: 15px; letter-spacing: .4px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-headers button.active {
+      color: var(--text); background: linear-gradient(0deg, rgba(255,255,255,0.04), transparent);
+      border-bottom: 2px solid var(--accent);
+    }
+    .tab-panels { padding: 18px; }
+
+    .card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
+
+    textarea {
+      width: 100%; min-height: 140px; resize: vertical; border-radius: 14px; border: 1px solid var(--border);
+      background: #0f152a; color: var(--text); padding: 12px 14px; font-size: 15px; line-height: 1.6;
+      outline: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+
+    .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+    .btn {
+      appearance: none; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      color: var(--text); padding: 12px 14px; border-radius: 14px; font-weight: 700; letter-spacing: .3px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 10px; transition: transform .06s ease, box-shadow .2s ease, background .3s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary { border-color: rgba(106,208,255,0.5); box-shadow: 0 6px 20px rgba(106,208,255,0.25) inset; }
+    .btn.success { border-color: rgba(139,255,176,0.45); }
+    .btn.danger { border-color: rgba(255,106,139,0.45); }
+
+    .qr-box { display: grid; place-items: center; width: 100%; min-height: 260px; border: 1px dashed var(--border); border-radius: 16px; background: rgba(0,0,0,0.2); padding: 10px; }
+    #qrcode canvas, #qrcode img { width: 100% !important; height: auto !important; max-width: 320px; }
+
+    .stack { display: grid; gap: 12px; }
+
+    .video-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: #0f152a; }
+    video { width: 100%; display: block; }
+    .scan-overlay { position: absolute; inset: 0; pointer-events: none; }
+    .hint { color: var(--muted); font-size: 13px; }
+
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border); }
+
+    .result-box { display: grid; gap: 10px; }
+    .result {
+      padding: 12px 14px; border-radius: 12px; background: #0f152a; border: 1px solid var(--border); word-break: break-all; min-height: 48px;
+    }
+
+    footer { margin-top: 24px; text-align: center; color: var(--muted); font-size: 12px; }
+    .note { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="title">QR テキスト受け渡し</div>
+        <div class="subtitle">送信タブでQRを生成／受信タブでカメラ読取してコピー</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab-headers">
+        <button class="active" data-tab="send">情報を送る</button>
+        <button data-tab="receive">情報を受け取る</button>
+      </div>
+      <div class="tab-panels">
+        <!-- SEND PANEL -->
+        <section id="panel-send" class="stack">
+          <div class="card stack">
+            <label for="send-text">送るテキスト</label>
+            <textarea id="send-text" placeholder="ここに文章やURLを入力してください"></textarea>
+            <div class="row">
+              <button class="btn primary" id="btn-generate" title="入力テキストからQRを生成">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 6h6v-6h-6v6Z" stroke="currentColor" stroke-width="2"/></svg>
+                QRコードを生成
+              </button>
+              <button class="btn" id="btn-clear">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2"/></svg>
+                クリア
+              </button>
+            </div>
+          </div>
+
+          <div class="card stack">
+            <div class="row" style="justify-content: space-between;">
+              <div>生成された QR</div>
+              <div class="hint">※ スマホで表示して、相手の端末のカメラで読み取れます</div>
+            </div>
+            <div id="qrcode" class="qr-box"></div>
+          </div>
+        </section>
+
+        <!-- RECEIVE PANEL -->
+        <section id="panel-receive" class="stack" style="display:none;">
+          <div class="card stack">
+            <div class="row" style="justify-content: space-between; align-items: flex-end;">
+              <div>
+                <div style="font-weight:700;">カメラで読み取り</div>
+                <div class="hint">HTTPS または localhost でのアクセスが必要です</div>
+              </div>
+              <div class="row">
+                <button class="btn" id="btn-restart">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 6V3L8 7l4 4V8a4 4 0 11-4 4H6a6 6 0 106-6z" stroke="currentColor" stroke-width="2"/></svg>
+                  再読み取り
+                </button>
+                <button class="btn danger" id="btn-stop">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="14" height="14" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+                  停止
+                </button>
+              </div>
+            </div>
+
+            <div class="video-wrap">
+              <video id="video" playsinline muted></video>
+              <canvas id="overlay" class="scan-overlay"></canvas>
+            </div>
+
+            <div class="note">背面カメラがある端末では自動的に背面（environment）を選択します。</div>
+          </div>
+
+          <div class="card result-box">
+            <div>読み取り結果</div>
+            <div id="result" class="result" aria-live="polite"></div>
+            <div class="row">
+              <button class="btn success" id="btn-copy">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9h9v9H9V9z" stroke="currentColor" stroke-width="2"/><path d="M6 6h9v9" stroke="currentColor" stroke-width="2"/></svg>
+                コピー
+              </button>
+              <span id="copy-status" class="hint" role="status"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer>© 2025 QR Bridge</footer>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-C5+0Ff1RjQ6sCj1n7y0M3p8zT8gqL6aD1iwJYp0qHq+g5h0g8k6FQ5c1s7h2T6W3cQ6G6bYFZ0Zb8V1n6tJ0aQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+  <script>
+    // ---------------- Tabs ----------------
+    const tabsEl = document.getElementById('tabs');
+    const btnSend = tabsEl.querySelector('[data-tab="send"]');
+    const btnReceive = tabsEl.querySelector('[data-tab="receive"]');
+    const panelSend = document.getElementById('panel-send');
+    const panelReceive = document.getElementById('panel-receive');
+
+    btnSend.addEventListener('click', () => switchTab('send'));
+    btnReceive.addEventListener('click', () => switchTab('receive'));
+
+    function switchTab(tab) {
+      const isSend = tab === 'send';
+      btnSend.classList.toggle('active', isSend);
+      btnReceive.classList.toggle('active', !isSend);
+      panelSend.style.display = isSend ? '' : 'none';
+      panelReceive.style.display = isSend ? 'none' : '';
+      if (isSend) {
+        stopCamera();
+      } else {
+        startCamera();
+      }
+    }
+
+    // ---------------- QR Generate (Send) ----------------
+    const sendText = document.getElementById('send-text');
+    const qrcodeBox = document.getElementById('qrcode');
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnClear = document.getElementById('btn-clear');
+    let qrcodeInstance = null;
+
+    function ensureQRCodeInstance() {
+      if (!qrcodeInstance) {
+        qrcodeInstance = new QRCode(qrcodeBox, {
+          text: '',
+          width: 320,
+          height: 320,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    }
+
+    btnGenerate.addEventListener('click', () => {
+      const text = (sendText.value || '').trim();
+      ensureQRCodeInstance();
+      if (!text) {
+        qrcodeBox.innerHTML = '<div class="hint">テキストを入力してください</div>';
+        return;
+      }
+      qrcodeBox.innerHTML = '';
+      qrcodeInstance.makeCode(text);
+    });
+
+    btnClear.addEventListener('click', () => {
+      sendText.value = '';
+      qrcodeBox.innerHTML = '';
+    });
+
+    // ---------------- QR Scan (Receive) ----------------
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const resultEl = document.getElementById('result');
+    const btnCopy = document.getElementById('btn-copy');
+    const copyStatus = document.getElementById('copy-status');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnStop = document.getElementById('btn-stop');
+
+    let stream = null;
+    let scanning = false;
+    let rafId = null;
+
+    async function startCamera() {
+      try {
+        if (stream) return; // already running
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+        overlay.width = video.videoWidth || 640;
+        overlay.height = video.videoHeight || 480;
+        scanning = true;
+        loopScan();
+      } catch (err) {
+        console.error('カメラ起動エラー:', err);
+        resultEl.textContent = 'カメラを起動できませんでした。HTTPSでアクセスしているか、権限をご確認ください。';
+      }
+    }
+
+    function stopCamera() {
+      scanning = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+    }
+
+    function loopScan() {
+      if (!scanning) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, overlay.width, overlay.height);
+        const imageData = ctx.getImageData(0, 0, overlay.width, overlay.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        if (code) {
+          // Draw corners
+          drawBox(code.location);
+          // Success
+          scanning = false;
+          resultEl.textContent = code.data || '';
+          stopCamera();
+        } else {
+          // draw a gentle guide
+          drawGuide();
+        }
+      }
+      rafId = requestAnimationFrame(loopScan);
+    }
+
+    function drawBox(loc) {
+      if (!loc) return;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(106,208,255,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(loc.topLeftCorner.x, loc.topLeftCorner.y);
+      ctx.lineTo(loc.topRightCorner.x, loc.topRightCorner.y);
+      ctx.lineTo(loc.bottomRightCorner.x, loc.bottomRightCorner.y);
+      ctx.lineTo(loc.bottomLeftCorner.x, loc.bottomLeftCorner.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function drawGuide() {
+      const w = overlay.width, h = overlay.height;
+      const size = Math.min(w, h) * 0.6;
+      const x = (w - size) / 2, y = (h - size) / 2;
+      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.strokeRect(x, y, size, size);
+    }
+
+    btnCopy.addEventListener('click', async () => {
+      const text = (resultEl.textContent || '').trim();
+      if (!text) { copyStatus.textContent = 'コピーする内容がありません'; return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        copyStatus.textContent = 'コピーしました';
+        setTimeout(() => copyStatus.textContent = '', 1500);
+      } catch (e) {
+        copyStatus.textContent = 'コピーに失敗しました';
+      }
+    });
+
+    btnRestart.addEventListener('click', () => {
+      resultEl.textContent = '';
+      startCamera();
+    });
+
+    btnStop.addEventListener('click', () => {
+      stopCamera();
+    });
+
+    window.addEventListener('beforeunload', stopCamera);
+
+    // 初期：送信タブ
+    switchTab('send');
+  </script>
+</body>
+</html>
