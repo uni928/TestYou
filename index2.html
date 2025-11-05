@@ -1004,6 +1004,8 @@ if(false){
           autoReading = false;
         }
       }
+      stopTTS(true);
+      speakPage({ fromStart:false });
       saveTTSOffset(current, 0);
   autoReading = false;
   currentUtterance = null;
@@ -1011,10 +1013,8 @@ if(false){
   textCache = '';
   lastHighlightedLine = -1;
   lastCharIndexAbs = 0;
-  //currentBaseOffset = 0;
+  currentBaseOffset = 0;
   ttsSaveNextAt = 0;
-      stopTTS(true);
-      speakPage({ fromStart:false });
     };
     u.onboundary = function(e){
       if(e && (e.name === 'word' || typeof e.charIndex === 'number')){
@@ -1226,6 +1226,7 @@ renderAll();
 </script>
 </body>
 </html>
+
 
 
 
