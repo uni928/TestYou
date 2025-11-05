@@ -1,293 +1,1219 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>文字スワップ（圧縮+Base64 対応版）</title>
-  <meta name="description" content="スマホ間でテキストをやり取り。送信時にDeflate圧縮→Base64URL化してリンク/QRで共有。受信時に自動復元。" />
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- QR生成 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- QR読み取り -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <!-- 圧縮ライブラリ（pako） -->
-  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans JP', sans-serif; }
-    .bg-animated { background: radial-gradient(1200px 600px at 10% 10%, rgba(99,102,241,.35), transparent 60%), radial-gradient(800px 500px at 90% 20%, rgba(16,185,129,.3), transparent 60%), radial-gradient(900px 600px at 40% 90%, rgba(236,72,153,.25), transparent 60%), linear-gradient(120deg, #0f172a, #111827 35%, #0b1220); background-size: 300% 300%; animation: gradientShift 18s ease infinite; }
-    @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    .glass { backdrop-filter: blur(16px) saturate(120%); background-color: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
-    #videoPreview { border-radius: 1rem; border: 1px dashed rgba(255,255,255,.25); }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>小説ローカル保存サイト（編集＆閲覧生成）</title>
+<style>
+  :root{
+    --bg: #0b0f14;
+    --panel: #0f1620;
+    --panel-2:#111a24;
+    --text: #e8f0ff;
+    --muted:#9fb3c8;
+    --accent:#6ea8fe;
+    --accent-2:#57f0d9;
+    --warn:#ffb454;
+    --danger:#ff6b6b;
+    --ok:#69db7c;
+    --ring: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
+    --radius: 18px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.45);
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#eef3fb; --panel:#ffffff; --panel-2:#f7f9fc; --text:#0c1b2a; --muted:#4e657b; --accent:#2f73ff; --accent-2:#00b59b; --ring:0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent);}  
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    color:var(--text); background:
+      radial-gradient(1200px 700px at 15% -10%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 60%),
+      radial-gradient(900px 700px at 100% 0%, color-mix(in oklab, var(--accent-2) 10%, transparent) 0%, transparent 70%),
+      var(--bg);
+  }
+  .app{ max-width:1400px; margin:24px auto; padding: 0 16px 32px; }
+  header.appbar{
+    display:flex; align-items:center; gap:16px; padding:14px 18px; border-radius: var(--radius);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 90%, transparent) 0%, var(--panel) 100%);
+    box-shadow: var(--shadow);
+    position: sticky; top: 16px; z-index: 50; backdrop-filter: blur(6px);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px; }
+  .brand .logo{ width:28px; height:28px; border-radius:9px; background:
+    conic-gradient(from 210deg, var(--accent), var(--accent-2));
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, white 14%, transparent), 0 6px 14px rgba(0,0,0,.25);
+  }
+  .grow{ flex:1 }
+  .row{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+  .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:var(--panel-2); color:var(--muted); border:1px solid color-mix(in oklab, var(--muted) 12%, transparent);} 
+  .kbd{ font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; padding:.1em .4em; border-radius:6px; background: color-mix(in oklab, var(--panel-2) 70%, transparent); border:1px solid color-mix(in oklab, var(--muted) 20%, transparent); color:var(--text); }
+  
+  /* Layout */
+  .topbar{ display:grid; grid-template-columns: 1.1fr 1fr; gap:16px; margin-top:16px; }
+  .top-left{
+    padding:14px; border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow);
+  }
+  .top-right{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+
+  /* Novel list */
+  .novel-list{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .chip{ padding:8px 12px; border-radius:999px; background:var(--panel-2); border:1px solid color-mix(in oklab, var(--muted) 18%, transparent); color:var(--text); cursor:pointer; user-select:none; transition:.2s transform,.2s background;
+  }
+  .chip[aria-selected="true"]{ outline: none; background: color-mix(in oklab, var(--accent) 25%, var(--panel-2)); border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+  .chip:hover{ transform: translateY(-1px); }
+  .chip .x{ margin-left:6px; opacity:.75; }
+  .chip[contenteditable="true"]{ outline: var(--ring); }
+
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{ appearance:none; border: none; padding:10px 14px; border-radius:12px; background: var(--panel-2); color:var(--text); cursor:pointer; border:1px solid color-mix(in oklab, var(--muted) 18%, transparent); box-shadow: 0 2px 8px rgba(0,0,0,.15); font-weight:600; }
+  .btn:hover{ filter: brightness(1.05); }
+  .btn:active{ transform: translateY(1px); }
+  .btn.primary{ background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 30%, var(--panel-2)), color-mix(in oklab, var(--accent) 15%, var(--panel-2))); border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+  .btn.good{ background: linear-gradient(180deg, color-mix(in oklab, var(--ok) 30%, var(--panel-2)), color-mix(in oklab, var(--ok) 12%, var(--panel-2))); border-color: color-mix(in oklab, var(--ok) 45%, transparent); }
+  .btn.warn{ background: linear-gradient(180deg, color-mix(in oklab, var(--warn) 30%, var(--panel-2)), color-mix(in oklab, var(--warn) 12%, var(--panel-2))); border-color: color-mix(in oklab, var(--warn) 45%, transparent); }
+  .btn.danger{ background: linear-gradient(180deg, color-mix(in oklab, var(--danger) 30%, var(--panel-2)), color-mix(in oklab, var(--danger) 12%, var(--panel-2))); border-color: color-mix(in oklab, var(--danger) 45%, transparent); }
+  .btn.ghost{ background: transparent; border-color: color-mix(in oklab, var(--muted) 25%, transparent); }
+
+  /* Main editor area */
+  .workspace{ display:grid; grid-template-columns: 320px 1fr; gap:16px; margin-top:16px; }
+  .card{ background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); padding:14px; }
+
+  .pages{
+    display:flex; flex-direction:column; gap:8px; min-height:420px; max-height:70vh; overflow:auto; padding:8px; border:1px dashed color-mix(in oklab, var(--muted) 20%, transparent); border-radius: 14px; background: color-mix(in oklab, var(--panel-2) 60%, transparent);
+  }
+  .page-item{
+    display:flex; align-items:center; gap:10px; padding:10px 10px; background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 80%, transparent), var(--panel));
+    border:1px solid color-mix(in oklab, var(--muted) 18%, transparent); border-radius:12px; cursor:grab; user-select:none;
+  }
+  .page-item.dragging{ opacity:.55; }
+  .page-item[aria-selected="true"]{ outline: var(--ring); }
+  .page-num{ font-weight:700; width:5.5em; flex:0 0 auto; color:var(--muted) }
+  .page-title{ color:var(--text); opacity:.85; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .page-actions{ margin-left:auto; display:flex; gap:6px; }
+  .page-actions .mini{ padding:6px 8px; border-radius:9px; font-size:12px; }
+
+  .swap-hint{ font-size:12px; color:var(--muted); }
+
+  .editor{
+    display:grid; grid-template-rows: auto 1fr; gap:10px; height:100%; min-height:520px;
+  }
+  .editor-toolbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .textarea{
+    width:100%; height:60vh; min-height:360px; resize:vertical; border-radius: 14px; padding:14px; border:1px solid color-mix(in oklab, var(--muted) 18%, transparent);
+    background: var(--panel-2); color:var(--text); font: 15px/1.75 "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Noto Sans Mono CJK JP", monospace;
+  }
+  .textarea:focus{ outline: none; box-shadow: var(--ring); }
+
+  .footer-note{ color:var(--muted); font-size:12px; margin-top:8px; }
+
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field input{ padding:10px 12px; border-radius:12px; border:1px solid color-mix(in oklab, var(--muted) 18%, transparent); background: var(--panel-2); color:var(--text); }
+
+  .section-title{ font-weight:800; letter-spacing:.4px; margin-bottom:8px; opacity:.9 }
+
+  .ghost{ opacity:.6 }
+  .muted{ color:var(--muted) }
+
+  .divider{ height:1px; background:linear-gradient(90deg, transparent, color-mix(in oklab, var(--muted) 25%, transparent), transparent); margin:8px 0; }
+
+  .notice{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background: color-mix(in oklab, var(--ok) 12%, var(--panel-2)); border:1px solid color-mix(in oklab, var(--ok) 35%, transparent);
+  }
+
+  .hidden{ display:none !important; }
+
+  @media (max-width: 980px){
+    .workspace{ grid-template-columns: 1fr; }
+  }
+/* ▼ Mobile: ヘッダーを非sticky＆コンパクト化（≤640px） */
+@media (max-width: 640px){
+  header.appbar{
+    position: static;   /* ← 追従しない */
+    top: auto;
+    padding: 8px 12px;  /* コンパクト */
+    gap: 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  }
+  .brand{ font-size: 14px; }
+  .brand .logo{ width:22px; height:22px; border-radius:7px; }
+  .row .pill{ display:none; }         /* 長文ヒントは隠す */
+  .btn{ padding:8px 10px; border-radius:10px; box-shadow:none; }
+  .topbar{ grid-template-columns: 1fr; gap: 10px; } /* 上段を1カラムに */
+  .workspace{ grid-template-columns: 1fr; }         /* 既存の@media(980px)より強めの指定 */
+}
+</style>
 </head>
-<body class="bg-animated text-white min-h-screen">
-  <header class="px-4 pt-8 pb-2 md:px-8">
-    <h1 class="text-3xl md:text-4xl font-bold tracking-tight">文字スワップ <span class="text-sm opacity-75 align-middle">— 圧縮+Base64URL 共有</span></h1>
-  </header>
-
-  <main class="px-4 md:px-8 pb-10">
-    <section class="glass rounded-3xl p-5 md:p-8 shadow-xl">
-      <div class="flex flex-wrap gap-2 mb-5">
-        <button id="tabSend" class="bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-2 text-sm" aria-selected="true">送る（圧縮→Base64→QR/リンク）</button>
-        <button id="tabScan" class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 text-sm">受け取る（QR読取）</button>
-        <button id="tabHelp" class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 text-sm">使い方</button>
+<body>
+  <div class="app" id="app">
+    <header class="appbar">
+      <div class="brand"><div class="logo"></div><div>小説ローカル保存サイト（編集 → 閲覧サイト出力）</div></div>
+      <div class="grow"></div>
+      <div class="row">
+        <span class="pill">保存先：ローカルファイル（<span class="muted">LocalStorage/IndexedDBも使用します</span>）</span>
+        <button class="btn" id="btnExportJSON" title="この編集データをJSONにエクスポート">エクスポート</button>
+        <label class="btn ghost" title="JSONを読み込み">インポート<input id="importJSON" type="file" accept="application/json" hidden></label>
+        <button class="btn primary" id="btnMakeReader" title="選択中の小説から閲覧用HTMLを出力">閲覧サイトを出力</button>
       </div>
+    </header>
 
-      <!-- 送信タブ -->
-      <div id="panelSend" class="grid gap-5 md:grid-cols-2">
-        <div class="space-y-4">
-          <label class="block text-sm opacity-90">送りたいテキスト</label>
-          <textarea id="inputText" class="w-full rounded-2xl bg-white/5 border border-white/10 p-4 min-h-[10rem] focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="ここにテキストを入力"></textarea>
-          <div class="flex items-center justify-between text-xs opacity-80">
-            <span id="charCount">0 文字</span>
-            <span>送信データは Deflate 圧縮後、Base64URL でリンク化します</span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 mt-2">
-            <button class="w-full bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl px-4 py-3 text-sm font-semibold" id="btnMakeQR">QRを作る</button>
-            <button class="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-3 text-sm" id="btnFullQR">フルスクリーンQR</button>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3 mt-2">
-            <button class="bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-3 text-sm" id="btnCopyLink">リンクをコピー</button>
-            <button class="bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-3 text-sm" id="btnShare">リンクを共有</button>
-            <button class="bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-3 text-sm" id="btnCopyB64">Base64をコピー</button>
-          </div>
+    <div class="topbar">
+      <section class="top-left">
+        <div class="section-title">上の一番左：小説名リスト</div>
+        <div class="novel-list" id="novelList"></div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn" id="addNovel">＋ 小説を追加</button>
+          <button class="btn warn" id="renameNovel">名称変更</button>
+          <button class="btn danger" id="deleteNovel">削除</button>
         </div>
+        <div class="footer-note">リスト内はクリックで選択。ダブルクリックでインライン編集も可能です。</div>
+      </section>
+      <section class="top-right">
+        <span class="pill">操作ヒント：<span class="kbd">Ctrl</span> + <span class="kbd">S</span> で現在のJSONをダウンロード</span>
+      </section>
+    </div>
 
-        <div class="space-y-3">
-          <div id="qrContainer" class="w-full aspect-square bg-white rounded-2xl grid place-items-center overflow-hidden">
-            <div class="text-center text-slate-700">
-              <p class="font-semibold">ここにQRコードが表示されます</p>
-              <p class="text-xs opacity-70 mt-1">テキストを入力して「QRを作る」を押してください</p>
-            </div>
-          </div>
-          <div class="text-xs opacity-90 space-y-1">
-            <p>リンク：<span id="linkPreview" class="break-all"></span></p>
-            <p>Base64URL：<span id="b64Preview" class="break-all"></span></p>
-          </div>
+    <div class="workspace">
+      <!-- Left: pages -->
+      <section class="card">
+        <div class="section-title">左：XXXページ目リスト</div>
+        <div class="toolbar" style="margin-bottom:8px">
+          <button class="btn" id="addPage">＋ ページを追加</button>
+          <button class="btn" id="duplicatePage">複製</button>
+          <button class="btn" id="swapMode">入れ替えモード</button>
+          <button class="btn ghost" id="renumberPages">番号整理</button>
         </div>
+        <div class="swap-hint" id="swapHint">ドラッグ＆ドロップでページを別のページに重ねると、<b>中身だけ入れ替え</b>ます（番号は固定）。入れ替えモード中はクリックで2つ選択→入れ替えでもOK。</div>
+        <div class="pages" id="pageList" aria-label="ページの一覧"></div>
+      </section>
+
+      <!-- Right: editor -->
+      <section class="card">
+        <div class="section-title">右：小説本文エディタ</div>
+        <div class="grid2">
+          <div class="field"><label>選択中の小説名</label><input id="currentNovelName" placeholder="小説名"/></div>
+          <div class="field"><label>ページタイトル</label><input id="currentPageTitle" placeholder="ページタイトル（例：序章）"/></div>
+        </div>
+        <div class="editor" style="margin-top:10px">
+          <div class="editor-toolbar">
+            <button class="btn good" id="applyTitle">小説名を適用</button>
+            <button class="btn" id="clearText">本文クリア</button>
+            <button class="btn ghost" id="insertTemplate">テンプレ挿入</button>
+          </div>
+          <textarea id="editor" class="textarea" placeholder="ここに本文を貼り付け・編集…（Markdownも可） 自分で投稿した小説家になろう作品ならば、ページ全体を Ctrl + A → Ctrl + C でコピーして、ここに貼り付けると楽ができる可能性があります。（PCのみ）"></textarea>
+        </div>
+        <div class="footer-note">選択中ページの本文を編集しています。変更は即時メモリ反映（画面内のみ）。</div>
+      </section>
+    </div>
+
+    <div style="margin-top:14px" class="notice">
+      <strong>⚠ 注意：</strong> この編集サイトはブラウザのメモリに保存します(容量を必要とします)<b>安全のため、必ず「エクスポート」</b>でJSON保存、または<b>「閲覧サイトを出力」</b>でHTMLをダウンロードしてローカルへ保存してください。
+    </div>
+  </div>
+
+<script>
+// ============================
+// データモデル
+// ============================
+/**
+ * Novel { id, title, pages: Page[] }
+ * Page { number, title?, text }
+ */
+const Model = {
+  novels: [
+    { id: crypto.randomUUID(), title: 'サンプル小説', pages: [
+      { number: 1, title: '序章', text: 'ここから物語が始まる——\n\n（ここに本文）' },
+      { number: 2, title: '出会い', text: '二人は偶然に…' },
+      { number: 3, title: '転機', text: '運命は静かに動き出す。' }
+    ] }
+  ],
+  selectedNovelId: null,
+  selectedPageNumber: 1,
+  swapMode: false,
+  swapPicked: [], // [pageNumber, ...]
+}
+
+// ============================
+// IndexedDB（編集画面のリアルタイム保存）
+// ============================
+const DB_NAME = 'novel_editor_rt';
+const STORE   = 'state_v1';
+const KEY     = 'main';
+
+function idbOpen(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = ()=> {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        db.createObjectStore(STORE, { keyPath: 'key' });
+      }
+   };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror   = ()=> reject(req.error);
+  });
+}
+async function saveState(state){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ key: KEY, data: state, updatedAt: Date.now() });
+    tx.oncomplete = ()=> db.close();
+  }catch(e){ /* no-op */ }
+}
+async function loadState(){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(KEY);
+    const val = await new Promise(res=>{ req.onsuccess=()=>res(req.result); req.onerror=()=>res(null); });
+    db.close();
+    return val?.data ?? null;
+  }catch(e){ return null; }
+}
+let saveTimer=null;
+function queueSave(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ saveTimer=null; saveState(Model); }, 200);
+}
+
+function getNovel(id){ return Model.novels.find(n=>n.id===id) }
+function getSelectedNovel(){
+  const id = Model.selectedNovelId ?? Model.novels[0]?.id;
+  return getNovel(id);
+}
+function getPage(novel, number){ return novel.pages.find(p=>p.number===number) }
+function ensureSelection(){
+  if(!Model.selectedNovelId && Model.novels.length){ Model.selectedNovelId = Model.novels[0].id }
+  const n = getSelectedNovel();
+  if(n){ if(!getPage(n, Model.selectedPageNumber)){ Model.selectedPageNumber = n.pages[0]?.number ?? 1 } }
+}
+
+// ============================
+// UI構築
+// ============================
+const el = {
+  novelList: document.getElementById('novelList'),
+  addNovel: document.getElementById('addNovel'),
+  renameNovel: document.getElementById('renameNovel'),
+  deleteNovel: document.getElementById('deleteNovel'),
+  btnExportJSON: document.getElementById('btnExportJSON'),
+  importJSON: document.getElementById('importJSON'),
+  btnMakeReader: document.getElementById('btnMakeReader'),
+
+  pageList: document.getElementById('pageList'),
+  addPage: document.getElementById('addPage'),
+  duplicatePage: document.getElementById('duplicatePage'),
+  swapMode: document.getElementById('swapMode'),
+  renumberPages: document.getElementById('renumberPages'),
+  swapHint: document.getElementById('swapHint'),
+
+  currentNovelName: document.getElementById('currentNovelName'),
+  currentPageLabel: document.getElementById('currentPageLabel'),
+  editor: document.getElementById('editor'),
+  applyTitle: document.getElementById('applyTitle'),
+  clearText: document.getElementById('clearText'),
+  insertTemplate: document.getElementById('insertTemplate'),
+}
+
+function renderAll(){ ensureSelection(); renderNovelChips(); renderPages(); renderEditorPane(); }
+
+// 起動時に保存内容を復元（あれば）
+(async function initFromIDB(){
+  const saved = await loadState();
+  if(saved && Array.isArray(saved.novels)){
+   Object.assign(Model, saved);
+  }
+  renderAll();
+})();
+
+function renderNovelChips(){
+  const nId = getSelectedNovel()?.id;
+  el.novelList.innerHTML = '';
+  Model.novels.forEach(novel=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = novel.title;
+    chip.dataset.id = novel.id;
+    chip.tabIndex = 0;
+    chip.setAttribute('aria-selected', novel.id===nId);
+    chip.title = 'クリックで選択 / ダブルクリックで名称編集';
+    chip.addEventListener('click', ()=>{ Model.selectedNovelId = novel.id; Model.selectedPageNumber = novel.pages[0]?.number ?? 1; Model.swapPicked=[]; renderAll(); })
+    chip.addEventListener('dblclick', ()=>{
+      chip.setAttribute('contenteditable','true'); chip.focus();
+    })
+    chip.addEventListener('blur', ()=>{
+      if(chip.isContentEditable){
+        novel.title = chip.textContent.trim() || '無題の小説';
+        chip.removeAttribute('contenteditable');
+        renderAll();
+        queueSave();
+      }
+    })
+    chip.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); chip.blur(); }
+    })
+    el.novelList.appendChild(chip);
+  });
+}
+
+function renderPages(){
+  const novel = getSelectedNovel(); if(!novel){ el.pageList.innerHTML=''; return; }
+  // 安全のため番号で昇順表示（番号は固定資産扱い）
+  novel.pages.sort((a,b)=>a.number-b.number);
+  el.pageList.innerHTML='';
+  novel.pages.forEach(pg=>{
+    const item = document.createElement('div');
+    item.className='page-item'; item.draggable = true; item.dataset.number = pg.number;
+    if(pg.number===Model.selectedPageNumber) item.setAttribute('aria-selected','true');
+
+    const num = document.createElement('div'); num.className='page-num'; num.textContent = `${pg.number} ページ目`;
+    const title = document.createElement('div'); title.className='page-title'; title.textContent = pg.title || '（タイトル未設定）'; title.contentEditable = true;
+    title.addEventListener('blur', ()=>{ pg.title = title.textContent.trim(); queueSave(); })
+    title.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); title.blur(); }})
+
+    const actions = document.createElement('div'); actions.className='page-actions';
+    const selBtn = document.createElement('button'); selBtn.className='btn mini'; selBtn.textContent='選択'; selBtn.onclick = ()=>{ Model.selectedPageNumber = pg.number; renderAll(); };
+    const delBtn = document.createElement('button'); delBtn.className='btn mini danger'; delBtn.textContent='削除'; delBtn.onclick = ()=>{ if(confirm(`${pg.number}ページ目を削除しますか？`)){ novel.pages = novel.pages.filter(p=>p.number!==pg.number); // 選択補正
+      if(Model.selectedPageNumber===pg.number){ Model.selectedPageNumber = novel.pages[0]?.number ?? 1 } renderAll(); } };
+    const upBtn = document.createElement('button'); upBtn.className='btn mini'; upBtn.textContent='↑入替'; upBtn.title='前のページと中身を入れ替え';
+    const downBtn = document.createElement('button'); downBtn.className='btn mini'; downBtn.textContent='↓入替'; downBtn.title='次のページと中身を入れ替え';
+    upBtn.onclick = ()=> swapWith(pg.number, pg.number-1);
+    downBtn.onclick = ()=> swapWith(pg.number, pg.number+1);
+
+    actions.append(selBtn, upBtn, downBtn, delBtn);
+
+    // Drag & Drop（中身スワップ）
+    item.addEventListener('dragstart', e=>{ item.classList.add('dragging'); e.dataTransfer.setData('text/plain', String(pg.number)); e.dataTransfer.effectAllowed='move'; })
+    item.addEventListener('dragend', ()=> item.classList.remove('dragging'))
+    item.addEventListener('dragover', e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; })
+    item.addEventListener('drop', e=>{ e.preventDefault(); const fromNum = Number(e.dataTransfer.getData('text/plain')); const toNum = pg.number; if(fromNum!==toNum) swapWith(fromNum, toNum); })
+
+    // クリックで入れ替えモード
+    item.addEventListener('click', ()=>{
+      if(!Model.swapMode){ Model.selectedPageNumber = pg.number; renderAll(); return; }
+      const idx = Model.swapPicked.indexOf(pg.number);
+      if(idx>=0){ Model.swapPicked.splice(idx,1) } else { Model.swapPicked.push(pg.number); }
+      if(Model.swapPicked.length===2){ const [a,b] = Model.swapPicked; swapWith(a,b); Model.swapPicked=[]; }
+      item.style.outline = 'var(--ring)';
+    })
+
+    item.append(num, title, actions);
+    el.pageList.appendChild(item);
+  })
+}
+
+function renderEditorPane(){
+  const novel = getSelectedNovel(); if(!novel){ return }
+  const page = getPage(novel, Model.selectedPageNumber);
+  el.currentNovelName.value = novel.title;
+  document.getElementById('currentPageTitle').value = page?.title || '';
+  el.editor.value = page?.text ?? '';
+}
+
+// ============================
+// ページ操作（中身スワップ）
+// ============================
+function swapWith(a, b){
+  const novel = getSelectedNovel(); if(!novel) return;
+  const A = getPage(novel, a); const B = getPage(novel, b); if(!A || !B) return;
+  const tmp = { text: A.text, title: A.title };
+  A.text = B.text; A.title = B.title;
+  B.text = tmp.text; B.title = tmp.title;
+  renderAll();
+  queueSave();
+}
+
+// ============================
+// イベント: 上部（小説）
+// ============================
+el.addNovel.onclick = ()=>{
+  const title = prompt('新しい小説名を入力');
+  if(title){
+    const n = { id: crypto.randomUUID(), title: title.trim(), pages: [{ number:1, title:'1ページ目', text:'' }] };
+    Model.novels.push(n); Model.selectedNovelId = n.id; Model.selectedPageNumber = 1; renderAll(); queueSave();
+  }
+}
+
+el.renameNovel.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return;
+  const v = prompt('小説名を変更', n.title);
+  if(v!=null){ n.title = v.trim() || n.title; renderAll(); queueSave(); }
+}
+
+el.deleteNovel.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return; if(!confirm(`「${n.title}」を削除しますか？`)) return;
+  const idx = Model.novels.findIndex(x=>x.id===n.id); Model.novels.splice(idx,1);
+  Model.selectedNovelId = Model.novels[0]?.id ?? null; Model.selectedPageNumber = 1; renderAll(); queueSave();
+}
+
+// ============================
+// イベント: ページリスト
+// ============================
+el.addPage.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return;
+  const max = Math.max(0, ...n.pages.map(p=>p.number));
+  const newNum = max + 1;
+  n.pages.push({ number: newNum, title: `${newNum}ページ目`, text: '' });
+  Model.selectedPageNumber = newNum;
+  renderAll(); queueSave();
+}
+
+el.duplicatePage.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
+  const max = Math.max(0, ...n.pages.map(p=>p.number));
+  const newNum = max + 1;
+  n.pages.push({ number: newNum, title: (p.title? p.title+'（複製）' : ''), text: p.text });
+  Model.selectedPageNumber = newNum; renderAll(); queueSave();
+}
+
+el.swapMode.onclick = ()=>{
+  Model.swapMode = !Model.swapMode; el.swapMode.classList.toggle('primary', Model.swapMode);
+  el.swapHint.textContent = Model.swapMode ? '入れ替えモード：ページを2つクリックで選択→中身を入れ替えます。' : 'ドラッグ＆ドロップでページを別のページに重ねると中身だけ入れ替えます（番号は固定）。';
+  Model.swapPicked = []; renderPages();
+}
+
+el.renumberPages.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return;
+  n.pages.sort((a,b)=>a.number-b.number).forEach((p,i)=> p.number = i+1);
+  Model.selectedPageNumber = 1; renderAll(); queueSave();
+}
+
+// ============================
+// エディタ
+// ============================
+el.editor.addEventListener('paste', async (e) => {
+try{
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+
+  if (!text.includes('小説家になろう')) return; // 該当しないなら通常動作
+  e.preventDefault();
+
+  const lines = text.split(/\r?\n/);
+  let slashIndex = lines.findIndex(l => 0 < l.length && l.indexOf('作者') < 0 && 0 <= l.indexOf('/'));console.log(slashIndex);
+  if (slashIndex < 0 || slashIndex + 2 >= lines.length) return;
+
+  // タイトル: 「/」の次の行
+  const title = lines[slashIndex + 1].trim();
+
+  // 本文: タイトルの次の行〜「評価をするにはログインしてください」直前まで
+  const endIndex = lines.findIndex((l, i) => i > slashIndex + 1 && l.includes('評価をするにはログインしてください。'));
+  const body = lines
+    .slice(slashIndex + 2, endIndex > 0 ? endIndex : undefined)
+    .join('\n')
+    .trim();
+
+  // ページタイトルと本文に反映
+  const n = getSelectedNovel();
+  if (!n) return;
+  const p = getPage(n, Model.selectedPageNumber);
+  if (!p) return;
+  p.title = title;
+  p.text = body;
+
+  // UIへ反映
+  document.getElementById('currentPageTitle').value = title;
+  el.editor.value = body;
+  renderPages(); queueSave();
+}catch(e) {
+  alert(e);
+}
+});
+
+el.editor.addEventListener('input', ()=>{
+  const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
+  p.text = el.editor.value; queueSave();
+})
+
+// ページタイトル変更
+document.getElementById('currentPageTitle').addEventListener('input', (e)=>{
+  const n = getSelectedNovel(); if(!n) return;
+  const p = getPage(n, Model.selectedPageNumber); if(!p) return;
+  p.title = e.target.value.trim();
+  renderPages(); // 左リスト更新
+  queueSave();
+});
+
+el.applyTitle.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return; n.title = el.currentNovelName.value.trim() || n.title; renderAll(); queueSave();
+}
+
+el.clearText.onclick = ()=>{
+  if(!confirm('本文をクリアします。よろしいですか？')) return;
+  const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return; p.text=''; renderAll(); queueSave();
+}
+
+el.insertTemplate.onclick = ()=>{
+  const tpl = `# 見出し\n\n本文をここに。\n\n- 箇条書き\n- 箇条書き\n\n―― *飾り罫* ――`;
+  const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
+  p.text = (p.text? p.text+"\n\n" : '') + tpl; renderAll(); queueSave();
+}
+
+// ============================
+// エクスポート／インポート（JSON）
+// ============================
+function download(filename, text){
+  const blob = new Blob([text], {type:'application/octet-stream'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 1000);
+}
+
+el.btnExportJSON.onclick = ()=>{
+  const payload = JSON.stringify({ version:1, exportedAt: new Date().toISOString(), model: Model }, null, 2);
+  const safeTitle = (getSelectedNovel()?.title || 'novel').replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g,'_');
+  const fn = `${safeTitle}_project.json`;
+  download(fn, payload);
+}
+
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
+    e.preventDefault(); el.btnExportJSON.click();
+  }
+})
+
+el.importJSON.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0]; if(!file) return;
+  const text = await file.text();
+  try{
+    const data = JSON.parse(text);
+    if(data?.model?.novels){ Object.assign(Model, data.model); renderAll(); alert('読み込みました。'); }
+    else if(Array.isArray(data?.novels)){ Model.novels = data.novels; Model.selectedNovelId = data.novels[0]?.id ?? null; Model.selectedPageNumber = 1; renderAll(); alert('読み込みました。'); }
+    else{ alert('JSON形式が不正です。') }
+  }catch(err){ alert('読み込みに失敗しました: '+err.message) }
+  finally{ e.target.value = '' }
+  queueSave();
+})
+
+// ============================
+// 閲覧サイト（HTML）を出力
+// ============================
+el.btnMakeReader.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return alert('小説を選択してください。');
+  const safeTitle = (n.title || 'novel').replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g,'_');
+  const html = buildReaderHTML(n);
+  download(`${safeTitle}_reader.html`, html);
+}
+
+function escapeHTML(s){
+  return s.replace(/[&<>\"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
+}
+
+function buildReaderHTML(novel){
+  // データを安全に埋め込み
+  const data = { title: novel.title, pages: novel.pages.sort((a,b)=>a.number-b.number).map(p=>({ number:p.number, title:p.title||'', text:p.text||'' })) };
+  const payload = JSON.stringify(data).replace(/<\//g,'<\\/');
+
+
+
+
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>${escapeHTML(novel.title)} | 閲覧</title>
+  <style>
+  :root{ --bg:#0b0f14; --paper:#0f1620; --ink:#e9f1ff; --muted:#9fb3c8; --accent:#6ea8fe; --radius:18px; }
+  @media (prefers-color-scheme: light){ :root{ --bg:#eef3fb; --paper:#ffffff; --ink:#0c1b2a; --muted:#4e657b; --accent:#2f73ff; } }
+  *{box-sizing:border-box}
+  body{ margin:0; background:radial-gradient(1000px 600px at 10% -10%, color-mix(in oklab, var(--accent) 10%, transparent), transparent), var(--bg); color:var(--ink); font: 16px/1.9 "BIZ UD明朝", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif; }
+  .wrap{ max-width:900px; margin: 24px auto; padding: 0 16px 40px; }
+  header{
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: color-mix(in oklab, var(--paper) 80%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid color-mix(in oklab, var(--muted) 25%, transparent);
+    max-width: 1920px;
+    margin: 0 auto;
+    border-radius: 0 0 12px 12px;
+    padding: 8px 12px;
+    height: 60px;
+    overflow: hidden;
+  }
+  header .title{ font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .paper{ background: var(--paper); border-radius: var(--radius); padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .muted{ color:var(--muted) }
+  .grid{ display:grid; grid-template-columns: 1fr; }
+  .toolbar{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; overflow:hidden; }
+  .toolbar button, .toolbar label{
+    padding:4px 6px;                /* コンパクト化 */
+    border-radius:8px;
+    font-size:13px;                 /* 文字を小さく */
+    border:1px solid color-mix(in oklab, var(--muted) 25%, transparent);
+    background:transparent;
+    color:inherit;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .toolbar input[type="number"], .toolbar select{
+    padding:4px 6px;                /* 入力欄も小さめ */
+    border-radius:8px;
+    font-size:13px;
+    border:1px solid color-mix(in oklab, var(--muted) 25%, transparent);
+    background:transparent;
+    color:inherit;
+    text-align:center;
+    width:4.5em;                    /* 幅を短く */
+  }
+  .toolbar{ gap:4px; }              /* 要素間の隙間を縮小 */
+  header .title{ font-size:14px; }  /* タイトルもやや小さく */
+
+  /* --- 画面が狭いとき（600px以下）: メニューを極小化して全て収まるようにする --- */
+  @media (max-width: 600px) {
+    header {
+      flex-wrap: wrap;                  /* 狭いときは折り返し可 */
+      height: auto;                     /* 高さ可変にする */
+      padding: 4px 6px;
+      gap: 4px;
+    }
+    header .title {
+      font-size: 12px;
+      max-width: 100%;
+      text-align: center;
+    }
+    .toolbar {
+      flex-wrap: wrap;                  /* ツールバーも折り返し可 */
+      gap: 2px;
+      justify-content: center;
+    }
+    .toolbar button,
+    .toolbar label {
+      padding: 2px 4px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+    .toolbar input[type="number"],
+    .toolbar select {
+      width: 3.5em;
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+  }
+  h2{ margin:.2em 0 .6em; font-size: 20px; }
+  pre{ white-space: pre-wrap; word-wrap: break-word; font: 17px/2 "YuMincho", "BIZ UD明朝", serif; margin:0; }
+  nav.pages{ display:flex; gap:8px; flex-wrap:wrap; }
+  nav.pages button{ padding:6px 10px; border-radius:999px; border:1px solid color-mix(in oklab, var(--muted) 25%, transparent); background:transparent; color:inherit; cursor:pointer; }
+  nav.pages button[aria-current="page"]{ background: color-mix(in oklab, var(--accent) 25%, transparent); }
+  #tocList{ display:grid; grid-template-columns: 1fr; gap:8px; }
+  .toc-item{ display:flex; gap:10px; align-items:baseline; padding:6px 8px; border-radius:8px; border:1px solid color-mix(in oklab, var(--muted) 20%, transparent); background: color-mix(in oklab, var(--paper) 85%, transparent); cursor:pointer; font-size:14px; line-height:1.4; }
+  .toc-num{ font-weight:800; min-width:6em; color:var(--muted); font-size:13px; }
+  .toc-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hidden{ display:none; }
+  .backtoc{ margin-top:12px; }
+  /* 読み上げハイライト */
+  .line{ display:inline; }
+  .line.current{ background: color-mix(in oklab, var(--accent) 25%, transparent); border-radius: 6px; }
+  </style></head>
+  <body><div class="wrap">
+    <header class="paper">
+      <div class="toolbar">
+        <button id="btnToc">目次</button>
+        <button id="prev">←</button>
+        <input id="pageNum" type="number" min="1" />
+        <button id="next">→</button>
+        <button id="ttsToggle">▶ 自動読み上げ</button>
+        <button id="ttsPause" disabled>⏸ 一時停止</button>
+        <button id="ttsStop" disabled>■ 停止</button>
+        <label>速度 <input id="rate" type="number" min="0.5" max="2" step="0.1" value="1.0"></label>
+        <label><input id="autoScroll" type="checkbox" checked> 自動スクロール</label>
       </div>
+    </header>
 
-      <!-- 受信タブ（QRスキャン） -->
-      <div id="panelScan" class="hidden grid gap-5 md:grid-cols-2">
-        <div class="space-y-4 order-2 md:order-1">
-          <label class="block text-sm opacity-90">復元したテキスト</label>
-          <textarea id="scanResult" class="w-full rounded-2xl bg-white/5 border border-white/10 p-4 min-h-[10rem] focus:outline-none" placeholder="ここに読み取った文字が表示されます" readonly></textarea>
-          <div class="grid grid-cols-2 gap-3">
-            <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl px-4 py-3 text-sm" id="btnCopyScanned">コピー</button>
-            <button class="bg-white/15 hover:bg-white/25 rounded-2xl px-4 py-3 text-sm" id="btnStop">カメラを停止</button>
-          </div>
-          <p class="text-xs opacity-80">※ 読み取りに成功すると自動で停止します。</p>
-        </div>
-        <div class="space-y-3 order-1 md:order-2">
-          <div class="relative">
-            <video id="videoPreview" class="w-full aspect-square object-cover"></video>
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div class="w-2/3 h-2/3 rounded-2xl border-2 border-white/70"></div>
-            </div>
-            <button id="btnStart" class="absolute bottom-3 left-3 bg-white/15 hover:bg-white/25 rounded-xl px-4 py-2 text-sm">カメラ開始</button>
-            <button id="btnTorch" class="absolute bottom-3 right-3 bg-white/15 hover:bg-white/25 rounded-xl px-4 py-2 text-sm hidden">ライト</button>
-          </div>
-        </div>
+    <!-- 読書ビュー -->
+    <main id="viewPage" class="paper">
+      <h2 id="h"></h2>
+      <pre id="content"></pre>
+      <div class="backtoc">
+        <button id="backToToc">目次に戻る</button>
       </div>
+    </main>
 
-      <!-- 使い方タブ -->
-      <div id="panelHelp" class="hidden text-sm leading-7 opacity-95">
-        <p>このページは <strong>Deflate圧縮 → Base64URL</strong> でテキストをエンコードし、<code>#c=...</code> の形式でURLハッシュに載せます。受信側で自動復元します。</p>
-        <ul class="list-disc list-inside mt-2 space-y-1">
-          <li>日本語などユニコード文字も安全に扱えます。</li>
-          <li>長文はQRが細かくなるため、リンク共有の利用を推奨します。</li>
-          <li>端末保存（localStorage / IndexedDB）は使用しません。</li>
-        </ul>
-      </div>
+    <!-- 目次 -->
+    <section id="toc" class="paper hidden" aria-label="目次">
+      <h2 style="margin-top:0">目次</h2>
+      <nav id="tocList"></nav>
     </section>
 
-    <footer class="text-xs opacity-70 mt-6 text-center">© 2025 文字スワップ — Deflate+Base64URL</footer>
-  </main>
-
-  <!-- フルスクリーンQR用モーダル -->
-  <dialog id="qrDialog" class="backdrop:bg-black/60 rounded-3xl p-0 w-[92vw] max-w-[520px]">
-    <div class="bg-white text-slate-800 rounded-3xl overflow-hidden">
-      <div class="p-4 flex items-center justify-between border-b">
-        <h2 class="font-semibold">QRを表示</h2>
-        <button id="btnCloseDialog" class="text-slate-500 hover:text-slate-800 p-2" aria-label="閉じる">✕</button>
-      </div>
-      <div class="p-4">
-        <div id="qrBig" class="w-full aspect-square"></div>
-        <p class="text-xs mt-3 break-all">リンク：<span id="linkInDialog"></span></p>
-      </div>
-    </div>
-  </dialog>
-
+    <section class="paper" style="margin-top:12px">
+      <div class="muted" style="margin-bottom:6px">ページ一覧</div>
+      <nav class="pages" id="plist"></nav>
+    </section>
+  </div>
   <script>
-    // --- DOM 参照
-    const inputText = document.getElementById('inputText');
-    const charCount = document.getElementById('charCount');
-    const linkPreview = document.getElementById('linkPreview');
-    const b64Preview = document.getElementById('b64Preview');
-    const btnMakeQR = document.getElementById('btnMakeQR');
-    const btnFullQR = document.getElementById('btnFullQR');
-    const btnCopyLink = document.getElementById('btnCopyLink');
-    const btnCopyB64 = document.getElementById('btnCopyB64');
-    const btnShare = document.getElementById('btnShare');
-    const qrContainer = document.getElementById('qrContainer');
+  // =========================
+  // データ
+  // =========================
+  const Data = ${payload};
 
-    const panelSend = document.getElementById('panelSend');
-    const panelScan = document.getElementById('panelScan');
-    const panelHelp = document.getElementById('panelHelp');
-    const tabSend = document.getElementById('tabSend');
-    const tabScan = document.getElementById('tabScan');
-    const tabHelp = document.getElementById('tabHelp');
+  // =========================
+  // 要素参照
+  // =========================
+  let current = 1;
+  const h = document.getElementById('h');
+  const pre = document.getElementById('content');
+  const plist = document.getElementById('plist');
+  const pageNum = document.getElementById('pageNum');
+  const viewPage = document.getElementById('viewPage');
+  const toc = document.getElementById('toc');
+  const tocList = document.getElementById('tocList');
+  const btnToc = document.getElementById('btnToc');
+  const backToToc = document.getElementById('backToToc');
+  const ttsToggle = document.getElementById('ttsToggle');
+  const ttsPause = document.getElementById('ttsPause');
+  const ttsStop = document.getElementById('ttsStop');
+  const rateInput = document.getElementById('rate');
+  const autoScrollChk = document.getElementById('autoScroll');
 
-    const qrDialog = document.getElementById('qrDialog');
-    const qrBig = document.getElementById('qrBig');
-    const linkInDialog = document.getElementById('linkInDialog');
-    const btnCloseDialog = document.getElementById('btnCloseDialog');
+  // =========================
+  // IndexedDB
+  // =========================
+  const DB_NAME = 'novel_reader';
+  const STORE = 'progress';
+  const STORE_TTS = 'tts_resume';
+  const STORE_PREFS = 'prefs';
+  const KEY = 'title:' + Data.title;
 
-    const scanResult = document.getElementById('scanResult');
-    const videoPreview = document.getElementById('videoPreview');
-    const btnStart = document.getElementById('btnStart');
-    const btnStop = document.getElementById('btnStop');
-    const btnTorch = document.getElementById('btnTorch');
-    const btnCopyScanned = document.getElementById('btnCopyScanned');
-
-    let qr, qrLarge, stream, rafId, torchOn = false, track;
-
-    // --- タブ切替
-    function showPanel(which){
-      for (const [tab, panel] of [[tabSend,panelSend],[tabScan,panelScan],[tabHelp,panelHelp]]){
-        const active = (panel === which);
-        panel.classList.toggle('hidden', !active);
-        tab.setAttribute('aria-selected', active);
-        tab.classList.toggle('bg-white/20', active);
-      }
-    }
-    tabSend.addEventListener('click', ()=> showPanel(panelSend));
-    tabScan.addEventListener('click', ()=> showPanel(panelScan));
-    tabHelp.addEventListener('click', ()=> showPanel(panelHelp));
-
-    // --- 文字数
-    function updateCount(){ charCount.textContent = `${inputText.value.length} 文字`; updatePreviews(); }
-    inputText.addEventListener('input', updateCount);
-
-    // === 圧縮・Base64URL ===
-    function textToUint8(text){ return new TextEncoder().encode(text); }
-    function uint8ToText(u8){ return new TextDecoder().decode(u8); }
-
-    function toBase64(u8){ // Uint8Array -> Base64
-      let bin = '';
-      const chunk = 0x8000;
-      for (let i=0; i<u8.length; i+=chunk){ bin += String.fromCharCode.apply(null, u8.subarray(i, i+chunk)); }
-      return btoa(bin);
-    }
-    function fromBase64(b64){ // Base64 -> Uint8Array
-      const bin = atob(b64);
-      const u8 = new Uint8Array(bin.length);
-      for (let i=0; i<bin.length; i++){ u8[i] = bin.charCodeAt(i); }
-      return u8;
-    }
-    function toBase64URL(b64){ return b64.replaceAll('+','-').replaceAll('/','_').replace(/=+$/,''); }
-    function fromBase64URL(s){ const pad = s.length % 4 === 2 ? '==' : s.length % 4 === 3 ? '=' : ''; return s.replaceAll('-','+').replaceAll('_','/') + pad; }
-
-    function encodeCompressed(text){
-      const def = pako.deflate(textToUint8(text), { level: 9 });
-      const b64 = toBase64(def);
-      return toBase64URL(b64);
-    }
-    function decodeCompressed(b64url){
-      const b64 = fromBase64URL(b64url);
-      const u8 = fromBase64(b64);
-      const infl = pako.inflate(u8);
-      return uint8ToText(infl);
-    }
-
-    // --- リンク生成（#c= Base64URL）
-    function buildLink(){
-      const base = location.href.split('#')[0];
-      const b64url = encodeCompressed(inputText.value);
-      return `${base}#c=${b64url}`;
-    }
-
-    function updatePreviews(){
-      const b64url = encodeCompressed(inputText.value || '');
-      const link = location.href.split('#')[0] + `#c=${b64url}`;
-      linkPreview.textContent = link;
-      b64Preview.textContent = b64url;
-    }
-
-    // --- QR生成（白余白付き）
-    function clearQR(target){ target.innerHTML = ''; }
- function makeQR(target, text){
-   clearQR(target);
-   const size = target.clientWidth || 300;
-   return new QRCode(target, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
- }
-
-    btnMakeQR.addEventListener('click', ()=>{ const link = buildLink(); makeQR(qrContainer, link); });
-    btnFullQR.addEventListener('click', ()=>{ const link = buildLink(); makeQR(qrBig, link); linkInDialog.textContent = link; if (qrDialog.showModal) qrDialog.showModal(); });
-    btnCloseDialog.addEventListener('click', ()=>{ qrDialog.close(); qrBig.innerHTML=''; });
-
-    // --- 共有／コピー
-    btnCopyLink.addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText(buildLink()); toast('リンクをコピーしました'); }catch{ toast('コピーに失敗'); } });
-    btnCopyB64.addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText(b64Preview.textContent); toast('Base64URLをコピーしました'); }catch{ toast('コピーに失敗'); } });
-    btnShare.addEventListener('click', async()=>{
-      const url = buildLink();
-      if (navigator.share){ try{ await navigator.share({ title: '文字スワップ', text: '圧縮+Base64URLで共有', url }); }catch{} }
-      else { try{ await navigator.clipboard.writeText(url); toast('共有非対応のためリンクをコピーしました'); }catch{} }
+  function idbOpen(){
+    return new Promise(function(resolve, reject){
+      const req = indexedDB.open(DB_NAME, 22);
+      req.onupgradeneeded = function(){
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          db.createObjectStore(STORE, { keyPath: 'key' });
+        }
+        if(!db.objectStoreNames.contains(STORE_TTS)){
+          db.createObjectStore(STORE_TTS, { keyPath: 'key' });
+        }
+        if(!db.objectStoreNames.contains(STORE_PREFS)){
+          db.createObjectStore(STORE_PREFS, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error); };
     });
+  }
+  async function saveProgress(page){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put({ key: KEY, page: page, updatedAt: Date.now() });
+      tx.oncomplete = function(){ db.close(); };
+    }catch(e){}
+  }
+  async function loadProgress(){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE, 'readonly');
+      const getReq = tx.objectStore(STORE).get(KEY);
+      const val = await new Promise(function(res){ getReq.onsuccess=function(){ res(getReq.result); }; getReq.onerror=function(){ res(null); }; });
+      db.close();
+      return (val && typeof val.page === 'number') ? val.page : null;
+    }catch(e){ return null; }
+  }
+  function ttsKey(page){ return 'tts:' + Data.title + ':' + page; }
+  async function saveTTSOffset(page, offset){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE_TTS, 'readwrite');
+      tx.objectStore(STORE_TTS).put({ key: ttsKey(page), page: page, offset: offset, updatedAt: Date.now() });
+      tx.oncomplete = function(){ db.close(); };
+    }catch(e){}
+  }
+  async function loadTTSOffset(page){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE_TTS, 'readonly');
+      const req = tx.objectStore(STORE_TTS).get(ttsKey(page));
+      const val = await new Promise(function(res){ req.onsuccess=function(){ res(req.result); }; req.onerror=function(){ res(null); }; });
+      db.close();
+      return (val && typeof val.offset === 'number') ? val.offset : 0;
+    }catch(e){ return 0; }
+  }
+  async function saveRate(val){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE_PREFS, 'readwrite');
+      tx.objectStore(STORE_PREFS).put({ key: 'tts_rate', value: Number(val), updatedAt: Date.now() });
+      tx.oncomplete = function(){ db.close(); };
+    }catch(e){}
+  }
+  async function loadRate(){
+    try{
+      const db = await idbOpen();
+      const tx = db.transaction(STORE_PREFS, 'readonly');
+      const req = tx.objectStore(STORE_PREFS).get('tts_rate');
+      const val = await new Promise(function(res){ req.onsuccess=function(){ res(req.result); }; req.onerror=function(){ res(null); }; });
+      db.close();
+      return (val && typeof val.value === 'number') ? val.value : null;
+    }catch(e){ return null; }
+  }
 
-    // --- 起動時：#c= の自動復元
-    function readFromHash(){
-      const h = new URL(location.href).hash;
-      if (h.startsWith('#c=')){
-        const c = h.slice(3);
-        try { const text = decodeCompressed(c); inputText.value = text; scanResult.value = text; toast('リンクから復元しました'); }
-        catch(e){ console.warn(e); toast('復元に失敗しました'); }
+  // =========================
+  // 読み上げ制御
+  // =========================
+  let autoReading = false;
+  let currentUtterance = null;
+  let lineEnds = [];
+  let textCache = '';
+  let lastHighlightedLine = -1;
+
+  // 再開位置管理
+  let lastCharIndexAbs = 0;
+  let currentBaseOffset = 0;
+  let ttsSaveNextAt = 0;
+
+  // Wake Lock
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator && !wakeLock){
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', function(){ wakeLock = null; });
       }
-      updateCount();
-    }
+    }catch(e){}
+  }
+  async function releaseWakeLock(){
+    try{ if(wakeLock){ await wakeLock.release(); wakeLock = null; } }catch(e){}
+  }
 
-    // --- トースト
-    let toastTimer; function toast(msg){ let el = document.getElementById('toast'); if (!el){ el = document.createElement('div'); el.id='toast'; el.className='fixed left-1/2 -translate-x-1/2 bottom-6 bg-white/90 text-slate-900 rounded-full px-4 py-2 text-sm shadow-lg'; document.body.appendChild(el);} el.textContent = msg; el.style.opacity='1'; clearTimeout(toastTimer); toastTimer=setTimeout(()=> el.style.opacity='0', 1600); }
-
-    // --- カメラ＆QR読み取り
-    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-    async function startCamera(){
-      try { const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); stream = s; videoPreview.srcObject = s; await videoPreview.play(); track = s.getVideoTracks()[0]; const caps = track.getCapabilities?.()||{}; if (caps.torch) btnTorch.classList.remove('hidden'); scanLoop(); }
-      catch(e){ toast('カメラ開始に失敗'); }
-    }
-    function stopCamera(){ if (rafId) cancelAnimationFrame(rafId); if (videoPreview.srcObject){ videoPreview.pause(); videoPreview.srcObject.getTracks().forEach(t=>t.stop()); videoPreview.srcObject=null; } btnTorch.classList.add('hidden'); track=null; }
-    function scanLoop(){ const vw=videoPreview.videoWidth, vh=videoPreview.videoHeight; if(!vw||!vh){ rafId=requestAnimationFrame(scanLoop); return; } const size=Math.min(vw,vh); const sx=(vw-size)/2, sy=(vh-size)/2; canvas.width=size; canvas.height=size; ctx.drawImage(videoPreview,sx,sy,size,size,0,0,size,size); const img=ctx.getImageData(0,0,size,size); const code=jsQR(img.data,size,size,{inversionAttempts:'dontInvert'}); if(code&&code.data){ stopCamera(); handleScanned(code.data); return;} rafId=requestAnimationFrame(scanLoop); }
-
-    function handleScanned(data){
-      try {
-        const url = new URL(data);
-        if (url.hash.startsWith('#c=')){
-          const text = decodeCompressed(url.hash.slice(3));
-          scanResult.value = text; inputText.value = text; updateCount(); toast('読み取り→復元しました'); return; }
-      } catch(_){ /* URLでない場合もある */ }
-      // 直接Base64URL文字列を読ませた場合にも対応
-      if (data.startsWith('c=')){
-        try{ const text = decodeCompressed(data.slice(2)); scanResult.value=text; inputText.value=text; updateCount(); toast('復元しました'); return; }catch{}
+  // Android向け自動スクロールフォールバック
+  let autoScrollRAF = null;
+  function startAutoScroll(){
+    stopAutoScroll();
+    if(!autoScrollChk.checked) return;
+    let lastTs = null;
+    const SPEED = 10 * parseInt(rateInput.value); // px/sec
+    function tick(ts){
+//if (window.matchMedia('(max-width: 800px)').matches) {
+if(false){
+      if(!autoReading || !window.speechSynthesis || !window.speechSynthesis.speaking){
+        autoScrollRAF = null;
+        return;
       }
-      // それ以外は生テキスト扱い
-      scanResult.value = data; inputText.value = data; updateCount(); toast('テキストを取得しました');
+      if(lastTs != null){
+        const dt = (ts - lastTs) / 1000;
+        window.scrollBy(0, SPEED * dt);
+      }
+      lastTs = ts;
+      autoScrollRAF = requestAnimationFrame(tick);
+}
+    }
+    autoScrollRAF = requestAnimationFrame(tick);
+  }
+  function stopAutoScroll(){
+    if(autoScrollRAF){ cancelAnimationFrame(autoScrollRAF); autoScrollRAF = null; }
+  }
+
+  function splitIntoLines(text){
+    // pre内を行ごとにspanで区切る（ハイライト＆スクロール用）
+    pre.innerHTML = '';
+    const lines = text.split('\\n');
+    lineEnds = [];
+    let acc = 0;
+    for(var i=0;i<lines.length;i++){
+      const ln = lines[i];
+      const span = document.createElement('span');
+      span.className = 'line';
+      span.textContent = ln.length ? ln : ' ';
+      pre.appendChild(span);
+      if(i < lines.length - 1){
+        pre.appendChild(document.createTextNode('\\n'));
+      }
+      acc += ln.length + (i < lines.length - 1 ? 1 : 0);
+      lineEnds.push(acc);
+    }
+  }
+  function lineIndexFromChar(charIndex){
+    for(var i=0;i<lineEnds.length;i++){
+      if(charIndex < lineEnds[i]) return i;
+    }
+    return lineEnds.length - 1;
+  }
+  function centerOnElement(el){
+    const header = document.querySelector('header');
+    const headerH = header ? header.getBoundingClientRect().height : 0;
+    const rect = el.getBoundingClientRect();
+    const targetY = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2) - (headerH / 2);
+    window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+  }
+  function highlightLineByChar(charIndex){
+    const idx = lineIndexFromChar(charIndex);
+    if(idx === lastHighlightedLine) return;
+    lastHighlightedLine = idx;
+    const nodes = pre.querySelectorAll('.line');
+    for(var i=0;i<nodes.length;i++){ nodes[i].classList.remove('current'); }
+    const n = nodes[idx];
+    if(!n) return;
+    n.classList.add('current');
+    if(autoScrollChk.checked){
+      centerOnElement(n);
+    }
+  }
+
+  async function speakPage(opts){
+    if(!opts) opts = {};
+    stopTTS(true);
+    const p = Data.pages.find(function(x){ return x.number===current; });
+    if(!p) return;
+    textCache = p.text || '';
+
+    // 再開位置
+    const startFrom = opts.fromStart ? 0 : await loadTTSOffset(current);
+    currentBaseOffset = startFrom;
+    lastCharIndexAbs = startFrom;
+
+    splitIntoLines(textCache);
+
+    if(!('speechSynthesis' in window)){ console.warn('speechSynthesis未対応'); return; }
+    const u = new SpeechSynthesisUtterance(textCache.slice(startFrom));
+    u.lang = 'ja-JP';
+    const r = parseFloat(rateInput.value || '1') || 1;
+    u.rate = Math.min(2, Math.max(0.5, r));
+    u.onstart = function(){
+      ttsPause.disabled = false;
+      ttsStop.disabled = false;
+      ttsToggle.textContent = '⏹ 自動読み上げ中';
+      startAutoScroll();
+      requestWakeLock();
+    };
+    u.onend = function(){
+      ttsPause.disabled = true;
+      ttsStop.disabled = true;
+      ttsToggle.textContent = '▶ 自動読み上げ';
+      stopAutoScroll();
+      releaseWakeLock();
+      // ページ終了時は次回開始位置を先頭に戻す
+      saveTTSOffset(current, 0);
+      if(autoReading){
+        const maxPage = Math.max.apply(null, Data.pages.map(function(pp){ return pp.number; }));
+        if(current < maxPage){
+          setPage(current + 1, { keepAuto:true });
+          speakPage({ fromStart:true });
+        }else{
+          autoReading = false;
+        }
+      }
+    };
+    u.onboundary = function(e){
+      if(e && (e.name === 'word' || typeof e.charIndex === 'number')){
+        const abs = (e.charIndex || 0) + currentBaseOffset;
+        lastCharIndexAbs = abs;
+        highlightLineByChar(abs);
+        const now = performance.now();
+        if(now >= ttsSaveNextAt){
+          saveTTSOffset(current, abs);
+          ttsSaveNextAt = now + 500;
+        }
+      }
+    };
+    currentUtterance = u;
+    window.speechSynthesis.speak(u);
+  }
+
+  function pauseTTS(){
+    if(window.speechSynthesis && window.speechSynthesis.speaking && !window.speechSynthesis.paused){
+      window.speechSynthesis.pause();
+      stopAutoScroll();
+      releaseWakeLock();
+      saveTTSOffset(current, lastCharIndexAbs);
+    }else if(window.speechSynthesis && window.speechSynthesis.paused){
+      window.speechSynthesis.resume();
+      startAutoScroll();
+      requestWakeLock();
+    }
+  }
+  function stopTTS(silent){
+    if(window.speechSynthesis){
+      window.speechSynthesis.cancel();
+    }
+    currentUtterance = null;
+    stopAutoScroll();
+    releaseWakeLock();
+    if(!silent){
+      ttsPause.disabled = true;
+      ttsStop.disabled = true;
+      ttsToggle.textContent = '▶ 自動読み上げ';
+    }
+    const nodes = pre.querySelectorAll('.line');
+    for(var i=0;i<nodes.length;i++){ nodes[i].classList.remove('current'); }
+    saveTTSOffset(current, lastCharIndexAbs);
+  }
+
+  // =========================
+  // UIロジック
+  // =========================
+  function setPage(num, opts){
+    if(!opts) opts = {};
+    if(currentUtterance) stopTTS(true);
+
+    const p = Data.pages.find(function(x){ return x.number===num; }) || Data.pages[0];
+    if(!p) return;
+    current = p.number;
+    h.textContent = (p.title ? p.title + ' / ' : '') + p.number + ' ページ目';
+    splitIntoLines(p.text || '');
+
+    pageNum.value = current;
+    renderList();
+    const btns = document.querySelectorAll('nav.pages button');
+    for(var i=0;i<btns.length;i++){
+      var b = btns[i];
+      b.setAttribute('aria-current', (b.dataset.num == String(current)) ? 'page' : 'false');
+    }
+    showReader();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    saveProgress(current);
+
+    if(autoReading || opts.keepAuto){
+      autoReading = true;
+      speakPage({ fromStart:false });
+    }
+  }
+
+  function renderList(){
+    // 下部のページ番号ボタン
+    plist.innerHTML = '';
+    const pagesSorted = Data.pages.slice().sort(function(a,b){ return a.number - b.number; });
+    for(var i=0;i<pagesSorted.length;i++){
+      (function(p){
+        const b = document.createElement('button');
+        b.textContent = p.number;
+        b.dataset.num = String(p.number);
+        b.addEventListener('click', function(){ setPage(p.number); });
+        if(p.number===current) b.setAttribute('aria-current','page');
+        plist.appendChild(b);
+      })(pagesSorted[i]);
     }
 
-    btnStart.addEventListener('click', startCamera);
-    btnStop && btnStop.addEventListener('click', stopCamera);
-    btnTorch.addEventListener('click', async()=>{ if (!track) return; try { const caps = track.getCapabilities?.(); if (caps && caps.torch){ const current = track.getSettings?.(); const next = !(current && current.torch); await track.applyConstraints({ advanced: [{ torch: next }] }); } } catch{} });
-    btnCopyScanned.addEventListener('click', async()=>{ try{ await navigator.clipboard.writeText(scanResult.value); toast('コピーしました'); }catch{ toast('コピー失敗'); } });
+    // 目次（コンパクト・前2〜後4のみ）
+    tocList.innerHTML = '';
+    var idxCur = pagesSorted.findIndex(function(p){ return p.number === current; });
+    var start = Math.max(0, idxCur - 2);
+    var end = Math.min(pagesSorted.length, start + 7); // 前2 + 自身 + 後4 = 最大7件
+    const visiblePages = pagesSorted.slice(start, end);
+    for(var j=0;j<visiblePages.length;j++){
+      (function(p){
+        const item = document.createElement('div');
+        item.className = 'toc-item';
+        item.addEventListener('click', function(){ setPage(p.number); });
 
-    // 初期化
-    readFromHash();
-    showPanel(panelSend);
+        const num = document.createElement('div');
+        num.className = 'toc-num';
+        num.textContent = p.number + ' ページ目';
 
-    // 画面サイズ変更時にQRを作り直す（サイズ合わせ）
-    window.addEventListener('resize', ()=>{ if (inputText.value){ qrContainer.innerHTML=''; } });
-  </script>
+        const title = document.createElement('div');
+        title.className = 'toc-title';
+        title.textContent = p.title || 'タイトル未設定';
+
+        item.appendChild(num);
+        item.appendChild(title);
+        tocList.appendChild(item);
+      })(visiblePages[j]);
+    }
+  }
+
+  function showTOC(){
+    toc.classList.remove('hidden');
+    viewPage.classList.add('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function showReader(){
+    viewPage.classList.remove('hidden');
+    toc.classList.add('hidden');
+  }
+
+  // =========================
+  // イベント
+  // =========================
+  document.getElementById('prev').onclick = function(){ setPage(Math.max(1, current-1)); };
+  document.getElementById('next').onclick = function(){
+    const maxPage = Math.max.apply(null, Data.pages.map(function(p){ return p.number; }));
+    setPage(Math.min(maxPage, current+1));
+  };
+  pageNum.addEventListener('change', function(){ const v = Number(pageNum.value) || 1; setPage(v); });
+  window.addEventListener('keydown', function(e){
+    if(e.key==='ArrowLeft' || e.key==='h') setPage(Math.max(1, current-1));
+    if(e.key==='ArrowRight' || e.key==='l'){
+      const maxPage = Math.max.apply(null, Data.pages.map(function(p){ return p.number; }));
+      setPage(Math.min(maxPage, current+1));
+    }
+    if(e.key==='t') showTOC();
+    if(e.key===' ' && autoReading){ e.preventDefault(); pauseTTS(); }
+  });
+  btnToc.addEventListener('click', showTOC);
+  backToToc.addEventListener('click', showTOC);
+
+  // 読み上げUI
+  ttsToggle.addEventListener('click', function(){
+    autoReading = !autoReading;
+    if(autoReading){
+      ttsToggle.textContent = '⏹ 自動読み上げ中';
+      speakPage({ fromStart:false });
+    }else{
+      ttsToggle.textContent = '▶ 自動読み上げ';
+      stopTTS(false);
+    }
+  });
+  ttsPause.addEventListener('click', function(){ pauseTTS(); });
+  ttsStop.addEventListener('click', function(){ autoReading=false; stopTTS(false); });
+
+  rateInput.addEventListener('change', function(){
+    // 再生中なら一旦停止→再開して反映
+    if(window.speechSynthesis && window.speechSynthesis.speaking){
+      const wasAuto = autoReading;
+      stopTTS(true);
+      if(wasAuto){ speakPage({ fromStart:false }); }
+    }
+    saveRate(rateInput.value);
+  });
+
+  // タブ可視状態
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden'){
+      saveTTSOffset(current, lastCharIndexAbs);
+    }else if(document.visibilityState === 'visible'){
+      if(autoReading){
+        requestWakeLock();
+        if(!(window.speechSynthesis && window.speechSynthesis.speaking)){
+          speakPage({ fromStart:false });
+        }
+      }
+    }
+  });
+
+  // 初期化
+  (async function(){
+    // 速度を復元
+    const savedRate = await loadRate();
+    if(savedRate && !Number.isNaN(savedRate)){
+      rateInput.value = String(savedRate);
+    }
+    renderList();
+    const saved = await loadProgress();
+    if(saved && Data.pages.some(function(p){ return p.number===saved; })){
+      setPage(saved);
+    }else{
+      setPage(1);
+    }
+  })();
+  </[[script]]script>
+  </body></html>`.replace("/[[script]]", "/");
+}
+
+// 初期表示
+renderAll();
+</script>
 </body>
 </html>
+
+
+
+
+
+
+
+
