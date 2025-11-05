@@ -484,43 +484,61 @@ el.renumberPages.onclick = ()=>{
 // ============================
 // エディタ
 // ============================
-el.editor.addEventListener('paste', async (e) => {
-try{
-  const text = (e.clipboardData || window.clipboardData).getData('text');
+el.editor.addEventListener('paste', (e) => {
+  const cd  = e.clipboardData || window.clipboardData;
+  const raw = cd ? (cd.getData('text/plain') || cd.getData('text') || cd.getData('Text') || '') : '';
+  if (!raw) return;
 
-  if (!text.includes('小説家になろう')) return; // 該当しないなら通常動作
+  // 対象外は通常貼り付け
+  if (!raw.includes('小説家になろう')) return;
+
+  // 解析（ここでは preventDefault しない）
+  const text  = raw.replace(/[\u200B\uFEFF\u00A0]/g, '');     // ゼロ幅/NBSP除去
+  const lines = text.split(/\r?\n/);
+
+  // 「/」行を緩く検出：全角対応・URL/作者行は除外
+  let slashIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const s = lines[i].trim().replace(/／/g, '/');
+    if (!s) continue;
+    if (s.includes('作者')) continue;
+    if (/https?:\/\//i.test(s)) continue;  // URL行除外
+    if (s.includes('/')) { slashIndex = i; break; }
+  }
+  if (slashIndex < 0) return; // 失敗→通常貼り付け
+
+  // タイトル：/ の次の非空行
+  let title = '';
+  for (let i = slashIndex + 1; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (t) { title = t; break; }
+  }
+  if (!title) return; // 失敗→通常貼り付け
+
+  // 本文：タイトルの次の行〜終端フレーズ直前
+  const endRe = /評価(?:を)?するにはログインしてください[。．]?/;
+  const endIndex = lines.findIndex((l, i) => i > slashIndex + 1 && endRe.test(l));
+  const body = lines.slice(slashIndex + 2, endIndex > 0 ? endIndex : undefined).join('\n').trim();
+  if (!body) return; // 失敗→通常貼り付け
+
+  // ここでだけ既定貼り付けを止める
   e.preventDefault();
 
-  const lines = text.split(/\r?\n/);
-  let slashIndex = lines.findIndex(l => 0 < l.length && l.indexOf('作者') < 0 && 0 <= l.indexOf('/'));console.log(slashIndex);
-  if (slashIndex < 0 || slashIndex + 2 >= lines.length) return;
-
-  // タイトル: 「/」の次の行
-  const title = lines[slashIndex + 1].trim();
-
-  // 本文: タイトルの次の行〜「評価をするにはログインしてください」直前まで
-  const endIndex = lines.findIndex((l, i) => i > slashIndex + 1 && l.includes('評価をするにはログインしてください。'));
-  const body = lines
-    .slice(slashIndex + 2, endIndex > 0 ? endIndex : undefined)
-    .join('\n')
-    .trim();
-
-  // ページタイトルと本文に反映
-  const n = getSelectedNovel();
-  if (!n) return;
-  const p = getPage(n, Model.selectedPageNumber);
-  if (!p) return;
+  // モデル & UI 反映
+  const n = getSelectedNovel(); if (!n) return;
+  const p = getPage(n, Model.selectedPageNumber); if (!p) return;
   p.title = title;
-  p.text = body;
+  p.text  = body;
 
-  // UIへ反映
-  document.getElementById('currentPageTitle').value = title;
-  el.editor.value = body;
-  renderPages(); queueSave();
-}catch(e) {
-  alert(e);
-}
-});
+  requestAnimationFrame(() => {
+    document.getElementById('currentPageTitle').value = title;
+    el.editor.value = body;
+    if (typeof renderPages === 'function') renderPages();
+    if (typeof queueSave === 'function') queueSave();
+  });
+}, { passive: false });
+
+
 
 el.editor.addEventListener('input', ()=>{
   const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
@@ -1209,6 +1227,8 @@ renderAll();
 </script>
 </body>
 </html>
+
+
 
 
 
