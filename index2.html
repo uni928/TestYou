@@ -996,6 +996,14 @@ if(false){
       releaseWakeLock();
       // ページ終了時は次回開始位置を先頭に戻す
       saveTTSOffset(current, 0);
+  autoReading = false;
+  currentUtterance = null;
+  lineEnds = [];
+  textCache = '';
+  lastHighlightedLine = -1;
+  lastCharIndexAbs = 0;
+  currentBaseOffset = 0;
+  ttsSaveNextAt = 0;
       stopTTS(true);
       speakPage({ fromStart:false });
       if(autoReading){
@@ -1218,6 +1226,7 @@ renderAll();
 </script>
 </body>
 </html>
+
 
 
 
