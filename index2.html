@@ -201,6 +201,7 @@
             <button class="btn good" id="applyTitle">小説名を適用</button>
             <button class="btn" id="clearText">本文クリア</button>
             <button class="btn ghost" id="insertTemplate">テンプレ挿入</button>
+            <button class="btn ghost" id="addPage2">＋ ページを追加</button>
           </div>
           <textarea id="editor" class="textarea" placeholder="ここに本文を貼り付け・編集…（Markdownも可） 自分で投稿した小説家になろう作品ならば、ページ全体を Ctrl + A → Ctrl + C でコピーして、ここに貼り付けると楽ができる可能性があります。（PCのみ）"></textarea>
         </div>
@@ -305,6 +306,7 @@ const el = {
 
   pageList: document.getElementById('pageList'),
   addPage: document.getElementById('addPage'),
+  addPage2: document.getElementById('addPage2'),
   duplicatePage: document.getElementById('duplicatePage'),
   swapMode: document.getElementById('swapMode'),
   renumberPages: document.getElementById('renumberPages'),
@@ -461,6 +463,15 @@ el.addPage.onclick = ()=>{
   renderAll(); queueSave();
 }
 
+el.addPage2.onclick = ()=>{
+  const n = getSelectedNovel(); if(!n) return;
+  const max = Math.max(0, ...n.pages.map(p=>p.number));
+  const newNum = max + 1;
+  n.pages.push({ number: newNum, title: `${newNum}ページ目`, text: '' });
+  Model.selectedPageNumber = newNum;
+  renderAll(); queueSave();
+}
+
 el.duplicatePage.onclick = ()=>{
   const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
   const max = Math.max(0, ...n.pages.map(p=>p.number));
@@ -484,61 +495,39 @@ el.renumberPages.onclick = ()=>{
 // ============================
 // エディタ
 // ============================
-el.editor.addEventListener('paste', (e) => {
-  const cd  = e.clipboardData || window.clipboardData;
-  const raw = cd ? (cd.getData('text/plain') || cd.getData('text') || cd.getData('Text') || '') : '';
-  if (!raw) return;
+el.editor.addEventListener('paste', async (e) => {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
 
-  // 対象外は通常貼り付け
-  if (!raw.includes('小説家になろう')) return;
-
-  // 解析（ここでは preventDefault しない）
-  const text  = raw.replace(/[\u200B\uFEFF\u00A0]/g, '');     // ゼロ幅/NBSP除去
-  const lines = text.split(/\r?\n/);
-
-  // 「/」行を緩く検出：全角対応・URL/作者行は除外
-  let slashIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    const s = lines[i].trim().replace(/／/g, '/');
-    if (!s) continue;
-    if (s.includes('作者')) continue;
-    if (/https?:\/\//i.test(s)) continue;  // URL行除外
-    if (s.includes('/')) { slashIndex = i; break; }
-  }
-  if (slashIndex < 0) return; // 失敗→通常貼り付け
-
-  // タイトル：/ の次の非空行
-  let title = '';
-  for (let i = slashIndex + 1; i < lines.length; i++) {
-    const t = lines[i].trim();
-    if (t) { title = t; break; }
-  }
-  if (!title) return; // 失敗→通常貼り付け
-
-  // 本文：タイトルの次の行〜終端フレーズ直前
-  const endRe = /評価(?:を)?するにはログインしてください[。．]?/;
-  const endIndex = lines.findIndex((l, i) => i > slashIndex + 1 && endRe.test(l));
-  const body = lines.slice(slashIndex + 2, endIndex > 0 ? endIndex : undefined).join('\n').trim();
-  if (!body) return; // 失敗→通常貼り付け
-
-  // ここでだけ既定貼り付けを止める
+  if (!text.includes('小説家になろう')) return; // 該当しないなら通常動作
   e.preventDefault();
 
-  // モデル & UI 反映
-  const n = getSelectedNovel(); if (!n) return;
-  const p = getPage(n, Model.selectedPageNumber); if (!p) return;
+  const lines = text.split(/\r?\n/);
+  let slashIndex = lines.findIndex(l => 0 < l.length && l.indexOf('作者') < 0 && 0 <= l.indexOf('/'));console.log(slashIndex);
+  if (slashIndex < 0 || slashIndex + 2 >= lines.length) return;
+
+  // タイトル: 「/」の次の行
+  const title = lines[slashIndex + 1].trim();
+
+  // 本文: タイトルの次の行〜「評価をするにはログインしてください」直前まで
+  const endIndex = lines.findIndex((l, i) => i > slashIndex + 1 && l.includes('評価をするにはログインしてください。'));
+  const body = lines
+    .slice(slashIndex + 2, endIndex > 0 ? endIndex : undefined)
+    .join('\n')
+    .trim();
+
+  // ページタイトルと本文に反映
+  const n = getSelectedNovel();
+  if (!n) return;
+  const p = getPage(n, Model.selectedPageNumber);
+  if (!p) return;
   p.title = title;
-  p.text  = body;
+  p.text = body;
 
-  requestAnimationFrame(() => {
-    document.getElementById('currentPageTitle').value = title;
-    el.editor.value = body;
-    if (typeof renderPages === 'function') renderPages();
-    if (typeof queueSave === 'function') queueSave();
-  });
-}, { passive: false });
-
-
+  // UIへ反映
+  document.getElementById('currentPageTitle').value = title;
+  el.editor.value = body.replace("\n\n", "\n");
+  renderPages(); queueSave();
+});
 
 el.editor.addEventListener('input', ()=>{
   const n = getSelectedNovel(); if(!n) return; const p = getPage(n, Model.selectedPageNumber); if(!p) return;
@@ -1006,7 +995,9 @@ if(false){
       stopAutoScroll();
       releaseWakeLock();
       // ページ終了時は次回開始位置を先頭に戻す
-      saveTTSOffset(current, 0);
+      //saveTTSOffset(current, 0);
+      stopTTS(true);
+      speakPage({ fromStart:false });
       if(autoReading){
         const maxPage = Math.max.apply(null, Data.pages.map(function(pp){ return pp.number; }));
         if(current < maxPage){
@@ -1227,6 +1218,10 @@ renderAll();
 </script>
 </body>
 </html>
+
+
+
+
 
 
 
