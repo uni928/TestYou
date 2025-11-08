@@ -757,6 +757,66 @@ function buildReaderHTML(novel){
   // =========================
   const Data = ${payload};
 
+  --- a/reader.html (script内)
++++ b/reader.html (script内)
+@@
+   // =========================
+   // データ
+   // =========================
+   const Data = ${payload};
+
+  // ▼▼▼ 追加：文字数が多いページを 300 文字超過行の行末で自動分割 ▼▼▼
+  (function enforcePageLengthLimit(){
+    const LIMIT = 300; // 300文字を超えた時点の「行末」で区切る
+    if (!Data || !Array.isArray(Data.pages)) return;
+
+    // 指定文字数を超えた時点の「行末」で分割するヘルパー
+    function splitOnceAtLineAfterLimit(text, limit){
+      const lines = String(text || '').split('\n');
+      let acc = 0;
+      for (let i = 0; i < lines.length; i++){
+        acc += lines[i].length;
+        // 行の終端（改行）もカウントに含める（最終行以外）
+        if (i < lines.length - 1) acc += 1;
+        if (acc > limit){
+          // i 行目までを first（i 行目含む＝その行末で区切る）
+          const first = lines.slice(0, i + 1).join('\n');
+          const rest  = lines.slice(i + 1).join('\n');
+          return [first, rest];
+        }
+      }
+      // そもそも超えない場合は全体が first、rest は空
+      return [text, ''];
+    }
+
+    const src = Data.pages.slice().sort((a,b)=>a.number-b.number);
+    const out = [];
+    let seq = 1;
+    for (const p of src){
+      const baseTitle = p.title || '';
+      let remaining = String(p.text || '');
+      // 1チャンク目
+      while (remaining.length){
+        const [first, rest] = splitOnceAtLineAfterLimit(remaining, LIMIT);
+        const isFirst = (first.length === (p.text || '').length);
+        const title = (out.length === 0 || isFirst)
+          ? baseTitle
+          : (baseTitle ? `${baseTitle}（続き）` : '（続き）');
+        out.push({ number: seq++, title, text: first });
+        if (!rest) break;
+        remaining = rest;
+      }
+      // テキストが空の場合も1ページとして保持
+      if ((p.text || '') === ''){
+        out.push({ number: seq++, title: baseTitle, text: '' });
+      }
+    }
+    // 連番を振り直し
+    out.forEach((pg, i)=> pg.number = i + 1);
+    Data.pages = out;
+  })();
+  // ▲▲▲ 追加ここまで ▲▲▲
+
   // =========================
   // 要素参照
   // =========================
@@ -1219,6 +1279,7 @@ renderAll();
 </script>
 </body>
 </html>
+
 
 
 
