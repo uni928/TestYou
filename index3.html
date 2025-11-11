@@ -68,10 +68,8 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
       </div>
       <div class="toolbar">
         <label class="btn" for="file-input">HTMLファイルを選ぶ（複数可）</label>
-        <div class="controls">
-          <button class="btn secondary" id="expandAll">全て展開（高さ自動）</button>
-          <button class="btn secondary" id="collapseAll">全て最小化</button>
-          <button class="btn ghost" id="clearAll">クリア</button>
+        <div class="controls">$1
+          <button class="btn" id="downloadHtml">このページを保存（.html）</button>
         </div>
       </div>
       <div class="search" style="margin-top:10px">
@@ -100,6 +98,7 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     const expandAllBtn = document.getElementById('expandAll');
     const collapseAllBtn = document.getElementById('collapseAll');
     const clearAllBtn = document.getElementById('clearAll');
+    const downloadBtn = document.getElementById('downloadHtml');
 
     let entries = []; // {id, name, title, blobUrl, sectionEl, iframe}
 
@@ -237,6 +236,26 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     function escapeHtml(s){
       return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
     }
+
+    // ダウンロード（このページを .html として保存）
+    function downloadHTML(){
+      const doctype = '<!DOCTYPE html>
+';
+      const html = doctype + document.documentElement.outerHTML;
+      const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+      const a = document.createElement('a');
+      const ts = new Date();
+      const y = ts.getFullYear();
+      const m = String(ts.getMonth()+1).padStart(2,'0');
+      const d = String(ts.getDate()).padStart(2,'0');
+      a.href = URL.createObjectURL(blob);
+      a.download = `local-multi-site-viewer_${y}${m}${d}.html`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    downloadBtn && downloadBtn.addEventListener('click', downloadHTML);
 
     // Events
     fileInput.addEventListener('change', e => addFiles(e.target.files));
