@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>住所OCR → Googleマップ経路案内</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0b0b0c;
+    --fg: #f3f4f6;
+    --card: #111316;
+    --muted: #9aa0a6;
+    --accent: #22c55e;
+    --warn: #ef4444;
+    --border: #2a2e35;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "YuGothic", Meiryo, sans-serif;
+    background: linear-gradient(180deg, #0b0b0c 0%, #111316 100%);
+    color: var(--fg);
+    display: grid; place-items: start center;
+  }
+  .wrap { width: min(980px, 100%); padding: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  h1 { font-size: clamp(20px, 3.2vw, 28px); margin: 0 0 12px; }
+  p.sub { color: var(--muted); margin: 0 0 18px; }
+  .grid { display: grid; gap: 14px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  button, .btn {
+    appearance: none; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: #1a1f24; color: var(--fg); cursor: pointer; font-weight: 600;
+    transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
+  }
+  button:hover { box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  button:active { transform: translateY(1px); }
+  button.accent { background: linear-gradient(180deg, #22c55e, #16a34a); color: #071b0e; border: none; }
+  button.warn { background: linear-gradient(180deg, #ef4444, #dc2626); color: #160505; border: none; }
+  input[type="text"], textarea {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: #0f1419; color: var(--fg);
+    font-size: 16px; outline: none;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .status { font-variant-numeric: tabular-nums; }
+  .videoWrap { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #0f1113; }
+  video { width: 100%; height: auto; display: block; }
+  canvas { display: none; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 10px; border-radius: 999px; background: #0f1419; border: 1px solid var(--border); color: var(--muted); }
+  .flex { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+  .progress { height: 8px; background: #0e1216; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg,#22c55e,#16a34a); transition: width .2s ease; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+  .or { text-align: center; color: var(--muted); }
+  .footer { opacity: .8; font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card grid">
+      <div>
+        <h1>カメラで住所をOCR → Googleマップで現在地から車ルート</h1>
+        <p class="sub">HTTPS環境（例: GitHub Pages / ローカルの<code>https://</code>）でご利用ください。初回はOCR用データのダウンロードが入るため少し時間がかかります。</p>
+        <div class="flex">
+          <span class="badge" id="permLabel">📸 カメラ未起動</span>
+          <span class="badge" id="geoLabel">📍 位置情報未確認</span>
+          <span class="badge">🧠 OCR: 日本語(jpn) + 英語(eng)</span>
+        </div>
+      </div><!-- カメラ -->
+  <div class="videoWrap">
+    <video id="video" playsinline muted></video>
+  </div>
+  <div class="controls">
+    <button id="startBtn">カメラ開始</button>
+    <button id="shotBtn">撮影してOCR</button>
+    <label class="btn" for="file">画像からOCR</label>
+    <input id="file" type="file" accept="image/*" style="display:none" />
+    <button id="stopBtn">停止</button>
+  </div>
+
+  <div class="grid">
+    <div class="row">
+      <div class="flex">
+        <strong>OCR進捗</strong>
+        <span id="ocrStatus" class="status hint">未実行</span>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+    </div>
+    <textarea id="rawText" placeholder="OCRの全文出力がここに表示されます（手直しOK）"></textarea>
+    <input id="address" type="text" placeholder="推定した住所（編集可）" />
+    <div class="controls">
+      <button class="accent" id="openGmaps">Googleマップで経路案内（車）</button>
+      <button id="copyAddr">住所をコピー</button>
+      <button class="warn" id="clearBtn">クリア</button>
+    </div>
+    <div class="hint">※ 住所がうまく抽出できない場合は、上のテキストを手入力してからボタンを押してください。<br>※ マップアプリが入っていれば自動的に開きます（<code>https://www.google.com/maps/dir</code> を使用）。</div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <div class="footer">
+    © 2025 住所OCRナビ | ライセンス: MIT | ライブラリ: <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>
+  </div>
+</div>
+
+  </div>  <!-- Tesseract.js CDN（v5） -->  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>  <script>
+  const els = {
+    video: document.getElementById('video'),
+    canvas: document.getElementById('canvas'),
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    shotBtn: document.getElementById('shotBtn'),
+    file: document.getElementById('file'),
+    rawText: document.getElementById('rawText'),
+    address: document.getElementById('address'),
+    open: document.getElementById('openGmaps'),
+    copyAddr: document.getElementById('copyAddr'),
+    clearBtn: document.getElementById('clearBtn'),
+    ocrStatus: document.getElementById('ocrStatus'),
+    bar: document.getElementById('bar'),
+    permLabel: document.getElementById('permLabel'),
+    geoLabel: document.getElementById('geoLabel'),
+  };
+
+  let stream = null;
+  let gotGeolocation = false;
+
+  // 位置情報はリンク先で "My Location" を使うため必須ではないが、権限確認だけしておく
+  if (navigator.geolocation) {
+    navigator.permissions?.query?.({ name: 'geolocation' }).then(res => {
+      setGeoLabel(res.state);
+    }).catch(()=>{});
+  }
+
+  function setCamLabel(state){
+    const map = { 'granted': '📸 カメラ許可', 'prompt': '📸 カメラ要許可', 'denied': '📸 カメラ拒否' };
+    els.permLabel.textContent = map[state] || '📸 カメラ状態不明';
+  }
+  function setGeoLabel(state){
+    const map = { 'granted': '📍 位置情報許可', 'prompt': '📍 位置情報要許可', 'denied': '📍 位置情報拒否' };
+    els.geoLabel.textContent = map[state] || '📍 位置情報状態不明';
+  }
+
+  async function startCamera(){
+    try {
+      const perm = await navigator.permissions?.query?.({ name: 'camera' });
+      setCamLabel(perm?.state || 'prompt');
+    } catch(_) {}
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+    els.video.srcObject = stream;
+    await els.video.play();
+  }
+
+  function stopCamera(){
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      els.video.srcObject = null;
+    }
+  }
+
+  function captureImageFromVideo(){
+    if (!els.video.videoWidth) throw new Error('カメラの初期化を待機してください');
+    const w = els.video.videoWidth;
+    const h = els.video.videoHeight;
+    els.canvas.width = w; els.canvas.height = h;
+    const ctx = els.canvas.getContext('2d');
+    ctx.drawImage(els.video, 0, 0, w, h);
+    return els.canvas;
+  }
+
+  async function recognizeImage(image){
+    els.ocrStatus.textContent = 'モデル読込中…';
+    els.bar.style.width = '5%';
+    const result = await Tesseract.recognize(image, 'jpn+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text' && m.progress) {
+          els.ocrStatus.textContent = `OCR中… ${(m.progress*100).toFixed(0)}%`;
+          els.bar.style.width = `${Math.max(10, m.progress*100)}%`;
+        } else if (m.status) {
+          els.ocrStatus.textContent = m.status;
+        }
+      }
+    });
+    els.bar.style.width = '100%';
+    return result.data.text;
+  }
+
+  function normalizeText(s){
+    return (s||'')
+      .replace(/[\t\r]+/g,'\n')
+      .replace(/\u3000/g,' ')
+      .replace(/[\s\u00A0]+/g,' ')
+      .replace(/\s*\n\s*/g,'\n')
+      .trim();
+  }
+
+  // シンプルな住所抽出（日本語の都道府県・市区町村・丁目/番地などを優先）
+  function guessAddress(raw){
+    const text = normalizeText(raw);
+    const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+    // 強パターン: 都/道/府/県 を含む行
+    const strong = lines.find(l => /[都道府県].*?(市|区|郡|町|村)/.test(l) || /\d+丁目/.test(l) || /\d+[\-−ー]\d+/.test(l));
+    if (strong) return strong;
+
+    // 複数行を結合してアドレスらしさを作る
+    for (let i=0; i<lines.length-1; i++){
+      const cand = (lines[i] + ' ' + lines[i+1]).trim();
+      if (/[都道府県]/.test(cand) || /\d+丁目/.test(cand) || /\d+[\-−ー]\d+/.test(cand)) return cand;
+    }
+
+    // 数字とハイフンのブロックが長いもの
+    const loose = lines.find(l => (l.match(/[0-9\-−ー]/g)||[]).length >= 5);
+    if (loose) return loose;
+
+    // どうしてもなければ全文
+    return text;
+  }
+
+  function openGoogleMaps(addr){
+    if (!addr || !addr.trim()) { alert('住所が空です。'); return; }
+    const destination = encodeURIComponent(addr.trim());
+
+    // Universal Link（アプリがあればアプリへ）
+    const url = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${destination}&travelmode=driving`;
+    // iOSのGoogle Mapsスキーム（補助）
+    const iosUrl = `comgooglemaps://?saddr=Current+Location&daddr=${destination}&directionsmode=driving`;
+
+    // iOS Safariでのフォールバックを考慮し、まずhttpsを開く
+    // 一部環境では setTimeout でスキーム試行が有効だが、ポップアップブロック回避のためリンクを一発で開く
+    window.location.href = url;
+
+    // 参考: ユーザーが必要に応じてこちらを長押し
+    // console.log('iOS scheme (fallback):', iosUrl);
+  }
+
+  // イベント
+  els.startBtn.addEventListener('click', async () => {
+    try {
+      await startCamera();
+      els.permLabel.textContent = '📸 カメラ起動中';
+    } catch (e) {
+      alert('カメラを開始できませんでした: ' + e.message);
+    }
+  });
+
+  els.stopBtn.addEventListener('click', () => {
+    stopCamera();
+    els.permLabel.textContent = '📸 カメラ停止';
+  });
+
+  els.shotBtn.addEventListener('click', async () => {
+    try {
+      const img = captureImageFromVideo();
+      els.ocrStatus.textContent = 'OCR準備中…';
+      const text = await recognizeImage(img);
+      els.rawText.value = text;
+      const g = guessAddress(text);
+      els.address.value = g || '';
+      els.ocrStatus.textContent = '完了';
+    } catch (e) {
+      alert('OCRに失敗しました: ' + e.message);
+      els.ocrStatus.textContent = '失敗';
+    } finally {
+      els.bar.style.width = '0%';
+    }
+  });
+
+  els.file.addEventListener('change', async (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    try {
+      const imgURL = URL.createObjectURL(file);
+      els.ocrStatus.textContent = 'OCR準備中…';
+      const text = await recognizeImage(imgURL);
+      els.rawText.value = text;
+      const g = guessAddress(text);
+      els.address.value = g || '';
+      els.ocrStatus.textContent = '完了';
+    } catch(e){
+      alert('OCRに失敗しました: ' + e.message);
+      els.ocrStatus.textContent = '失敗';
+    } finally {
+      els.bar.style.width = '0%';
+    }
+  });
+
+  els.open.addEventListener('click', () => {
+    openGoogleMaps(els.address.value);
+  });
+
+  els.copyAddr.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(els.address.value || '');
+      els.copyAddr.textContent = 'コピーしました✔';
+      setTimeout(() => els.copyAddr.textContent = '住所をコピー', 1200);
+    } catch(_) {}
+  });
+
+  els.clearBtn.addEventListener('click', () => {
+    els.rawText.value = '';
+    els.address.value = '';
+    els.bar.style.width = '0%';
+    els.ocrStatus.textContent = '未実行';
+  });
+
+  // 起動時にジオロケ権限の現在状態を更新
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(() => {
+      gotGeolocation = true; setGeoLabel('granted');
+    }, () => {
+      setGeoLabel('prompt');
+    }, { timeout: 1000 });
+  }
+  </script></body>
+</html>
