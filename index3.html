@@ -68,7 +68,7 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
       </div>
       <div class="toolbar">
         <label class="btn" for="file-input">HTMLファイルを選ぶ（複数可）</label>
-        <div class="controls">
+        <div class="controls">$1
           <button class="btn" id="downloadHtml">このページを保存（.html）</button>
         </div>
       </div>
@@ -90,8 +90,6 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     注意: 相対パスで外部CSS/画像/JSに依存する保存方式（「完全」保存のフォルダ同梱形式）の場合、単一ファイルとして読み込むと外部リソースが読み込めないことがあります。すべて表示したい場合は、各サイトを「単一ファイルで保存（SingleFile拡張など）」にするか、ローカルサーバ（例: `python -m http.server`）上で各HTMLとその資産を同じ階層に置き、<code>iframe src</code> を相対パスで指定してください。
   </p>  <script>
   (function(){
-    const $ = (s, el=document)=>el.querySelector(s);
-const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
     const fileInput = document.getElementById('file-input');
     const grid = document.getElementById('grid');
     const list = document.getElementById('list');
@@ -241,10 +239,29 @@ const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
 
     // ダウンロード（このページを .html として保存）
     function downloadHTML(){
-      const doctype = '<!DOCTYPE html>
+      try{
+        var doctype = '<!DOCTYPE html>
 ';
-      const html = doctype + document.documentElement.outerHTML;
-      const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+        var html = doctype + document.documentElement.outerHTML;
+        var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+        var a = document.createElement('a');
+        var ts = new Date();
+        var y = ts.getFullYear();
+        var m = ('0'+(ts.getMonth()+1)).slice(-2);
+        var d = ('0'+ts.getDate()).slice(-2);
+        a.href = URL.createObjectURL(blob);
+        var filename = 'local-multi-site-viewer_' + y + m + d + '.html';
+        a.setAttribute('download', filename);
+        document.body.appendChild(a);
+        // iOS/Safari フォールバック: download属性未対応の場合は href を開く
+        var supportsDownload = 'download' in a;
+        if(!supportsDownload){ window.location.href = a.href; return; }
+        a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      }catch(e){
+        alert('保存時にエラーが発生しました: '+ (e && e.message ? e.message : e));
+      }
+    });
       const a = document.createElement('a');
       const ts = new Date();
       const y = ts.getFullYear();
