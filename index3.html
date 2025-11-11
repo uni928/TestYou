@@ -90,6 +90,8 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     注意: 相対パスで外部CSS/画像/JSに依存する保存方式（「完全」保存のフォルダ同梱形式）の場合、単一ファイルとして読み込むと外部リソースが読み込めないことがあります。すべて表示したい場合は、各サイトを「単一ファイルで保存（SingleFile拡張など）」にするか、ローカルサーバ（例: `python -m http.server`）上で各HTMLとその資産を同じ階層に置き、<code>iframe src</code> を相対パスで指定してください。
   </p>  <script>
   (function(){
+    const $ = (s, el=document)=>el.querySelector(s);
+const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
     const fileInput = document.getElementById('file-input');
     const grid = document.getElementById('grid');
     const list = document.getElementById('list');
