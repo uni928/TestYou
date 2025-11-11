@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="ja">
+<!DOCTYPE html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -62,7 +63,9 @@
       </div>
       <div class="status" id="status">未選択</div>
     </div>
-  </header>  <div class="container grid">
+  </header>
+
+  <div class="container grid">
     <section class="card">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px">
         <div>
@@ -85,28 +88,31 @@
         </div>
       </div>
       <div class="progress" style="margin-top:10px; display:none" id="progressWrap"><div class="bar" id="progressBar"></div></div>
-    </section><aside class="card">
-  <strong>使い方</strong>
-  <ol>
-    <li><em>フォルダを選択</em> を押し、対象のフォルダを指定します。</li>
-    <li>拡張子 <span class="badge">.html</span> のみ抽出され、一覧に表示されます。</li>
-    <li>ドラッグ＆ドロップや並び替えボタンで <strong>順序を入れ替え</strong> できます。</li>
-    <li>チェックしたものだけが <strong>順序通りに一括ダウンロード</strong> されます（必要なら先頭に連番を付与）。</li>
-  </ol>
-  <p class="hint">注意: ブラウザの仕様上、ZIP化は行わず <strong>個別ファイルを連続保存</strong> します。ダイアログが複数回表示される場合があります。</p>
-  <p class="hint">対応ブラウザ: Chrome 86+ / Edge 86+ など。</p>
-  <hr style="border-color:#233055"/>
-  <div>
-    <strong>ショートカット</strong>
-    <ul>
-      <li><span class="kbd">Alt</span> + <span class="kbd">↑/↓</span> …… 選択中のアイテムを上下に移動</li>
-      <li><span class="kbd">Space</span> …… チェックON/OFF</li>
-      <li><span class="kbd">Ctrl/Cmd</span> + <span class="kbd">F</span> …… 絞り込み検索</li>
-    </ul>
-  </div>
-</aside>
+    </section>
 
-  </div>  <script>
+    <aside class="card">
+      <strong>使い方</strong>
+      <ol>
+        <li><em>フォルダを選択</em> を押し、対象のフォルダを指定します。</li>
+        <li>拡張子 <span class="badge">.html</span> のみ抽出され、一覧に表示されます。</li>
+        <li>ドラッグ＆ドロップや並び替えボタンで <strong>順序を入れ替え</strong> できます。</li>
+        <li>チェックしたものだけが <strong>順序通りに一括ダウンロード</strong> されます（必要なら先頭に連番を付与）。</li>
+      </ol>
+      <p class="hint">注意: ブラウザの仕様上、ZIP化は行わず <strong>個別ファイルを連続保存</strong> します。ダイアログが複数回表示される場合があります。</p>
+      <p class="hint">対応ブラウザ: Chrome 86+ / Edge 86+ など。</p>
+      <hr style="border-color:#233055"/>
+      <div>
+        <strong>ショートカット</strong>
+        <ul>
+          <li><span class="kbd">Alt</span> + <span class="kbd">↑/↓</span> …… 選択中のアイテムを上下に移動</li>
+          <li><span class="kbd">Space</span> …… チェックON/OFF</li>
+          <li><span class="kbd">Ctrl/Cmd</span> + <span class="kbd">F</span> …… 絞り込み検索</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <script>
     // --- State ---
     let dirHandle = null;
     let fileItems = []; // {id, name, path, size, lastModified, handle, selected}
@@ -382,5 +388,6 @@
 
     // アクセス許可の永続化(オプション): セッション内だけ
     // navigator.storage && navigator.storage.persist && navigator.storage.persist();
-  </script></body>
-          </html>
+  </script>
+</body>
+</html>
