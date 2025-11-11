@@ -1,0 +1,386 @@
+<!DOCTYPE html><html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTMLファイル一覧・並べ替え・一括ダウンロード</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#121A33; --muted:#6b7280; --text:#e5e7eb; --accent:#7dd3fc; --ok:#86efac; --warn:#fcd34d; --err:#fca5a5;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:var(--text)}
+    header{padding:24px 16px; border-bottom:1px solid #1f2937; position:sticky; top:0; background:linear-gradient(180deg, rgba(11,16,32,0.95), rgba(11,16,32,0.6)); backdrop-filter: blur(6px); z-index:5}
+    h1{margin:0 0 8px; font-size:20px}
+    .desc{color:var(--muted); font-size:13px}
+    .container{max-width:1100px; margin:0 auto; padding:16px}
+    .toolbar{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0}
+    button, .btn{appearance:none; border:1px solid #2a3455; background:#121a33; color:var(--text); padding:8px 10px; border-radius:12px; cursor:pointer; transition:.15s transform, .15s background, .15s border; font-weight:600}
+    button:hover{background:#172044}
+    button.primary{border-color:#1f3b68; background:#17345e}
+    button.ghost{background:transparent}
+    button:disabled{opacity:.5; cursor:not-allowed}
+    input[type="text"], input[type="search"]{border:1px solid #2a3455; background:#0e1430; color:var(--text); padding:8px 10px; border-radius:10px}
+    label{font-size:12px; color:var(--muted)}
+    .grid{display:grid; grid-template-columns: 1fr 360px; gap:16px}
+    @media (max-width:1000px){ .grid{grid-template-columns:1fr} }
+    .card{background:var(--card); border:1px solid #1f2937; border-radius:16px; padding:12px}
+    .list{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; min-height:120px}
+    .item{display:grid; grid-template-columns: 28px 1fr 140px 120px 32px; gap:8px; align-items:center; padding:8px; border:1px solid #233055; background:#0f1630; border-radius:12px}
+    .item.dragging{opacity:.5}
+    .handle{cursor:grab; color:#9ca3af; user-select:none}
+    .name{word-break:break-all}
+    .badge{font-size:12px; color:#93c5fd}
+    .right{display:flex; gap:8px; align-items:center; justify-content:flex-end}
+    .hint{font-size:12px; color:var(--muted)}
+    .kbd{font:600 11px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b122b; border:1px solid #1e2a4d; border-bottom-width:2px; border-radius:6px; padding:2px 6px}
+    .status{font-size:12px; color:var(--muted)}
+    .pill{font-size:11px; padding:2px 6px; border-radius:999px; border:1px solid #2a3455; color:#cbd5e1}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    .empty{border:1px dashed #2a3455; border-radius:12px; padding:18px; color:#94a3b8; text-align:center}
+    .footer{margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between}
+    .progress{height:8px; background:#0e1430; border:1px solid #233055; border-radius:999px; overflow:hidden}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg, #67e8f9, #a78bfa)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>フォルダ内の <span class="badge">.html</span> ファイルを一覧・並べ替え・一括ダウンロード</h1>
+      <div class="desc">Chrome / Edge などの <strong>セキュアコンテキスト(https または localhost)</strong> で動作する <strong>File System Access API</strong> を使います。ローカルで開く場合は簡易サーバー(例: <span class="kbd">python -m http.server</span>)経由で開いてください。</div>
+      <div class="toolbar">
+        <button id="pickDir" class="primary">📁 フォルダを選択</button>
+        <button id="reloadDir" disabled>🔄 再読み込み</button>
+        <button id="sortNameAsc" disabled>⬆️ 名前</button>
+        <button id="sortNameDesc" disabled>⬇️ 名前</button>
+        <button id="sortTimeDesc" disabled>🕒 新しい順</button>
+        <button id="sortTimeAsc" disabled>🕒 古い順</button>
+        <button id="selectAll" disabled>✅ すべて選択</button>
+        <button id="clearAll" disabled>⭕ すべて解除</button>
+        <label><input type="checkbox" id="includeSub"/> サブフォルダを含める</label>
+        <label><input type="checkbox" id="prefixOrder" checked/> ダウンロード名に連番を付与</label>
+        <label><input type="checkbox" id="keepExt" checked/> 拡張子 .html を保持</label>
+      </div>
+      <div class="status" id="status">未選択</div>
+    </div>
+  </header>  <div class="container grid">
+    <section class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px">
+        <div>
+          <strong>ファイル一覧</strong>
+          <div class="hint">ドラッグ＆ドロップで並べ替え / Spaceでチェック切替 / <span class="kbd">Alt</span> + <span class="kbd">↑↓</span> で上下移動</div>
+        </div>
+        <div class="right">
+          <input type="search" id="search" placeholder="ファイル名で絞り込み"/>
+        </div>
+      </div>
+      <ul id="list" class="list" aria-live="polite">
+        <li class="empty">📭 ここにファイルが表示されます</li>
+      </ul>
+      <div class="footer">
+        <div class="hint">選択中: <span id="selCount">0</span> / <span id="allCount">0</span></div>
+        <div class="right">
+          <button id="downloadSelected" disabled>⬇️ 選択を順序通りに一括ダウンロード</button>
+          <button id="exportList" disabled class="ghost">📝 並び順をJSONで保存</button>
+          <button id="importList" disabled class="ghost">📥 並び順JSONを読み込み</button>
+        </div>
+      </div>
+      <div class="progress" style="margin-top:10px; display:none" id="progressWrap"><div class="bar" id="progressBar"></div></div>
+    </section><aside class="card">
+  <strong>使い方</strong>
+  <ol>
+    <li><em>フォルダを選択</em> を押し、対象のフォルダを指定します。</li>
+    <li>拡張子 <span class="badge">.html</span> のみ抽出され、一覧に表示されます。</li>
+    <li>ドラッグ＆ドロップや並び替えボタンで <strong>順序を入れ替え</strong> できます。</li>
+    <li>チェックしたものだけが <strong>順序通りに一括ダウンロード</strong> されます（必要なら先頭に連番を付与）。</li>
+  </ol>
+  <p class="hint">注意: ブラウザの仕様上、ZIP化は行わず <strong>個別ファイルを連続保存</strong> します。ダイアログが複数回表示される場合があります。</p>
+  <p class="hint">対応ブラウザ: Chrome 86+ / Edge 86+ など。</p>
+  <hr style="border-color:#233055"/>
+  <div>
+    <strong>ショートカット</strong>
+    <ul>
+      <li><span class="kbd">Alt</span> + <span class="kbd">↑/↓</span> …… 選択中のアイテムを上下に移動</li>
+      <li><span class="kbd">Space</span> …… チェックON/OFF</li>
+      <li><span class="kbd">Ctrl/Cmd</span> + <span class="kbd">F</span> …… 絞り込み検索</li>
+    </ul>
+  </div>
+</aside>
+
+  </div>  <script>
+    // --- State ---
+    let dirHandle = null;
+    let fileItems = []; // {id, name, path, size, lastModified, handle, selected}
+
+    const el = (id)=>document.getElementById(id);
+    const listEl = el('list');
+    const statusEl = el('status');
+    const selCountEl = el('selCount');
+    const allCountEl = el('allCount');
+    const progressWrap = el('progressWrap');
+    const progressBar = el('progressBar');
+
+    const supportsFSA = 'showDirectoryPicker' in window;
+    if(!supportsFSA){
+      statusEl.innerHTML = 'このブラウザは File System Access API に未対応です。Chrome/Edge の最新版をご利用ください。';
+      el('pickDir').disabled = true;
+    }
+
+    // --- UI Helpers ---
+    const enableListActions = (on)=>{
+      ['reloadDir','sortNameAsc','sortNameDesc','sortTimeAsc','sortTimeDesc','selectAll','clearAll','downloadSelected','exportList','importList']
+        .forEach(id=>{ el(id).disabled = !on; });
+    }
+
+    const formatBytes = (n) => {
+      if(n < 1024) return n + ' B';
+      if(n < 1024**2) return (n/1024).toFixed(1)+' KB';
+      if(n < 1024**3) return (n/1024**2).toFixed(1)+' MB';
+      return (n/1024**3).toFixed(1)+' GB';
+    }
+
+    const formatDate = (t)=> new Date(t).toLocaleString();
+
+    function renderList(filter=''){
+      listEl.innerHTML = '';
+      const q = filter.trim().toLowerCase();
+      const frag = document.createDocumentFragment();
+      const filtered = fileItems.filter(x => x.name.toLowerCase().includes(q));
+      filtered.forEach((item, idx)=>{
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.draggable = true;
+        li.dataset.id = item.id;
+
+        // Drag Handle
+        const drag = document.createElement('div');
+        drag.className = 'handle';
+        drag.textContent = '⠿';
+        drag.title = 'ドラッグで並べ替え';
+
+        // Checkbox
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = !!item.selected;
+        chk.addEventListener('change', ()=>{ item.selected = chk.checked; updateCounts(); });
+
+        // Name
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.innerHTML = `<strong>${item.name}</strong><div class="hint">${item.path}</div>`;
+
+        // Size
+        const size = document.createElement('div');
+        size.className = 'hint';
+        size.textContent = formatBytes(item.size);
+
+        // Time
+        const time = document.createElement('div');
+        time.className = 'hint';
+        time.textContent = formatDate(item.lastModified);
+
+        // Open button
+        const openBtn = document.createElement('button');
+        openBtn.className = 'ghost';
+        openBtn.title = '新しいタブで開く';
+        openBtn.textContent = '🔗';
+        openBtn.addEventListener('click', async()=>{
+          const file = await item.handle.getFile();
+          const url = URL.createObjectURL(file);
+          window.open(url, '_blank');
+          setTimeout(()=>URL.revokeObjectURL(url), 10000);
+        });
+
+        li.append(drag, chk, name, size, time, openBtn);
+
+        // DnD events
+        li.addEventListener('dragstart', (e)=>{
+          li.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', item.id);
+        });
+        li.addEventListener('dragend', ()=> li.classList.remove('dragging'));
+        li.addEventListener('dragover', (e)=>{
+          e.preventDefault();
+          const dragging = document.querySelector('.item.dragging');
+          if(!dragging) return;
+          const rect = li.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < rect.height/2;
+          listEl.insertBefore(dragging, before ? li : li.nextSibling);
+        });
+
+        li.addEventListener('keydown', (e)=>{
+          if(e.code === 'Space'){ e.preventDefault(); chk.checked = !chk.checked; item.selected = chk.checked; updateCounts(); }
+          if(e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown')){
+            e.preventDefault();
+            const current = Array.from(listEl.children).indexOf(li);
+            const delta = e.code === 'ArrowUp' ? -1 : 1;
+            const target = Math.max(0, Math.min(listEl.children.length-1, current+delta));
+            if(target !== current){ listEl.insertBefore(li, listEl.children[target + (delta>0?1:0)] || null); syncOrderFromDOM(); }
+          }
+        });
+
+        li.tabIndex = 0; // focusable for keyboard ops
+        frag.appendChild(li);
+      });
+
+      if(!filtered.length){
+        const empty = document.createElement('li');
+        empty.className = 'empty';
+        empty.textContent = '一致するファイルがありません';
+        listEl.appendChild(empty);
+      } else {
+        listEl.appendChild(frag);
+      }
+      updateCounts();
+    }
+
+    function syncOrderFromDOM(){
+      const ids = Array.from(listEl.querySelectorAll('.item')).map(el=>el.dataset.id);
+      const map = new Map(fileItems.map(x=>[x.id,x]));
+      fileItems = ids.map(id=>map.get(id)).filter(Boolean);
+      updateCounts();
+    }
+
+    function updateCounts(){
+      const total = fileItems.length;
+      const selected = fileItems.filter(x=>x.selected).length;
+      selCountEl.textContent = selected;
+      allCountEl.textContent = total;
+      el('downloadSelected').disabled = selected===0;
+      el('exportList').disabled = total===0;
+      el('importList').disabled = total===0;
+      el('selectAll').disabled = total===0;
+      el('clearAll').disabled = total===0;
+      statusEl.innerHTML = dirHandle ? `選択中のフォルダ: <span class="pill">${dirHandle.name}</span> / 合計 <strong>${total}</strong> 件 (表示中: ${listEl.querySelectorAll('.item').length})` : '未選択';
+    }
+
+    // --- Directory reading ---
+    async function* walkDirectory(dirHandle, basePath=''){ 
+      for await (const entry of dirHandle.values()){
+        const path = basePath ? `${basePath}/${entry.name}` : entry.name;
+        if(entry.kind === 'file' && entry.name.toLowerCase().endsWith('.html')){
+          yield {handle: entry, path};
+        } else if(entry.kind === 'directory' && el('includeSub').checked){
+          yield* walkDirectory(entry, path);
+        }
+      }
+    }
+
+    async function loadDir(){
+      fileItems = [];
+      listEl.innerHTML = '<li class="empty">読み込み中…</li>';
+      let count = 0;
+      for await(const {handle, path} of walkDirectory(dirHandle)){
+        try{
+          const file = await handle.getFile();
+          fileItems.push({
+            id: crypto.randomUUID(),
+            name: file.name,
+            path,
+            size: file.size,
+            lastModified: file.lastModified,
+            handle,
+            selected: true,
+          });
+          count++;
+        }catch(err){
+          console.error(err);
+        }
+      }
+      enableListActions(true);
+      // 既定: 名前昇順
+      fileItems.sort((a,b)=> a.name.localeCompare(b.name, 'ja'));
+      renderList(el('search').value);
+      statusEl.innerHTML = `フォルダ <span class="pill">${dirHandle.name}</span> を読み込みました。<span class="ok">${count}</span> 件の .html を検出。`;
+    }
+
+    // --- Downloads ---
+    async function downloadSelected(){
+      const selected = fileItems.filter(x=>x.selected);
+      if(!selected.length) return;
+      progressWrap.style.display = 'block';
+      progressBar.style.width = '0%';
+      let i=0;
+      for(const item of selected){
+        try{
+          const file = await item.handle.getFile();
+          const url = URL.createObjectURL(file);
+          const a = document.createElement('a');
+          a.href = url;
+          const idx = String(i+1).padStart(String(selected.length).length, '0');
+          const baseName = el('prefixOrder').checked ? `${idx}_${item.name}` : item.name;
+          a.download = el('keepExt').checked ? baseName : baseName.replace(/\.html$/i,'');
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url), 2000);
+        }catch(err){
+          console.error(err);
+        }finally{
+          i++;
+          progressBar.style.width = `${Math.round(i/selected.length*100)}%`;
+        }
+      }
+      setTimeout(()=>{ progressWrap.style.display='none'; }, 500);
+    }
+
+    // --- Export / Import order as JSON ---
+    function exportOrder(){
+      const data = fileItems.map(x=>({path:x.path, selected:!!x.selected}));
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `order_${Date.now()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importOrder(){
+      try{
+        const [fileHandle] = await window.showOpenFilePicker({types:[{description:'JSON', accept:{'application/json':['.json']}}]});
+        const f = await fileHandle.getFile();
+        const txt = await f.text();
+        const arr = JSON.parse(txt);
+        const map = new Map(fileItems.map(x=>[x.path, x]));
+        const next = [];
+        for(const r of arr){ if(map.has(r.path)) next.push(Object.assign(map.get(r.path), {selected: !!r.selected})); }
+        // 残り（新規など）は末尾に
+        fileItems.forEach(x=>{ if(!next.includes(x)) next.push(x); });
+        fileItems = next;
+        renderList(el('search').value);
+      }catch(e){ console.warn(e); }
+    }
+
+    // --- Event bindings ---
+    el('pickDir').addEventListener('click', async()=>{
+      try{
+        dirHandle = await window.showDirectoryPicker();
+        await loadDir();
+      }catch(e){
+        if(e && e.name === 'AbortError'){ statusEl.textContent = 'キャンセルされました。'; }
+        else{ statusEl.textContent = 'フォルダ選択に失敗しました。'; console.error(e); }
+      }
+    });
+
+    el('reloadDir').addEventListener('click', async()=>{ if(dirHandle) await loadDir(); });
+    el('includeSub').addEventListener('change', async()=>{ if(dirHandle) await loadDir(); });
+
+    el('sortNameAsc').addEventListener('click', ()=>{ fileItems.sort((a,b)=> a.name.localeCompare(b.name,'ja')); renderList(el('search').value); });
+    el('sortNameDesc').addEventListener('click', ()=>{ fileItems.sort((a,b)=> b.name.localeCompare(a.name,'ja')); renderList(el('search').value); });
+    el('sortTimeAsc').addEventListener('click', ()=>{ fileItems.sort((a,b)=> a.lastModified - b.lastModified); renderList(el('search').value); });
+    el('sortTimeDesc').addEventListener('click', ()=>{ fileItems.sort((a,b)=> b.lastModified - a.lastModified); renderList(el('search').value); });
+
+    el('selectAll').addEventListener('click', ()=>{ fileItems.forEach(x=>x.selected=true); renderList(el('search').value); });
+    el('clearAll').addEventListener('click', ()=>{ fileItems.forEach(x=>x.selected=false); renderList(el('search').value); });
+
+    el('search').addEventListener('input', (e)=> renderList(e.target.value));
+
+    el('downloadSelected').addEventListener('click', downloadSelected);
+    el('exportList').addEventListener('click', exportOrder);
+    el('importList').addEventListener('click', importOrder);
+
+    // リスト領域へのドラッグ終了後に順序反映（外側で処理）
+    listEl.addEventListener('drop', ()=>{ syncOrderFromDOM(); });
+
+    // アクセス許可の永続化(オプション): セッション内だけ
+    // navigator.storage && navigator.storage.persist && navigator.storage.persist();
+  </script></body>
+          </html>
