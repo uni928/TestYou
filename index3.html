@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>住所/店名 → Googleマップ経路案内</title>
+<title>住所/店名 → Googleマップ経路案内（アプリ優先）</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -52,8 +52,8 @@
   <div class="wrap">
     <div class="card grid">
       <div>
-        <h1>住所・店名リスト → Googleマップ経路案内</h1>
-        <p class="sub">住所や店名を複数登録し、左の「案内」ボタンからGoogleマップで現在地から車ルートを開けます。<br>入力内容は <strong>IndexedDB</strong> に保存され、次回起動時に復元されます。</p>
+        <h1>住所・店名リスト → Googleマップ経路案内（アプリ優先）</h1>
+        <p class="sub">住所や店名を複数登録し、左の「案内」ボタンからGoogleマップで現在地から車ルートを開けます。<br>Googleマップアプリがインストールされている場合はアプリを優先して起動します。</p>
       </div><section class="grid" aria-labelledby="manualNav">
     <h2 id="manualNav">目的地リスト</h2>
     <div id="destList" class="grid" style="gap:10px;"></div>
@@ -114,8 +114,25 @@
   function openMaps(addr){
     if (!addr || !addr.trim()) { alert('住所／店名が空です。'); return; }
     const destination = encodeURIComponent(addr.trim());
-    const url = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${destination}&travelmode=driving`;
-    window.location.href = url;
+
+    // Google Maps アプリ優先スキーム
+    const appUrl = `comgooglemaps://?saddr=Current+Location&daddr=${destination}&directionsmode=driving`;
+    const webUrl = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${destination}&travelmode=driving`;
+
+    // 一度アプリスキームを試み、一定時間後にWeb版をフォールバック
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = appUrl;
+    document.body.appendChild(iframe);
+
+    const start = Date.now();
+    setTimeout(() => {
+      const elapsed = Date.now() - start;
+      if (elapsed < 2000) {
+        window.location.href = webUrl;
+      }
+      document.body.removeChild(iframe);
+    }, 1500);
   }
 
   function queueSave(){
