@@ -1,46 +1,33 @@
-<!DOCTYPE html><html lang="ja">
+<!DOCTYPE html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>住所/店名 → Googleマップ経路案内（アプリ優先）</title>
+<title>住所/店名 → Googleマップ経路案内（アプリ優先・現在地精密）</title>
 <style>
   :root {
     color-scheme: light dark;
-    --bg: #0b0b0c;
-    --fg: #f3f4f6;
-    --card: #111316;
-    --muted: #9aa0a6;
-    --accent: #22c55e;
-    --warn: #ef4444;
-    --border: #2a2e35;
+    --bg: #0b0b0c; --fg: #f3f4f6; --card: #111316; --muted: #9aa0a6;
+    --accent: #22c55e; --warn: #ef4444; --border: #2a2e35;
   }
   html, body { height: 100%; }
   body {
-    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "YuGothic", Meiryo, sans-serif;
-    background: linear-gradient(180deg, #0b0b0c 0%, #111316 100%);
-    color: var(--fg);
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","YuGothic",Meiryo,sans-serif;
+    background: linear-gradient(180deg,#0b0b0c 0%,#111316 100%); color: var(--fg);
     display: grid; place-items: start center;
   }
   .wrap { width: min(720px, 100%); padding: 20px; }
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  }
-  h1 { font-size: clamp(20px, 3.2vw, 28px); margin: 0 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  h1 { font-size: clamp(20px,3.2vw,28px); margin: 0 0 12px; }
   p.sub { color: var(--muted); margin: 0 0 18px; }
   .grid { display: grid; gap: 14px; }
-  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
-  button, .btn {
-    appearance: none; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: #1a1f24; color: var(--fg); cursor: pointer; font-weight: 600;
-    transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
-  }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button { appearance: none; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: #1a1f24; color: var(--fg); cursor: pointer; font-weight: 600; transition: transform .04s ease, box-shadow .2s ease; }
   button:hover { box-shadow: 0 6px 20px rgba(0,0,0,.35); }
   button:active { transform: translateY(1px); }
-  button.accent { background: linear-gradient(180deg, #22c55e, #16a34a); color: #071b0e; border: none; }
-  button.warn { background: linear-gradient(180deg, #ef4444, #dc2626); color: #160505; border: none; }
-  input[type="text"] {
-    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: #0f1419; color: var(--fg);
-    font-size: 16px; outline: none;
-  }
+  button.accent { background: linear-gradient(180deg,#22c55e,#16a34a); color: #071b0e; border: none; }
+  input[type="text"] { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: #0f1419; color: var(--fg); font-size: 16px; outline: none; }
   .hint { color: var(--muted); font-size: 13px; }
   .pill { font-size:12px; padding:6px 10px; border-radius:999px; background:#0f1419; border:1px solid var(--border); color:var(--muted); }
   .destRow { display:grid; grid-template-columns: auto 1fr auto; gap:10px; align-items:center; }
@@ -53,24 +40,41 @@
     <div class="card grid">
       <div>
         <h1>住所・店名リスト → Googleマップ経路案内（アプリ優先）</h1>
-        <p class="sub">住所や店名を複数登録し、左の「案内」ボタンからGoogleマップで現在地から車ルートを開けます。<br>Googleマップアプリがインストールされている場合はアプリを優先して起動します。</p>
-      </div><section class="grid" aria-labelledby="manualNav">
-    <h2 id="manualNav">目的地リスト</h2>
-    <div id="destList" class="grid" style="gap:10px;"></div>
-    <div class="controls">
-      <button id="addRow" class="accent">＋ 入力欄を追加</button>
-      <span class="pill" id="saveState">未保存</span>
+        <p class="sub">
+          「案内」→ Googleマップで <strong>現在地から車ルート</strong> を開きます。<br>
+          Googleマップ <strong>アプリ起動を優先</strong>し、無い場合はWebに自動フォールバックします。
+        </p>
+
+        <!-- 現在地コントロール -->
+        <div class="controls" id="geoControls">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="useGeo" checked>
+            現在地を使用（精密：緯度経度）
+          </label>
+          <button id="refreshGeo">現在地を更新</button>
+          <span class="pill" id="geoStatus">未取得</span>
+        </div>
+      </div>
+
+      <!-- 目的地リスト -->
+      <section class="grid" aria-labelledby="manualNav">
+        <h2 id="manualNav" style="margin:0;">目的地リスト</h2>
+        <div id="destList" class="grid" style="gap:10px;"></div>
+        <div class="controls">
+          <button id="addRow" class="accent">＋ 入力欄を追加</button>
+          <span class="pill" id="saveState">未保存</span>
+        </div>
+        <div class="hint">左の「案内」ボタンで、その行の住所／店名へ現在地から車で案内を開始します。</div>
+      </section>
+
+      <div class="footer" style="opacity:.8;font-size:12px;margin-top:20px;">
+        © 2025 住所ナビ | IndexedDB保存対応 | MIT
+      </div>
     </div>
-    <div class="hint">左の「案内」ボタンで、その行の入力内容に対して現在地から車でのルート案内を開始します。</div>
-  </section>
-
-  <div class="footer" style="opacity:.8;font-size:12px;margin-top:20px;">
-    © 2025 住所ナビ | IndexedDB保存対応 | ライセンス: MIT
   </div>
-</div>
 
-  </div>  <script>
-  // ========= IndexedDB =========
+  <script>
+  // ===== IndexedDB（シンプルKV） =====
   const DB_NAME = 'addr-nav-db';
   const STORE = 'kv';
   function idbOpen(){
@@ -105,21 +109,58 @@
     });
   }
 
+  // ===== 状態 =====
   const destList = document.getElementById('destList');
   const addRowBtn = document.getElementById('addRow');
   const saveState = document.getElementById('saveState');
+
+  // 現在地（緯度・経度）
+  let currentCoords = null;
+  const useGeo = document.getElementById('useGeo');
+  const refreshGeoBtn = document.getElementById('refreshGeo');
+  const geoStatus = document.getElementById('geoStatus');
+
   let destinations = [];
   let saveTimer = null;
 
+  // ===== 現在地取得 =====
+  function updateGeoStatus(text){ if (geoStatus) geoStatus.textContent = text; }
+  function fetchGeo(){
+    if (!navigator.geolocation){ updateGeoStatus('非対応'); return; }
+    updateGeoStatus('取得中…');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        updateGeoStatus(`OK (${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)})`);
+      },
+      err => {
+        currentCoords = null;
+        updateGeoStatus('失敗');
+        console.warn('geolocation error', err);
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 }
+    );
+  }
+  refreshGeoBtn.addEventListener('click', fetchGeo);
+  fetchGeo(); // 起動時に一度取得しておく
+
+  // ===== 起動（アプリ優先・現在地精密） =====
   function openMaps(addr){
     if (!addr || !addr.trim()) { alert('住所／店名が空です。'); return; }
     const destination = encodeURIComponent(addr.trim());
 
-    // Google Maps アプリ優先スキーム
-    const appUrl = `comgooglemaps://?saddr=Current+Location&daddr=${destination}&directionsmode=driving`;
-    const webUrl = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${destination}&travelmode=driving`;
+    // 緯度経度を起点にできる場合はそちらを優先
+    const usePrecise = !!(useGeo && useGeo.checked && currentCoords);
+    const origin = usePrecise ? `${currentCoords.lat},${currentCoords.lng}` : null;
 
-    // 一度アプリスキームを試み、一定時間後にWeb版をフォールバック
+    // アプリ優先 → 1.5秒でWebへフォールバック
+    const appUrl = origin
+      ? `comgooglemaps://?saddr=${encodeURIComponent(origin)}&daddr=${destination}&directionsmode=driving`
+      : `comgooglemaps://?saddr=Current+Location&daddr=${destination}&directionsmode=driving`;
+    const webUrl = origin
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${destination}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${destination}&travelmode=driving`;
+
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     iframe.src = appUrl;
@@ -128,33 +169,44 @@
     const start = Date.now();
     setTimeout(() => {
       const elapsed = Date.now() - start;
-      if (elapsed < 2000) {
+      if (elapsed < 2000) { // アプリが無い/拒否された可能性
         window.location.href = webUrl;
       }
       document.body.removeChild(iframe);
     }, 1500);
   }
 
+  // ===== 保存系 =====
   function queueSave(){
     saveState.textContent = '保存中…';
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(saveAll, 300);
   }
-
   async function saveAll(){
     try { await idbSet('destinations', destinations); saveState.textContent = '保存済み ✔'; }
     catch(e){ saveState.textContent = '保存失敗'; console.error(e); }
   }
 
+  // ===== UI描画 =====
   function render(){
     destList.innerHTML = '';
     if (!destinations.length) destinations = [{ id: Date.now(), text: '' }];
     for (const item of destinations){
       const row = document.createElement('div');
       row.className = 'destRow';
-      const go = document.createElement('button'); go.className = 'goBtn accent'; go.textContent = '案内';
-      const input = document.createElement('input'); input.type = 'text'; input.placeholder = '住所または店名'; input.value = item.text || '';
-      const del = document.createElement('button'); del.className = 'trash'; del.textContent = '削除';
+
+      const go = document.createElement('button');
+      go.className = 'goBtn accent';
+      go.textContent = '案内';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = '住所または店名';
+      input.value = item.text || '';
+
+      const del = document.createElement('button');
+      del.className = 'trash';
+      del.textContent = '削除';
 
       go.addEventListener('click', () => openMaps(input.value));
       input.addEventListener('input', () => { item.text = input.value; queueSave(); });
@@ -171,9 +223,14 @@
     queueSave();
   });
 
+  // ===== 初期化 =====
   (async function init(){
-    try { const data = await idbGet('destinations'); if (Array.isArray(data)) destinations = data; } catch(e) {}
+    try {
+      const data = await idbGet('destinations');
+      if (Array.isArray(data)) destinations = data;
+    } catch(e) {}
     render();
   })();
-  </script></body>
+  </script>
+</body>
 </html>
