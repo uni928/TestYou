@@ -327,7 +327,7 @@
       if(v1 > 0 && v3 > 0){
         const diff3 = v1*3 - v3;
         const diff3sub = diff3 / 3;
-        save3.textContent = JPY.format(diff3) + "(" + JPY.format(diff3sub) + ")";
+        save3.textContent = JPY.format(diff3) + "(" + JPY.format(diff3sub) + " / 月)";
         const pct3 = ((diff3) / (v1*3)) * 100;
         rate3.textContent = `1ヶ月×3 と比べて ${pct3>=0? '安い' : '高い'}：${pct3? pct3.toFixed(1) : '0.0'}%`;
         setBadge(badge3, diff3>0? 'good' : (diff3<0? 'bad':'neutral'), diff3>0? `3ヶ月定期はお得（${JPY.format(Math.abs(diff3))}安い）` : (diff3<0? `3ヶ月定期は割高（${JPY.format(Math.abs(diff3))}高い）` : '3ヶ月定期：差なし'));
@@ -338,7 +338,7 @@
       if(v1 > 0 && v6 > 0){
         const diff6 = v1*6 - v6;
         const diff6sub = diff6 / 6;
-        save6.textContent = JPY.format(diff6) + "(" + JPY.format(diff6sub) + ")";
+        save6.textContent = JPY.format(diff6) + "(" + JPY.format(diff6sub) + " / 月)";
         const pct6 = ((diff6) / (v1*6)) * 100;
         rate6.textContent = `1ヶ月×6 と比べて ${pct6>=0? '安い' : '高い'}：${pct6? pct6.toFixed(1) : '0.0'}%`;
         setBadge(badge6, diff6>0? 'good' : (diff6<0? 'bad':'neutral'), diff6>0? `6ヶ月定期はお得（${JPY.format(Math.abs(diff6))}安い）` : (diff6<0? `6ヶ月定期は割高（${JPY.format(Math.abs(diff6))}高い）` : '6ヶ月定期：差なし'));
@@ -386,4 +386,5 @@
   </script>
 </body>
 </html>
+
 
