@@ -95,7 +95,7 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     const list = document.getElementById('list');
     const drop = document.getElementById('drop');
     const filter = document.getElementById('filter');
-    const expandAllBtn = document.getElementById('expandAll');
+    //const expandAllBtn = document.getElementById('expandAll');
     const collapseAllBtn = document.getElementById('collapseAll');
     const clearAllBtn = document.getElementById('clearAll');
     const downloadBtn = document.getElementById('downloadHtml');
@@ -240,8 +240,8 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     // ダウンロード（このページを .html として保存）
     function downloadHTML(){
       try{
-        var doctype = '<!DOCTYPE html>
-';
+        var doctype = `<!DOCTYPE html>
+`;
         var html = doctype + document.documentElement.outerHTML;
         var blob = new Blob([html], {type:'text/html;charset=utf-8'});
         var a = document.createElement('a');
@@ -261,13 +261,7 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
       }catch(e){
         alert('保存時にエラーが発生しました: '+ (e && e.message ? e.message : e));
       }
-    });
-      const a = document.createElement('a');
-      const ts = new Date();
-      const y = ts.getFullYear();
-      const m = String(ts.getMonth()+1).padStart(2,'0');
-      const d = String(ts.getDate()).padStart(2,'0');
-      a.href = URL.createObjectURL(blob);
+    
       a.download = `local-multi-site-viewer_${y}${m}${d}.html`;
       document.body.appendChild(a);
       a.click();
@@ -279,9 +273,9 @@ nav h3{margin:6px 8px 8px; font-size:13px; color:var(--muted)}
     // Events
     fileInput.addEventListener('change', e => addFiles(e.target.files));
     filter.addEventListener('input', applyFilter);
-    expandAllBtn.addEventListener('click', ()=> entries.forEach(e=> e.iframe && autoResizeIframe(e.iframe,true)));
-    collapseAllBtn.addEventListener('click', ()=> entries.forEach(e=>{ if(e.iframe) e.iframe.style.height = '240px'; }));
-    clearAllBtn.addEventListener('click', clearAll);
+    //expandAllBtn.addEventListener('click', ()=> entries.forEach(e=> e.iframe && autoResizeIframe(e.iframe,true)));
+    //collapseAllBtn.addEventListener('click', ()=> entries.forEach(e=>{ if(e.iframe) e.iframe.style.height = '240px'; }));
+    //clearAllBtn.addEventListener('click', clearAll);
 
     ;['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('dragover') }));
     ;['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); if(ev==='drop'){ addFiles(e.dataTransfer.files) } drop.classList.remove('dragover') }));
