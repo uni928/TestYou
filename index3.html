@@ -509,6 +509,7 @@
   </div>
 
   <script>
+
     (function () {
       const editorSection = document.getElementById("editorSection");
       const viewerSection = document.getElementById("viewerSection");
@@ -531,12 +532,12 @@
 
         if (mode === "text") {
           const pre = document.createElement("pre");
-          pre.textContent = data;
+          pre.textContent = decompressFromBase64String(data);
           viewerContent.innerHTML = "";
           viewerContent.appendChild(pre);
         } else {
           // HTMLとして表示
-          viewerContent.innerHTML = data.replace("\\n", /\n/g);
+          viewerContent.innerHTML = decompressFromBase64String(data);
         }
 
         backToEditor.addEventListener("click", function (e) {
@@ -559,6 +560,23 @@
       const urlLengthLabel = document.getElementById("urlLength");
       const modeInputs = document.querySelectorAll('input[name="renderMode"]');
 
+  // --- UTF-8対応 Base64 ユーティリティ ---
+  function compressToBase64String(text) {
+    const utf8 = encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+      String.fromCharCode(parseInt(p1, 16, 16))
+    );
+    return btoa(utf8);
+  }
+
+  function decompressFromBase64String(base64) {
+    const binary = atob(base64);
+    const percentEscaped = Array.from(binary)
+      .map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join("");
+    return decodeURIComponent(percentEscaped);
+  }
+
+
       function getCurrentMode() {
         const checked = document.querySelector('input[name="renderMode"]:checked');
         return checked ? checked.value : "html";
@@ -566,7 +584,7 @@
 
       function buildUrlFromContent() {
         const base = window.location.origin + window.location.pathname;
-        const content = contentInput.value.replace(/\n/g, "\\n") || "";
+        const content = compressToBase64String(contentInput.value) || "";
         const mode = getCurrentMode();
 
         const p = new URLSearchParams();
