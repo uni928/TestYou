@@ -504,7 +504,7 @@
       <div class="viewer-main" id="viewerContent"></div>
     </div>
   </div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <script>
 
     (function () {
@@ -557,21 +557,12 @@
       const urlLengthLabel = document.getElementById("urlLength");
       const modeInputs = document.querySelectorAll('input[name="renderMode"]');
 
-  // --- UTF-8対応 Base64 ユーティリティ ---
-  function compressToBase64String(text) {
-    const utf8 = encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_, p1) =>
-      String.fromCharCode(parseInt(p1, 16, 16))
-    );
-    return btoa(utf8);
-  }
-
-  function decompressFromBase64String(base64) {
-    const binary = atob(base64);
-    const percentEscaped = Array.from(binary)
-      .map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
-      .join("");
-    return decodeURIComponent(percentEscaped);
-  }
+function compressToBase64String(text) {
+  return LZString.compressToBase64(text);
+}
+function decompressFromBase64String(base64) {
+  return LZString.decompressFromBase64(base64);
+}
 
 
       function getCurrentMode() {
