@@ -558,10 +558,10 @@
       const modeInputs = document.querySelectorAll('input[name="renderMode"]');
 
 function compressToBase64String(text) {
-  return LZString.compressToBase64(text);
+  return LZString.compressToEncodedURIComponent(text);
 }
 function decompressFromBase64String(base64) {
-  return LZString.decompressFromBase64(base64);
+  return LZString.decompressFromEncodedURIComponent(base64);
 }
 
 
