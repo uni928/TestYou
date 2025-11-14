@@ -28,10 +28,11 @@
 
     main {
       display: flex;
+      flex-direction: column; /* ★エディタとビューを縦並びに */
       gap: 8px;
       padding: 8px;
       box-sizing: border-box;
-      height: calc(100vh - 52px);
+      height: calc(100vh - 56px);
     }
 
     .panel {
@@ -43,18 +44,20 @@
     }
 
     #inputPanel {
-      width: 35%;
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      min-height: 35vh;
     }
 
     #viewPanel {
-      width: 65%;
+      flex: 1;
       overflow: auto;
       background: #1e1e1e;
       color: #ddd;
       font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+      min-height: 35vh;
     }
 
     textarea {
@@ -134,12 +137,24 @@
       transition: background 0.4s ease-out;
     }
 
+    .call-highlight {
+      background: rgba(76, 175, 80, 0.25);
+      border-radius: 2px;
+      transition: background 0.4s ease-out;
+    }
+
+    /* ★戻るボタンを大きく */
     #backButton {
       position: fixed;
       right: 16px;
       bottom: 16px;
       z-index: 1000;
+      font-size: 16px;
+      padding: 10px 20px;
+      border-radius: 999px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      background: #ef4444;
+      color: #fff;
     }
 
     #info {
@@ -149,15 +164,10 @@
 
     @media (max-width: 900px) {
       main {
-        flex-direction: column;
         height: auto;
       }
       #inputPanel, #viewPanel {
-        width: 100%;
-        height: 50vh;
-      }
-      #viewPanel {
-        height: 55vh;
+        min-height: 40vh;
       }
     }
   </style>
@@ -166,7 +176,7 @@
 <header>
   <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
   <div style="font-size:12px; opacity:0.8;">
-    メソッド呼び出しをクリック → 宣言へジャンプ &nbsp;/&nbsp; 戻るボタンで元の位置へ
+    メソッド呼び出しクリック → 宣言へジャンプ ／ 戻る → 呼び出し位置へ
   </div>
 </header>
 
@@ -179,7 +189,7 @@
       メソッド宣言の例：<br>
       ・JavaScript: <code>function foo(...) { ... }</code><br>
       ・C/Java/C#: <code>int foo(...) { ... }</code> など<br>
-      呼び出しっぽい <code>foo(...)</code> を自動でリンク化します。
+      呼び出し <code>foo(...)</code> を自動でリンク化して宣言に飛びます。
     </div>
     <div style="display:flex; gap:6px;">
       <button id="analyzeButton">コードを解析して表示</button>
@@ -193,7 +203,7 @@
   </section>
 </main>
 
-<button id="backButton" hidden>戻る</button>
+<button id="backButton" hidden>⬅ 戻る</button>
 
 <script>
   const codeInput = document.getElementById('codeInput');
@@ -202,8 +212,10 @@
   const sampleButton = document.getElementById('sampleButton');
   const backButton = document.getElementById('backButton');
 
+  // 履歴: { scroll: number, callId: string }
   let scrollHistory = [];
   let currentHighlightLine = null;
+  let currentCallHighlight = null;
 
   function escapeHtml(str) {
     return str
@@ -254,6 +266,7 @@
     scrollHistory = [];
     backButton.hidden = true;
     currentHighlightLine = null;
+    currentCallHighlight = null;
 
     const rawLines = codeText.replace(/\t/g, '    ').split('\n');
     const { declInfoPerLine, declarations } = detectDeclarations(rawLines);
@@ -279,7 +292,6 @@
       let match;
 
       while ((match = callRegex.exec(escLine)) !== null) {
-        const full = match[0];
         const name = match[1];
         const after = match[2];
         const startIndex = match.index;
@@ -308,19 +320,23 @@
     });
 
     // 呼び出しにクリックイベントを付与
+    let callIdCounter = 0;
     const callElements = codeContent.querySelectorAll('.code-token.call');
     callElements.forEach(el => {
       const funcName = el.getAttribute('data-func');
       const declList = declarations[funcName];
+      const callId = `call-${callIdCounter++}`;
+      el.id = callId;
+
       if (!declList || declList.length === 0) {
-        // 宣言が見つからない呼び出しはリンクにしない
+        // 宣言が見つからない呼び出しはクリックしても何もしない
         return;
       }
       const targetId = declList[0]; // 同名が複数あっても先頭に飛ぶ簡易実装
       el.dataset.targetId = targetId;
 
       el.addEventListener('click', () => {
-        jumpToDeclaration(targetId);
+        jumpToDeclaration(targetId, callId);
       });
     });
   }
@@ -333,41 +349,72 @@
     selection.addRange(range);
   }
 
-  function jumpToDeclaration(targetId) {
+  // メソッド呼び出しクリック → 宣言へ
+  function jumpToDeclaration(targetId, callId) {
     const targetElement = document.getElementById(targetId);
     if (!targetElement) return;
 
-    // 現在位置を履歴に保存
+    // 現在位置を履歴に保存（スクロール値＋クリックしたメソッドID）
     const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    scrollHistory.push(currentScroll);
+    scrollHistory.push({ scroll: currentScroll, callId: callId });
     backButton.hidden = false;
 
-    // 以前のハイライトを解除
+    // 前のハイライト解除
     if (currentHighlightLine) {
       currentHighlightLine.classList.remove('decl-highlight');
       currentHighlightLine = null;
     }
+    if (currentCallHighlight) {
+      currentCallHighlight.classList.remove('call-highlight');
+      currentCallHighlight = null;
+    }
 
+    // 宣言行
     const lineElement = targetElement.closest('.code-line') || targetElement;
 
     // 宣言行を範囲選択
     selectElementContents(lineElement);
 
-    // ジャンプ（画面中央あたりに来るように）
+    // 宣言行へスクロール（中央あたり）
     lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // 軽いハイライト
+    // 宣言行を軽くハイライト
     lineElement.classList.add('decl-highlight');
     currentHighlightLine = lineElement;
   }
 
+  // 戻る：押したメソッド呼び出し側を選択＆スクロール
   function goBack() {
     if (scrollHistory.length === 0) {
       backButton.hidden = true;
       return;
     }
-    const lastScroll = scrollHistory.pop();
-    window.scrollTo({ top: lastScroll, behavior: 'smooth' });
+
+    const entry = scrollHistory.pop();
+    const callEl = entry.callId ? document.getElementById(entry.callId) : null;
+
+    // 宣言側ハイライト解除
+    if (currentHighlightLine) {
+      currentHighlightLine.classList.remove('decl-highlight');
+      currentHighlightLine = null;
+    }
+    if (currentCallHighlight) {
+      currentCallHighlight.classList.remove('call-highlight');
+      currentCallHighlight = null;
+    }
+
+    if (callEl) {
+      // 呼び出しメソッドを範囲選択＆ハイライト
+      selectElementContents(callEl);
+      callEl.classList.add('call-highlight');
+      currentCallHighlight = callEl;
+
+      // 呼び出し位置へスクロール（やや中央）
+      callEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      // 万一見つからなければスクロール値だけ戻す
+      window.scrollTo({ top: entry.scroll, behavior: 'smooth' });
+    }
 
     if (scrollHistory.length === 0) {
       backButton.hidden = true;
@@ -381,7 +428,7 @@
   backButton.addEventListener('click', goBack);
 
   sampleButton.addEventListener('click', () => {
-    const sample = `// サンプルコード（JavaScript風）
+    const sample = `// サンプルコード（JavaScript + C風）
 
 function add(a, b) {
     return a + b;
@@ -403,7 +450,6 @@ int main() {
 
     int r1 = add(a, b);
     int r2 = mul(a, b);
-
     int r3 = calc(a, b);
 
     return 0;
@@ -418,4 +464,4 @@ int main() {
   });
 </script>
 </body>
-  </html>
+</html>
