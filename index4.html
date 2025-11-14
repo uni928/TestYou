@@ -7,7 +7,7 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, sans-serif;
       background: #f3f3f3;
       color: #222;
     }
@@ -28,11 +28,11 @@
 
     main {
       display: flex;
-      flex-direction: column; /* エディタとビューを縦並び */
+      flex-direction: column;
       gap: 8px;
       padding: 8px;
-      box-sizing: border-box;
       height: calc(100vh - 56px);
+      box-sizing: border-box;
     }
 
     .panel {
@@ -40,7 +40,6 @@
       border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       padding: 8px;
-      box-sizing: border-box;
     }
 
     #inputPanel {
@@ -56,7 +55,7 @@
       overflow: auto;
       background: #1e1e1e;
       color: #ddd;
-      font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-family: "SF Mono", Consolas, monospace;
       min-height: 35vh;
     }
 
@@ -64,88 +63,90 @@
       width: 100%;
       height: 100%;
       resize: none;
-      box-sizing: border-box;
       padding: 8px;
       font-family: inherit;
       font-size: 13px;
-      border-radius: 4px;
       border: 1px solid #ccc;
-    }
-
-    button {
-      border: none;
       border-radius: 4px;
-      padding: 6px 10px;
-      font-size: 12px;
-      cursor: pointer;
-      background: #2563eb;
-      color: #fff;
-    }
-
-    button.secondary {
-      background: #4b5563;
     }
 
     #codeContent {
+      padding: 8px;
+      box-sizing: border-box;
       font-size: 13px;
       line-height: 1.5;
-      padding: 8px;
       white-space: pre;
-      box-sizing: border-box;
     }
 
     .code-line {
       display: flex;
-      align-items: flex-start;
     }
-
     .line-number {
-      display: inline-block;
       width: 3em;
       padding-right: 8px;
       text-align: right;
-      color: #555;
+      color: #777;
       user-select: none;
     }
-
     .code-text {
-      white-space: pre-wrap;
       flex: 1;
+      white-space: pre-wrap;
     }
 
     .code-token.call {
       text-decoration: underline;
-      cursor: pointer;
       color: #4ea1ff;
+      cursor: pointer;
     }
-
     .code-token.decl {
       color: #9cdcfe;
-      font-weight: 600;
+      font-weight: bold;
     }
 
     .decl-highlight {
-      background: rgba(255, 255, 0, 0.18);
-      transition: background 0.4s ease-out;
+      background: rgba(255,255,0,0.18);
+      transition: background 0.4s;
     }
-
     .call-highlight {
-      background: rgba(76, 175, 80, 0.25);
+      background: rgba(76,175,80,0.25);
+      transition: background 0.4s;
       border-radius: 2px;
-      transition: background 0.4s ease-out;
     }
 
+    /* ======================================================
+       ★★ 右下に大きい戻るボタン（レスポンシブ対応） ★★
+       横幅 = 400px または 画面横幅の1/3 の小さい方
+       高さ = ボタン幅の 1/4 で“良い感じ”
+    ====================================================== */
     #backButton {
       position: fixed;
-      right: 16px;
-      bottom: 16px;
-      z-index: 1000;
-      font-size: 16px;
-      padding: 10px 20px;
-      border-radius: 999px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+
+      width: min(400px, 33vw);
+      height: calc(min(400px, 33vw) / 4);
+
       background: #ef4444;
       color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: calc(min(400px, 33vw) / 10);
+      font-weight: bold;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+      cursor: pointer;
+
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+
+    #backButton:active {
+      transform: scale(0.95);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
     }
 
     #info {
@@ -156,27 +157,25 @@
   </style>
 </head>
 <body>
+
 <header>
   <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
-  <div style="font-size:12px; opacity:0.8;">
-    メソッド呼び出し → 宣言へジャンプ ／ 戻る → 呼び出し位置へ
-  </div>
+  <div style="font-size:12px; opacity:0.8;">宣言へジャンプ／戻るで呼び出しへ</div>
 </header>
 
 <main>
   <section id="inputPanel" class="panel">
     <strong>コード入力</strong>
     <div id="info">
-      メソッド宣言の例：function foo(...), int foo(...), void foo(...).<br>
-      宣言がある呼び出しだけリンクになります。
+      宣言があるメソッド呼び出しだけがリンクになります。
     </div>
 
     <div style="display:flex; gap:6px;">
-      <button id="analyzeButton">コードを解析して表示</button>
+      <button id="analyzeButton">解析して表示</button>
       <button id="sampleButton" class="secondary">サンプルコード</button>
     </div>
 
-    <textarea id="codeInput" placeholder="ここにコードを貼り付けてください"></textarea>
+    <textarea id="codeInput"></textarea>
   </section>
 
   <section id="viewPanel" class="panel">
@@ -184,211 +183,191 @@
   </section>
 </main>
 
-<button id="backButton" hidden>⬅ 戻る</button>
+<button id="backButton" hidden>⬅ 呼び出しに戻る</button>
 
 <script>
-  const codeInput = document.getElementById("codeInput");
-  const codeContent = document.getElementById("codeContent");
-  const analyzeButton = document.getElementById("analyzeButton");
-  const sampleButton = document.getElementById("sampleButton");
-  const backButton = document.getElementById("backButton");
+/* === （中略せずすべて含めます：前バージョンと同じ） === */
+/* ========= 以降はそのままのロジック（全文） ========= */
 
-  let scrollHistory = [];
-  let currentHighlightLine = null;
-  let currentCallHighlight = null;
+const codeInput = document.getElementById("codeInput");
+const codeContent = document.getElementById("codeContent");
+const analyzeButton = document.getElementById("analyzeButton");
+const sampleButton = document.getElementById("sampleButton");
+const backButton = document.getElementById("backButton");
 
-  function escapeHtml(str) {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+let scrollHistory = [];
+let currentHighlightLine = null;
+let currentCallHighlight = null;
 
-  function detectDeclarations(lines) {
-    const declInfoPerLine = new Array(lines.length);
-    const declarations = {}; // name → [id]
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/"/g,"&quot;")
+            .replace(/'/g,"&#39;");
+}
 
-    lines.forEach((line, index) => {
-      let m;
-      let declName = null;
+function detectDeclarations(lines) {
+  const declInfoPerLine = new Array(lines.length);
+  const declarations = {};
 
-      // JavaScript: function foo()
-      const js = /^\s*(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/;
-      if ((m = js.exec(line))) declName = m[1];
+  lines.forEach((line, index) => {
+    let m;
+    let name = null;
 
-      // C/Java/C#
-      if (!declName) {
-        const cLike = /^\s*(?:[A-Za-z_][\w<>\[\]\s\*]+)\s+([A-Za-z_]\w*)\s*\(/;
-        if ((m = cLike.exec(line))) declName = m[1];
+    const js = /^\s*(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/;
+    if ((m = js.exec(line))) name = m[1];
+
+    if (!name) {
+      const cLike = /^\s*(?:[A-Za-z_][\w<>\[\]\s\*]+)\s+([A-Za-z_]\w*)\s*\(/;
+      if ((m = cLike.exec(line))) name = m[1];
+    }
+
+    if (name) {
+      const id = `decl-${name}-${index+1}`;
+      declInfoPerLine[index] = { name, id };
+      if (!declarations[name]) declarations[name] = [];
+      declarations[name].push(id);
+    }
+  });
+  return { declInfoPerLine, declarations };
+}
+
+function buildCodeView(codeText) {
+  codeContent.innerHTML = "";
+  scrollHistory = [];
+  backButton.hidden = true;
+
+  const lines = codeText.replace(/\t/g,"    ").split("\n");
+  const { declInfoPerLine, declarations } = detectDeclarations(lines);
+
+  let callIdCounter = 0;
+
+  lines.forEach((raw, index) => {
+    const esc = escapeHtml(raw);
+
+    const lineDiv = document.createElement("div");
+    lineDiv.className = "code-line";
+    lineDiv.dataset.line = index+1;
+
+    const numSpan = document.createElement("span");
+    numSpan.className = "line-number";
+    numSpan.textContent = String(index+1).padStart(3," ");
+
+    const codeSpan = document.createElement("span");
+    codeSpan.className = "code-text";
+
+    const declInfo = declInfoPerLine[index];
+    let html = "";
+    let last = 0;
+    let m;
+    const re = /(\b[A-Za-z_]\w*)(\s*\()/g;
+
+    while ((m = re.exec(esc)) !== null) {
+      const name = m[1];
+      const after = m[2];
+      const s = m.index;
+      const e = re.lastIndex;
+
+      html += esc.slice(last, s);
+
+      const hasDecl = declarations[name]?.length > 0;
+
+      if (declInfo && declInfo.name === name) {
+        html += `<span class="code-token decl" id="${declInfo.id}">${name}</span>${after}`;
+      } else if (hasDecl) {
+        const callId = `call-${callIdCounter++}`;
+        html += `<span class="code-token call" id="${callId}" data-target="${declarations[name][0]}">${name}</span>${after}`;
+      } else {
+        html += `${name}${after}`;
       }
 
-      if (declName) {
-        const id = `decl-${declName}-${index + 1}`;
-        declInfoPerLine[index] = { name: declName, id };
-        if (!declarations[declName]) declarations[declName] = [];
-        declarations[declName].push(id);
-      }
+      last = e;
+    }
+    html += esc.slice(last);
+
+    codeSpan.innerHTML = html;
+
+    lineDiv.appendChild(numSpan);
+    lineDiv.appendChild(codeSpan);
+    codeContent.appendChild(lineDiv);
+  });
+
+  document.querySelectorAll(".code-token.call").forEach(el => {
+    el.addEventListener("click", () => {
+      jumpToDeclaration(el.dataset.target, el.id);
     });
+  });
+}
 
-    return { declInfoPerLine, declarations };
-  }
+function selectElementContents(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+}
 
-  function buildCodeView(codeText) {
-    codeContent.innerHTML = "";
-    scrollHistory = [];
+function jumpToDeclaration(targetId, callId) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  const scrollY = window.scrollY;
+  scrollHistory.push({ scrollY, callId });
+  backButton.hidden = false;
+
+  if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
+  if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
+
+  const lineEl = target.closest(".code-line");
+  selectElementContents(lineEl);
+  lineEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  lineEl.classList.add("decl-highlight");
+  currentHighlightLine = lineEl;
+}
+
+function goBack() {
+  if (scrollHistory.length === 0) {
     backButton.hidden = true;
-
-    const rawLines = codeText.replace(/\t/g, "    ").split("\n");
-    const { declInfoPerLine, declarations } = detectDeclarations(rawLines);
-    let callIdCounter = 0;
-
-    rawLines.forEach((rawLine, index) => {
-      const escLine = escapeHtml(rawLine);
-      const lineDiv = document.createElement("div");
-      lineDiv.className = "code-line";
-      const num = index + 1;
-      lineDiv.dataset.line = num;
-
-      const numSpan = document.createElement("span");
-      numSpan.className = "line-number";
-      numSpan.textContent = String(num).padStart(3, " ");
-
-      const codeSpan = document.createElement("span");
-      codeSpan.className = "code-text";
-
-      const declInfo = declInfoPerLine[index];
-      let resultHtml = "";
-      let last = 0;
-      let m;
-      const re = /(\b[A-Za-z_]\w*)(\s*\()/g;
-
-      while ((m = re.exec(escLine)) !== null) {
-        const name = m[1];
-        const after = m[2];
-        const s = m.index;
-        const e = re.lastIndex;
-
-        resultHtml += escLine.slice(last, s);
-
-        // 宣言がある場合のみ call にする
-        const hasDecl = declarations[name] && declarations[name].length > 0;
-
-        if (declInfo && declInfo.name === name) {
-          // 宣言本体
-          resultHtml += `<span class="code-token decl" id="${declInfo.id}">${name}</span>${after}`;
-        } else if (hasDecl) {
-          // 宣言のある呼び出し → リンク化
-          const callId = `call-${callIdCounter++}`;
-          const targetId = declarations[name][0];
-          resultHtml += `<span class="code-token call" id="${callId}" data-target="${targetId}">${name}</span>${after}`;
-        } else {
-          // 宣言なし → 普通の文字
-          resultHtml += `${name}${after}`;
-        }
-
-        last = e;
-      }
-
-      resultHtml += escLine.slice(last);
-      codeSpan.innerHTML = resultHtml;
-
-      lineDiv.appendChild(numSpan);
-      lineDiv.appendChild(codeSpan);
-      codeContent.appendChild(lineDiv);
-    });
-
-    // クリックイベント付与（宣言のある call のみ）
-    document.querySelectorAll(".code-token.call").forEach(el => {
-      el.addEventListener("click", () => {
-        jumpToDeclaration(el.dataset.target, el.id);
-      });
-    });
+    return;
   }
 
-  function selectElementContents(el) {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+  const entry = scrollHistory.pop();
+  const callEl = document.getElementById(entry.callId);
+
+  if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
+  if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
+
+  if (callEl) {
+    selectElementContents(callEl);
+    callEl.classList.add("call-highlight");
+    currentCallHighlight = callEl;
+
+    callEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else {
+    window.scrollTo({ top: entry.scrollY, behavior: "smooth" });
   }
 
-  function jumpToDeclaration(targetId, callId) {
-    const target = document.getElementById(targetId);
-    if (!target) return;
-
-    // 履歴保存
-    const scrollY = window.scrollY;
-    scrollHistory.push({ scrollY, callId });
-    backButton.hidden = false;
-
-    // 既存ハイライト解除
-    if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
-    if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
-
-    const lineEl = target.closest(".code-line");
-
-    selectElementContents(lineEl);
-    lineEl.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    lineEl.classList.add("decl-highlight");
-    currentHighlightLine = lineEl;
-  }
-
-  function goBack() {
-    if (scrollHistory.length === 0) {
-      backButton.hidden = true;
-      return;
-    }
-
-    const entry = scrollHistory.pop();
-    const callEl = document.getElementById(entry.callId);
-
-    if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
-    if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
-
-    if (callEl) {
-      selectElementContents(callEl);
-      callEl.classList.add("call-highlight");
-      currentCallHighlight = callEl;
-
-      callEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    } else {
-      window.scrollTo({ top: entry.scrollY, behavior: "smooth" });
-    }
-
-    if (scrollHistory.length === 0) backButton.hidden = true;
-  }
-
-  analyzeButton.addEventListener("click", () => {
-    buildCodeView(codeInput.value);
-  });
-
-  backButton.addEventListener("click", goBack);
-
-  sampleButton.addEventListener("click", () => {
-    const sample = `// サンプル（宣言があるものだけリンクされます）
-
-function add(a, b) {
-    return a + b;
+  if (scrollHistory.length === 0) backButton.hidden = true;
 }
 
-function mul(a, b) {
-    return a * b;
-}
+analyzeButton.addEventListener("click", () => {
+  buildCodeView(codeInput.value);
+});
 
-function calc(x, y) {
-    return add(x, y) + mul(x, y) + unknown(x, y); // unknown はただの文字になる
-}`;
-    codeInput.value = sample;
-    buildCodeView(sample);
-  });
+backButton.addEventListener("click", goBack);
 
-  window.addEventListener("DOMContentLoaded", () => {
-    sampleButton.click();
-  });
+sampleButton.addEventListener("click", () => {
+  const sample = `function add(a,b){ return a+b; }
+function mul(a,b){ return a*b; }
+function calc(x,y){ return add(x,y) + mul(x,y) + unknown(x,y); }`;
+  codeInput.value = sample;
+  buildCodeView(sample);
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  sampleButton.click();
+});
 </script>
 
 </body>
