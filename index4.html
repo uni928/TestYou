@@ -28,7 +28,7 @@
 
     main {
       display: flex;
-      flex-direction: column; /* ★エディタとビューを縦並びに */
+      flex-direction: column; /* エディタとビューを縦並び */
       gap: 8px;
       padding: 8px;
       box-sizing: border-box;
@@ -80,26 +80,18 @@
       cursor: pointer;
       background: #2563eb;
       color: #fff;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
     }
 
     button.secondary {
       background: #4b5563;
     }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
     #codeContent {
       font-size: 13px;
       line-height: 1.5;
       padding: 8px;
-      box-sizing: border-box;
       white-space: pre;
+      box-sizing: border-box;
     }
 
     .code-line {
@@ -143,7 +135,6 @@
       transition: background 0.4s ease-out;
     }
 
-    /* ★戻るボタンを大きく */
     #backButton {
       position: fixed;
       right: 16px;
@@ -162,40 +153,30 @@
       color: #555;
     }
 
-    @media (max-width: 900px) {
-      main {
-        height: auto;
-      }
-      #inputPanel, #viewPanel {
-        min-height: 40vh;
-      }
-    }
   </style>
 </head>
 <body>
 <header>
   <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
   <div style="font-size:12px; opacity:0.8;">
-    メソッド呼び出しクリック → 宣言へジャンプ ／ 戻る → 呼び出し位置へ
+    メソッド呼び出し → 宣言へジャンプ ／ 戻る → 呼び出し位置へ
   </div>
 </header>
 
 <main>
   <section id="inputPanel" class="panel">
-    <div>
-      <strong>コード入力</strong>
-    </div>
+    <strong>コード入力</strong>
     <div id="info">
-      メソッド宣言の例：<br>
-      ・JavaScript: <code>function foo(...) { ... }</code><br>
-      ・C/Java/C#: <code>int foo(...) { ... }</code> など<br>
-      呼び出し <code>foo(...)</code> を自動でリンク化して宣言に飛びます。
+      メソッド宣言の例：function foo(...), int foo(...), void foo(...).<br>
+      宣言がある呼び出しだけリンクになります。
     </div>
+
     <div style="display:flex; gap:6px;">
       <button id="analyzeButton">コードを解析して表示</button>
-      <button id="sampleButton" class="secondary">サンプルコードを入れる</button>
+      <button id="sampleButton" class="secondary">サンプルコード</button>
     </div>
-    <textarea id="codeInput" placeholder="ここにプログラムのコードを貼り付けてください"></textarea>
+
+    <textarea id="codeInput" placeholder="ここにコードを貼り付けてください"></textarea>
   </section>
 
   <section id="viewPanel" class="panel">
@@ -206,54 +187,47 @@
 <button id="backButton" hidden>⬅ 戻る</button>
 
 <script>
-  const codeInput = document.getElementById('codeInput');
-  const codeContent = document.getElementById('codeContent');
-  const analyzeButton = document.getElementById('analyzeButton');
-  const sampleButton = document.getElementById('sampleButton');
-  const backButton = document.getElementById('backButton');
+  const codeInput = document.getElementById("codeInput");
+  const codeContent = document.getElementById("codeContent");
+  const analyzeButton = document.getElementById("analyzeButton");
+  const sampleButton = document.getElementById("sampleButton");
+  const backButton = document.getElementById("backButton");
 
-  // 履歴: { scroll: number, callId: string }
   let scrollHistory = [];
   let currentHighlightLine = null;
   let currentCallHighlight = null;
 
   function escapeHtml(str) {
     return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function detectDeclarations(lines) {
     const declInfoPerLine = new Array(lines.length);
-    const declarations = {}; // name -> [id,...]
+    const declarations = {}; // name → [id]
 
     lines.forEach((line, index) => {
       let m;
       let declName = null;
 
-      // JS: function foo(...)
-      const jsFunc = /^\s*(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/;
-      if ((m = jsFunc.exec(line))) {
-        declName = m[1];
-      }
+      // JavaScript: function foo()
+      const js = /^\s*(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/;
+      if ((m = js.exec(line))) declName = m[1];
 
-      // C/Java/C#: int foo(...), void foo(...), SomeType foo(...)
+      // C/Java/C#
       if (!declName) {
         const cLike = /^\s*(?:[A-Za-z_][\w<>\[\]\s\*]+)\s+([A-Za-z_]\w*)\s*\(/;
-        if ((m = cLike.exec(line))) {
-          declName = m[1];
-        }
+        if ((m = cLike.exec(line))) declName = m[1];
       }
 
       if (declName) {
         const id = `decl-${declName}-${index + 1}`;
         declInfoPerLine[index] = { name: declName, id };
-        if (!declarations[declName]) {
-          declarations[declName] = [];
-        }
+        if (!declarations[declName]) declarations[declName] = [];
         declarations[declName].push(id);
       }
     });
@@ -262,128 +236,107 @@
   }
 
   function buildCodeView(codeText) {
-    codeContent.innerHTML = '';
+    codeContent.innerHTML = "";
     scrollHistory = [];
     backButton.hidden = true;
-    currentHighlightLine = null;
-    currentCallHighlight = null;
 
-    const rawLines = codeText.replace(/\t/g, '    ').split('\n');
+    const rawLines = codeText.replace(/\t/g, "    ").split("\n");
     const { declInfoPerLine, declarations } = detectDeclarations(rawLines);
+    let callIdCounter = 0;
 
     rawLines.forEach((rawLine, index) => {
       const escLine = escapeHtml(rawLine);
+      const lineDiv = document.createElement("div");
+      lineDiv.className = "code-line";
+      const num = index + 1;
+      lineDiv.dataset.line = num;
 
-      const lineDiv = document.createElement('div');
-      lineDiv.className = 'code-line';
-      lineDiv.dataset.line = index + 1;
+      const numSpan = document.createElement("span");
+      numSpan.className = "line-number";
+      numSpan.textContent = String(num).padStart(3, " ");
 
-      const lineNumberSpan = document.createElement('span');
-      lineNumberSpan.className = 'line-number';
-      lineNumberSpan.textContent = String(index + 1).padStart(3, ' ');
-
-      const codeSpan = document.createElement('span');
-      codeSpan.className = 'code-text';
+      const codeSpan = document.createElement("span");
+      codeSpan.className = "code-text";
 
       const declInfo = declInfoPerLine[index];
-      const callRegex = /(\b[A-Za-z_]\w*)(\s*\()/g;
-      let resultHtml = '';
-      let lastIndex = 0;
-      let match;
+      let resultHtml = "";
+      let last = 0;
+      let m;
+      const re = /(\b[A-Za-z_]\w*)(\s*\()/g;
 
-      while ((match = callRegex.exec(escLine)) !== null) {
-        const name = match[1];
-        const after = match[2];
-        const startIndex = match.index;
-        const endIndex = callRegex.lastIndex;
+      while ((m = re.exec(escLine)) !== null) {
+        const name = m[1];
+        const after = m[2];
+        const s = m.index;
+        const e = re.lastIndex;
 
-        resultHtml += escLine.slice(lastIndex, startIndex);
+        resultHtml += escLine.slice(last, s);
+
+        // 宣言がある場合のみ call にする
+        const hasDecl = declarations[name] && declarations[name].length > 0;
 
         if (declInfo && declInfo.name === name) {
-          // 宣言
-          const id = declInfo.id;
-          resultHtml += `<span class="code-token decl" id="${id}" data-func="${name}">${name}</span>${after}`;
+          // 宣言本体
+          resultHtml += `<span class="code-token decl" id="${declInfo.id}">${name}</span>${after}`;
+        } else if (hasDecl) {
+          // 宣言のある呼び出し → リンク化
+          const callId = `call-${callIdCounter++}`;
+          const targetId = declarations[name][0];
+          resultHtml += `<span class="code-token call" id="${callId}" data-target="${targetId}">${name}</span>${after}`;
         } else {
-          // 呼び出し
-          resultHtml += `<span class="code-token call" data-func="${name}">${name}</span>${after}`;
+          // 宣言なし → 普通の文字
+          resultHtml += `${name}${after}`;
         }
 
-        lastIndex = endIndex;
+        last = e;
       }
 
-      resultHtml += escLine.slice(lastIndex);
+      resultHtml += escLine.slice(last);
       codeSpan.innerHTML = resultHtml;
 
-      lineDiv.appendChild(lineNumberSpan);
+      lineDiv.appendChild(numSpan);
       lineDiv.appendChild(codeSpan);
       codeContent.appendChild(lineDiv);
     });
 
-    // 呼び出しにクリックイベントを付与
-    let callIdCounter = 0;
-    const callElements = codeContent.querySelectorAll('.code-token.call');
-    callElements.forEach(el => {
-      const funcName = el.getAttribute('data-func');
-      const declList = declarations[funcName];
-      const callId = `call-${callIdCounter++}`;
-      el.id = callId;
-
-      if (!declList || declList.length === 0) {
-        // 宣言が見つからない呼び出しはクリックしても何もしない
-        return;
-      }
-      const targetId = declList[0]; // 同名が複数あっても先頭に飛ぶ簡易実装
-      el.dataset.targetId = targetId;
-
-      el.addEventListener('click', () => {
-        jumpToDeclaration(targetId, callId);
+    // クリックイベント付与（宣言のある call のみ）
+    document.querySelectorAll(".code-token.call").forEach(el => {
+      el.addEventListener("click", () => {
+        jumpToDeclaration(el.dataset.target, el.id);
       });
     });
   }
 
-  function selectElementContents(element) {
+  function selectElementContents(el) {
     const range = document.createRange();
-    range.selectNodeContents(element);
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
   }
 
-  // メソッド呼び出しクリック → 宣言へ
   function jumpToDeclaration(targetId, callId) {
-    const targetElement = document.getElementById(targetId);
-    if (!targetElement) return;
+    const target = document.getElementById(targetId);
+    if (!target) return;
 
-    // 現在位置を履歴に保存（スクロール値＋クリックしたメソッドID）
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    scrollHistory.push({ scroll: currentScroll, callId: callId });
+    // 履歴保存
+    const scrollY = window.scrollY;
+    scrollHistory.push({ scrollY, callId });
     backButton.hidden = false;
 
-    // 前のハイライト解除
-    if (currentHighlightLine) {
-      currentHighlightLine.classList.remove('decl-highlight');
-      currentHighlightLine = null;
-    }
-    if (currentCallHighlight) {
-      currentCallHighlight.classList.remove('call-highlight');
-      currentCallHighlight = null;
-    }
+    // 既存ハイライト解除
+    if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
+    if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
 
-    // 宣言行
-    const lineElement = targetElement.closest('.code-line') || targetElement;
+    const lineEl = target.closest(".code-line");
 
-    // 宣言行を範囲選択
-    selectElementContents(lineElement);
+    selectElementContents(lineEl);
+    lineEl.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    // 宣言行へスクロール（中央あたり）
-    lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    // 宣言行を軽くハイライト
-    lineElement.classList.add('decl-highlight');
-    currentHighlightLine = lineElement;
+    lineEl.classList.add("decl-highlight");
+    currentHighlightLine = lineEl;
   }
 
-  // 戻る：押したメソッド呼び出し側を選択＆スクロール
   function goBack() {
     if (scrollHistory.length === 0) {
       backButton.hidden = true;
@@ -391,44 +344,32 @@
     }
 
     const entry = scrollHistory.pop();
-    const callEl = entry.callId ? document.getElementById(entry.callId) : null;
+    const callEl = document.getElementById(entry.callId);
 
-    // 宣言側ハイライト解除
-    if (currentHighlightLine) {
-      currentHighlightLine.classList.remove('decl-highlight');
-      currentHighlightLine = null;
-    }
-    if (currentCallHighlight) {
-      currentCallHighlight.classList.remove('call-highlight');
-      currentCallHighlight = null;
-    }
+    if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
+    if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
 
     if (callEl) {
-      // 呼び出しメソッドを範囲選択＆ハイライト
       selectElementContents(callEl);
-      callEl.classList.add('call-highlight');
+      callEl.classList.add("call-highlight");
       currentCallHighlight = callEl;
 
-      // 呼び出し位置へスクロール（やや中央）
-      callEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      callEl.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
-      // 万一見つからなければスクロール値だけ戻す
-      window.scrollTo({ top: entry.scroll, behavior: 'smooth' });
+      window.scrollTo({ top: entry.scrollY, behavior: "smooth" });
     }
 
-    if (scrollHistory.length === 0) {
-      backButton.hidden = true;
-    }
+    if (scrollHistory.length === 0) backButton.hidden = true;
   }
 
-  analyzeButton.addEventListener('click', () => {
+  analyzeButton.addEventListener("click", () => {
     buildCodeView(codeInput.value);
   });
 
-  backButton.addEventListener('click', goBack);
+  backButton.addEventListener("click", goBack);
 
-  sampleButton.addEventListener('click', () => {
-    const sample = `// サンプルコード（JavaScript + C風）
+  sampleButton.addEventListener("click", () => {
+    const sample = `// サンプル（宣言があるものだけリンクされます）
 
 function add(a, b) {
     return a + b;
@@ -439,29 +380,16 @@ function mul(a, b) {
 }
 
 function calc(x, y) {
-    const s = add(x, y);
-    const m = mul(x, y);
-    return add(s, m);
-}
-
-int main() {
-    int a = 3;
-    int b = 5;
-
-    int r1 = add(a, b);
-    int r2 = mul(a, b);
-    int r3 = calc(a, b);
-
-    return 0;
+    return add(x, y) + mul(x, y) + unknown(x, y); // unknown はただの文字になる
 }`;
     codeInput.value = sample;
     buildCodeView(sample);
   });
 
-  // 初期状態：サンプルを自動表示
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener("DOMContentLoaded", () => {
     sampleButton.click();
   });
 </script>
+
 </body>
 </html>
