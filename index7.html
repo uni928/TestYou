@@ -1,1 +1,483 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>歯磨き案内サイト</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 640px;
+      width: 100%;
+      background: #ffffff;
+      margin: 24px;
+      padding: 24px 20px 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+    .subtitle {
+      margin: 0 0 20px;
+      color: #555;
+      font-size: 0.9rem;
+      text-align: center;
+    }
 
+    .settings-section {
+      border: 1px solid #e0e4f1;
+      border-radius: 12px;
+      padding: 14px 12px 10px;
+      margin-bottom: 18px;
+      background: #f9faff;
+    }
+    .settings-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .settings-title span.icon {
+      font-size: 1.1rem;
+    }
+    .duration-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+    .duration-option {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9rem;
+      padding: 4px 6px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .duration-option input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .duration-option:hover {
+      background: #eef2ff;
+    }
+    .duration-note {
+      font-size: 0.8rem;
+      color: #777;
+      margin-top: 6px;
+    }
+    .saved-status {
+      font-size: 0.8rem;
+      color: #4a6fdc;
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    button#startButton {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #4f46e5;
+      color: white;
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s;
+    }
+    button#startButton:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+    }
+    button#startButton:disabled {
+      opacity: 0.6;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .message-area {
+      border-radius: 14px;
+      border: 1px solid #dde2f5;
+      background: #f8f9ff;
+      padding: 14px 14px 10px;
+      min-height: 82px;
+      box-sizing: border-box;
+    }
+    .message-label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .message-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #222;
+      min-height: 28px;
+    }
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #555;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: #e0ebff;
+      border-radius: 999px;
+      font-size: 0.75rem;
+    }
+    .chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>歯磨き案内</h1>
+    <p class="subtitle">ボタンを押すと、右奥歯の磨く位置を順番に案内します。</p>
+
+    <section class="settings-section">
+      <div class="settings-title">
+        <span class="icon">⏱️</span> 磨く時間の長さ
+      </div>
+      <div class="duration-options">
+        <label class="duration-option">
+          <input type="checkbox" name="duration" value="very-long" id="duration-very-long">
+          <span>とても長い</span>
+        </label>
+        <label class="duration-option">
+          <input type="checkbox" name="duration" value="long" id="duration-long">
+          <span>長め</span>
+        </label>
+        <label class="duration-option">
+          <input type="checkbox" name="duration" value="normal" id="duration-normal">
+          <span>普通</span>
+        </label>
+        <label class="duration-option">
+          <input type="checkbox" name="duration" value="short" id="duration-short">
+          <span>短め</span>
+        </label>
+        <label class="duration-option">
+          <input type="checkbox" name="duration" value="very-short" id="duration-very-short">
+          <span>とても短い</span>
+        </label>
+      </div>
+      <div class="duration-note">
+        ※選んだ長さに合わせて、案内の表示時間（秒数）が変わります。<br>
+        ※選択内容は自動で保存され、次回も引き継がれます（IndexedDB）。
+      </div>
+      <div class="saved-status" id="savedStatus"></div>
+    </section>
+
+    <div class="controls">
+      <button id="startButton">歯磨き開始</button>
+    </div>
+
+    <section class="message-area">
+      <div class="message-label">今の案内</div>
+      <div class="message-text" id="messageText">ボタンを押すと案内を開始します。</div>
+      <div class="status-line">
+        <div id="countdownInfo">待機中</div>
+        <div class="chip">
+          <span class="chip-dot"></span>
+          <span id="modeLabel">普通（推奨）</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ===== IndexedDB 周り =====
+    const DB_NAME = 'toothbrush-settings-db';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'settings';
+    let dbInstance = null;
+
+    function openSettingsDB() {
+      return new Promise((resolve, reject) => {
+        if (dbInstance) {
+          resolve(dbInstance);
+          return;
+        }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+
+        request.onsuccess = (event) => {
+          dbInstance = event.target.result;
+          resolve(dbInstance);
+        };
+
+        request.onerror = (event) => {
+          console.error('IndexedDB エラー:', event.target.error);
+          reject(event.target.error);
+        };
+      });
+    }
+
+    function saveDurationSetting(durationValue) {
+      return openSettingsDB().then((db) => {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          store.put({ id: 'duration', value: durationValue });
+
+          tx.oncomplete = () => resolve();
+          tx.onerror = (event) => {
+            console.error('保存に失敗しました:', event.target.error);
+            reject(event.target.error);
+          };
+        });
+      });
+    }
+
+    function loadDurationSetting() {
+      return openSettingsDB().then((db) => {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const request = store.get('duration');
+
+          request.onsuccess = () => {
+            if (request.result) {
+              resolve(request.result.value);
+            } else {
+              resolve(null);
+            }
+          };
+          request.onerror = (event) => {
+            console.error('読み込みに失敗しました:', event.target.error);
+            reject(event.target.error);
+          };
+        });
+      });
+    }
+
+    // ===== UI & ロジック =====
+    const durationCheckBoxes = Array.from(document.querySelectorAll('input[name="duration"]'));
+    const savedStatusEl = document.getElementById('savedStatus');
+    const modeLabelEl = document.getElementById('modeLabel');
+    const messageTextEl = document.getElementById('messageText');
+    const countdownInfoEl = document.getElementById('countdownInfo');
+    const startButton = document.getElementById('startButton');
+
+    const MESSAGES = [
+  // --- 右上奥（外側〜内側〜噛み合わせ） ---
+  "右上奥歯の外側（1本目〜3本目）を磨いて下さい。",
+  "右上奥歯の内側（1本目〜3本目）を磨いて下さい。",
+  "右上奥歯の噛み合わせ面（1本目〜3本目）を磨いて下さい。",
+
+  // --- 右上前歯 ---
+  "右上前歯の外側を磨いて下さい。",
+  "右上前歯の内側を磨いて下さい。",
+  "右上前歯の噛み合わせ面を磨いて下さい。",
+
+  // --- 左上前歯 → 左上奥 ---
+  "左上前歯の外側を磨いて下さい。",
+  "左上前歯の内側を磨いて下さい。",
+  "左上前歯の噛み合わせ面を磨いて下さい。",
+  "左上奥歯の外側（1本目〜3本目）を磨いて下さい。",
+  "左上奥歯の内側（1本目〜3本目）を磨いて下さい。",
+  "左上奥歯の噛み合わせ面（1本目〜3本目）を磨いて下さい。",
+
+  // --- 左下奥（外側〜内側〜噛み合わせ） ---
+  "左下奥歯の外側（1本目〜3本目）を磨いて下さい。",
+  "左下奥歯の内側（1本目〜3本目）を磨いて下さい.",
+  "左下奥歯の噛み合わせ面（1本目〜3本目）を磨いて下さい。",
+
+  // --- 左下前歯 ---
+  "左下前歯の外側を磨いて下さい。",
+  "左下前歯の内側を磨いて下さい。",
+  "左下前歯の噛み合わせ面を磨いて下さい。",
+
+  // --- 右下前歯 → 右下奥 ---
+  "右下前歯の外側を磨いて下さい。",
+  "右下前歯の内側を磨いて下さい。",
+  "右下前歯の噛み合わせ面を磨いて下さい。",
+  "右下奥歯の外側（1本目〜3本目）を磨いて下さい。",
+  "右下奥歯の内側（1本目〜3本目）を磨いて下さい。",
+  "右下奥歯の噛み合わせ面（1本目〜3本目）を磨いて下さい。"
+];
+    let currentStepIndex = 0;
+    let timerId = null;
+    let countdownTimerId = null;
+    let currentRemainingSec = 0;
+
+    // 各モードに対応する表示秒数（お好みで調整してください）
+    const durationSecondsTable = {
+      'very-long': 25,
+      'long': 20,
+      'normal': 15,
+      'short': 10,
+      'very-short': 7
+    };
+
+    const durationLabelMap = {
+      'very-long': 'とても長い',
+      'long': '長め',
+      'normal': '普通',
+      'short': '短め',
+      'very-short': 'とても短い'
+    };
+
+    function getSelectedDurationValue() {
+      const selected = durationCheckBoxes.find(cb => cb.checked);
+      return selected ? selected.value : null;
+    }
+
+    function applyModeLabel(value) {
+      const label = durationLabelMap[value] || '普通（推奨）';
+      modeLabelEl.textContent = label;
+    }
+
+    function updateSavedStatus(text) {
+      savedStatusEl.textContent = text || '';
+    }
+
+    function selectDurationCheckbox(value) {
+      durationCheckBoxes.forEach(cb => {
+        cb.checked = (cb.value === value);
+      });
+      applyModeLabel(value);
+    }
+
+    // チェックボックスを「どれか1つだけON」にする
+    durationCheckBoxes.forEach(cb => {
+      cb.addEventListener('change', (event) => {
+        if (event.target.checked) {
+          // 他を全てOFFにする
+          durationCheckBoxes.forEach(other => {
+            if (other !== event.target) {
+              other.checked = false;
+            }
+          });
+          const value = event.target.value;
+          applyModeLabel(value);
+          saveDurationSetting(value)
+            .then(() => {
+              updateSavedStatus('選択内容を保存しました。');
+              setTimeout(() => updateSavedStatus(''), 2000);
+            })
+            .catch(() => {
+              updateSavedStatus('保存に失敗しました（ブラウザの設定をご確認ください）。');
+            });
+        } else {
+          // すべてOFFになった場合は特に保存しないが、モードラベルはデフォルトへ
+          if (!getSelectedDurationValue()) {
+            applyModeLabel('normal');
+          }
+        }
+      });
+    });
+
+    function getDurationSeconds() {
+      const selected = getSelectedDurationValue();
+      if (selected && durationSecondsTable[selected]) {
+        return durationSecondsTable[selected];
+      }
+      // 未選択なら普通にする
+      return durationSecondsTable['normal'];
+    }
+
+    function clearTimers() {
+      if (timerId !== null) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      if (countdownTimerId !== null) {
+        clearInterval(countdownTimerId);
+        countdownTimerId = null;
+      }
+    }
+
+    function startCountdown(seconds) {
+      clearInterval(countdownTimerId);
+      currentRemainingSec = seconds;
+      countdownInfoEl.textContent = `あと ${currentRemainingSec} 秒`;
+
+      countdownTimerId = setInterval(() => {
+        currentRemainingSec -= 1;
+        if (currentRemainingSec <= 0) {
+          countdownInfoEl.textContent = '次の案内に切り替えます…';
+          clearInterval(countdownTimerId);
+          countdownTimerId = null;
+        } else {
+          countdownInfoEl.textContent = `あと ${currentRemainingSec} 秒`;
+        }
+      }, 1000);
+    }
+
+    function runStepLoop() {
+      const durationSec = getDurationSeconds();
+      const msg = MESSAGES[currentStepIndex];
+
+      messageTextEl.textContent = msg;
+      startCountdown(durationSec);
+
+      timerId = setTimeout(() => {
+        currentStepIndex = (currentStepIndex + 1) % MESSAGES.length;
+        runStepLoop();
+      }, durationSec * 1000);
+    }
+
+    startButton.addEventListener('click', () => {
+      // 既存のループをリセットして最初から
+      clearTimers();
+      currentStepIndex = 0;
+      countdownInfoEl.textContent = '案内中…';
+      runStepLoop();
+    });
+
+    // 初期化：保存済みの設定を読み込む
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDurationSetting()
+        .then((value) => {
+          if (value && durationSecondsTable[value]) {
+            selectDurationCheckbox(value);
+            updateSavedStatus('前回の選択内容を読み込みました。');
+            setTimeout(() => updateSavedStatus(''), 2000);
+          } else {
+            // 何も保存されていなければ「普通」をデフォルト選択
+            selectDurationCheckbox('normal');
+          }
+        })
+        .catch(() => {
+          updateSavedStatus('設定の読み込みに失敗しました。');
+        });
+    });
+  </script>
+</body>
+                    </html>
