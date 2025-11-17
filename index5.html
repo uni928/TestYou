@@ -1,1 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>飲食店ガチャ（1000円以内メニュー）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --accent: #ff7b54;
+      --accent-dark: #e35f38;
+      --text-main: #222;
+      --text-sub: #666;
+      --border: #ddd;
+      --radius-lg: 12px;
+      --radius-xl: 18px;
+      --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.06);
+    }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 12px 40px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top left, #ffe9dd, #f5f5f7 40%);
+      color: var(--text-main);
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .header-card {
+      background: linear-gradient(135deg, #ffffffcc, #ffe8db);
+      border-radius: 24px;
+      padding: 20px 20px 18px;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.8);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title-area {
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      line-height: 1.6;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.8);
+      font-size: 0.75rem;
+      color: var(--accent-dark);
+      margin-bottom: 6px;
+    }
+
+    .pill span {
+      font-weight: 600;
+    }
+
+    .control-area {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      min-width: 170px;
+    }
+
+    #rollButton {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out,
+        background 0.1s ease-out;
+    }
+
+    #rollButton:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+      background: var(--accent-dark);
+    }
+
+    #rollButton:active {
+      transform: translateY(0);
+      box-shadow: 0 5px 12px rgba(0,0,0,0.2);
+    }
+
+    #rollButton:disabled {
+      opacity: 0.6;
+      cursor: progress;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .dice {
+      font-size: 1.1rem;
+    }
+
+    .note {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      text-align: right;
+    }
+
+    .main-card {
+      margin-top: 20px;
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      padding: 16px 16px 8px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #ececec;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .result-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .result-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .result-list {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .result-item {
+      display: flex;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: #fafafa;
+    }
+
+    .result-rank {
+      flex: 0 0 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--accent-dark);
+    }
+
+    .result-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .chain-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .menu-name {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .genre-tag {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      background: #ffe9dd;
+      color: var(--accent-dark);
+    }
+
+    .price-hint {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    .empty-message {
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      padding: 10px 4px 14px;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 16px 10px 28px;
+      }
+      .header-card {
+        padding: 16px 14px 14px;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      .control-area {
+        align-items: flex-start;
+      }
+      .result-item {
+        padding: 8px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header-card">
+      <div class="title-area">
+        <div class="pill">
+          <span>飲食店ガチャ</span>
+          <span>1000円以内メニュー</span>
+        </div>
+        <h1>どの店に行くか迷ったら、ガチャで決める。</h1>
+        <p class="subtitle">
+          「提案する」を押すと、チェーン飲食店＋1000円以内くらいのメニューを
+          10件ランダム表示します。<br>
+          どれか1つを選んで、そのまま今日のごはんにどうぞ。
+        </p>
+      </div>
+      <div class="control-area">
+        <button id="rollButton">
+          <span class="dice">🎲</span>
+          <span>提案する</span>
+        </button>
+        <div class="note">
+          リストを増やすときは<br>ソース内の配列に追加するだけでOK
+        </div>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="result-header">
+        <div class="result-title">本日のガチャ結果（10件）</div>
+        <div class="result-subtitle">ボタンを押すたびにシャッフルされます</div>
+      </div>
+      <ul id="results" class="result-list">
+        <!-- 最初は空。JSで埋めます。 -->
+      </ul>
+
+      <div class="footer-note">
+        ※リストは「一人分1000円以内になりやすいメニュー」のみを手作業で登録していますが、
+        店舗・時間帯・地域により価格が変わる場合があります。<br>
+        実際に行く前に、公式サイトや店頭で最新の価格をご確認ください。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================================
+    //  メニューリスト
+    //  ここに追加していけばOK
+    // ================================
+    const menuItems = [
+      // --- ファストフード：マクドナルド ---
+      { chain: "マクドナルド", menu: "てりやきマックバーガーセット（ポテトM＋ドリンクM）", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "ビッグマックセット", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "ダブルチーズバーガーセット", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "フィレオフィッシュセット", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "チキンフィレオセット", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "ハンバーガーセット（シンプルに）", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "エグチセット（エッグチーズバーガー）", genre: "ファストフード" },
+      { chain: "マクドナルド", menu: "マックチキンセット（軽めに済ませたいとき）", genre: "ファストフード" },
+
+      // --- ファストフード：モスバーガー
