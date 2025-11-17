@@ -509,6 +509,7 @@ function updateTotalTimeDisplay() {
           if (value && durationSecondsTable[value]) {
             selectDurationCheckbox(value);
             updateSavedStatus('前回の選択内容を読み込みました。');
+            updateTotalTimeDisplay();
             setTimeout(() => updateSavedStatus(''), 2000);
           } else {
             // 何も保存されていなければ「普通」をデフォルト選択
