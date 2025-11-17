@@ -1,1 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ひらがな消しゲーム</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .game-container {
+            background: #ffffff;
+            max-width: 800px;
+            width: 100%;
+            padding: 20px 24px 28px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 22px;
+            text-align: center;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+        .status-item {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            text-align: center;
+            font-size: 14px;
+        }
+        .status-label {
+            color: #666;
+            font-size: 12px;
+        }
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #1976d2;
+            color: #fff;
+            transition: transform 0.05s ease, box-shadow 0.1s ease, background 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        button:hover:not(:disabled) {
+            background: #1565c0;
+        }
+        button:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+            box-shadow: none;
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        #inputField {
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        #shootButton {
+            white-space: nowrap;
+            background: #e53935;
+        }
+        #shootButton:hover:not(:disabled) {
+            background: #d32f2f;
+        }
+        .kana-row-wrapper {
+            border-radius: 10px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            padding: 10px 12px;
+        }
+        .kana-row-title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        #kanaRow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-height: 32px;
+        }
+        .kana-cell {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: #ffffff;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .kana-cell.first {
+            border-color: #ff9800;
+            box-shadow: 0 0 0 1px rgba(255,152,0,0.2);
+        }
+        .info {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .info ul {
+            margin-top: 4px;
+            padding-left: 20px;
+        }
+        .highlight {
+            color: #e53935;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <h1>ひらがな消しゲーム</h1>
 
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-label">残り時間</div>
+            <div class="status-value" id="timeDisplay">60</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">スコア（消した文字数）</div>
+            <div class="status-value" id="scoreDisplay">0</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="startButton">ゲーム開始</button>
+    </div>
+
+    <div class="input-row">
+        <input id="inputField" type="text" placeholder="ここにひらがなを入力" disabled>
+        <button id="shootButton" disabled>放つ</button>
+    </div>
+
+    <div class="kana-row-wrapper">
+        <div class="kana-row-title">▶ 目標のひらがな（左端と入力欄の末尾が一致すると消えます）</div>
+        <div id="kanaRow"></div>
+    </div>
+
+    <div class="info">
+        遊び方:
+        <ul>
+            <li>「ゲーム開始」を押すと <span class="highlight">60秒</span> のカウントダウンが始まります。</li>
+            <li>入力欄にひらがなを入力して「<span class="highlight">放つ</span>」ボタン（または Enterキー）を押します。</li>
+            <li>入力欄の<span class="highlight">一番後ろの文字</span>と、右の列の<span class="highlight">一番左のひらがな</span>が一致すると、両方が消えてスコア+1。</li>
+            <li>一致した状態が続く限り、自動で連続して消えていきます（連鎖）。</li>
+            <li>60秒間でどれだけ文字を消せるかを競いましょう！</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // ひらがな一覧（必要に応じて増やしてください）
+    const HIRAGANA_LIST = [
+        "あ","い","う","え","お",
+        "か","き","く","け","こ",
+        "さ","し","す","せ","そ",
+        "た","ち","つ","て","と",
+        "な","に","ぬ","ね","の",
+        "は","ひ","ふ","へ","ほ",
+        "ま","み","む","め","も",
+        "や","ゆ","よ",
+        "ら","り","る","れ","ろ",
+        "わ","を","ん"
+    ];
+
+    const KANA_ROW_LENGTH = 20;
+    let kanaRowArray = [];
+    let score = 0;
+    let timeLeft = 60;
+    let timerId = null;
+    let isRunning = false;
+
+    const inputField   = document.getElementById("inputField");
+    const shootButton  = document.getElementById("shootButton");
+    const startButton  = document.getElementById("startButton");
+    const kanaRowDiv   = document.getElementById("kanaRow");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const timeDisplay  = document.getElementById("timeDisplay");
+
+    function randomKana() {
+        const idx = Math.floor(Math.random() * HIRAGANA_LIST.length);
+        return HIRAGANA_LIST[idx];
+    }
+
+    function initKanaRow() {
+        kanaRowArray = [];
+        for (let i = 0; i < KANA_ROW_LENGTH; i++) {
+            kanaRowArray.push(randomKana());
+        }
+        renderKanaRow();
+    }
+
+    function renderKanaRow() {
+        kanaRowDiv.innerHTML = "";
+        kanaRowArray.forEach((ch, index) => {
+            const span = document.createElement("span");
+            span.className = "kana-cell" + (index === 0 ? " first" : "");
+            span.textContent = ch;
+            kanaRowDiv.appendChild(span);
+        });
+    }
+
+    function updateScore() {
+        scoreDisplay.textContent = String(score);
+    }
+
+    function updateTime() {
+        timeDisplay.textContent = String(timeLeft);
+    }
+
+    function startGame() {
+        // 状態リセット
+        score = 0;
+        timeLeft = 60;
+        isRunning = true;
+        updateScore();
+        updateTime();
+
+        // 盤面初期化
+        initKanaRow();
+
+        // 入力欄の初期化・有効化
+        inputField.value = "";
+        inputField.disabled = false;
+        shootButton.disabled = false;
+        inputField.focus();
+
+        // タイマーセット
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+            timeLeft--;
+            updateTime();
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    function endGame() {
+        isRunning = false;
+        if (timerId) {
+            clearInterval(timerId);
+            timerId = null;
+        }
+        inputField.disabled = true;
+        shootButton.disabled = true;
+        alert("時間切れ！\n消した文字数: " + score + " 文字");
+    }
+
+    function shoot() {
+        if (!isRunning) return;
+
+        let text = inputField.value;
+        if (!text) return;
+
+        let changed = false;
+        // 入力欄末尾と列の左端が一致する限り連鎖
+        while (text.length > 0 && kanaRowArray.length > 0) {
+            const lastChar   = text[text.length - 1];
+            const targetChar = kanaRowArray[0];
+
+            if (lastChar === targetChar) {
+                // 一致 → 両者を消してスコア+1
+                text = text.slice(0, -1);
+                kanaRowArray.shift();
+                kanaRowArray.push(randomKana());
+                score++;
+                changed = true;
+            } else {
+                break;
+            }
+        }
+
+        if (changed) {
+            inputField.value = text;
+            updateScore();
+            renderKanaRow();
+        }
+    }
+
+    // イベント設定
+    startButton.addEventListener("click", startGame);
+    shootButton.addEventListener("click", shoot);
+
+    inputField.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            shoot();
+        }
+    });
+
+    // 初期表示用に一応並べておく（ゲーム前でも見えるように）
+    initKanaRow();
+    inputField.disabled = true;
+    shootButton.disabled = true;
+</script>
+</body>
+  </html>
