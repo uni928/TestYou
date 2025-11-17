@@ -8,6 +8,8 @@
 
 [# TestYou5](https://uni928.github.io/TestYou/index5.html)
 
+[# TestYou6](https://uni928.github.io/TestYou/index6.html
+
 テスト用
 
 ようです。
