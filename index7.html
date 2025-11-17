@@ -401,6 +401,7 @@ function updateTotalTimeDisplay() {
           });
           const value = event.target.value;
           applyModeLabel(value);
+          updateTotalTimeDisplay();
           saveDurationSetting(value)
             .then(() => {
               updateSavedStatus('選択内容を保存しました。');
