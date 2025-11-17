@@ -498,13 +498,13 @@ function updateTotalTimeDisplay() {
   <script>
 // 画面サイズに合わせて自動で拡大する関数
 function adjustFullHeight() {
-  const fullHeight = window.innerHeight;
-  document.body.style.height = fullHeight + "px";
+  const fullWidth = window.innerWidth;
+  document.body.style.width = fullWidth + "px";
   
   const container = document.querySelector(".container");
   if (container) {
-    container.style.height = fullHeight + "px";
-    container.style.maxHeight = fullHeight + "px";
+    container.style.width = fullWidth + "px";
+    container.style.maxWidth = fullWidth + "px";
   }
 }
 
