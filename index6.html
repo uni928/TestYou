@@ -127,7 +127,7 @@
 <div class="container">
   <h1>記憶ボタン付き電卓</h1>
 
-  <input id="display" type="text" autocomplete="off" />
+  <input id="display" type="text" autocomplete="off" inputmode="none" />
 
   <div class="calc-grid">
     <button type="button" onclick="appendToDisplay('7')">7</button>
@@ -171,22 +171,32 @@
 </div>
 
 <script>
+// スマホかどうか簡易判定
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // フォーカス用ヘルパー（スマホではフォーカスしない）
+  function focusDisplay() {
+    if (!isMobile) {
+      display.focus();
+    }
+  }
+  
   // ===== 電卓ロジック =====
   const display = document.getElementById('display');
 
   function appendToDisplay(text) {
     display.value += text;
-    display.focus();
+    focusDisplay();
   }
 
   function clearDisplay() {
     display.value = '';
-    display.focus();
+    focusDisplay();
   }
 
   function backspace() {
     display.value = display.value.slice(0, -1);
-    display.focus();
+    focusDisplay();
   }
 
   function calculate() {
@@ -207,7 +217,7 @@
     } catch (e) {
       alert('計算エラーです。');
     }
-    display.focus();
+    focusDisplay();
   }
 
   // Enter で計算
@@ -353,14 +363,14 @@
       insertText = '(' + trimmed + ')';
     }
     display.value += insertText;
-    display.focus();
+focusDisplay();
   }
 
   async function saveCurrentToMemory() {
     const value = display.value.trim();
     if (!value) return;
 
-    memoryButtonsData.push({ text: value });
+    memoryButtonsData.unshift({ text: value });
     renderMemoryButtons();
     try {
       await saveMemoryButtonsToDB(memoryButtonsData);
@@ -369,7 +379,7 @@
     }
     // 入力欄を空にする
     display.value = '';
-    display.focus();
+    focusDisplay();
   }
 
   async function moveMemory(index, delta) {
