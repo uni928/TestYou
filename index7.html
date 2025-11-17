@@ -163,6 +163,31 @@
   font-weight: 600;
   color: #333;
       }
+    /* スマホ（幅600px以下）の場合、画面いっぱいに広げる */
+@media (max-width: 600px) {
+  body {
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .container {
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    padding: 20px 16px;
+    box-sizing: border-box;
+    overflow-y: auto; /* 内容が長いときスクロール可能 */
+  }
+
+  .message-area {
+    min-height: 120px;
+  }
+}
   </style>
 </head>
 <body>
