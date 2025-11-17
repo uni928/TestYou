@@ -1,1 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>記憶ボタン付き電卓</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      background: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin: 0 0 12px;
+      text-align: center;
+    }
+    #display {
+      width: 100%;
+      font-size: 1.3rem;
+      padding: 8px;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+    }
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .calc-grid button,
+    .memory-control button {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    .calc-grid button:active,
+    .memory-control button:active,
+    .memory-main:active,
+    .memory-small:active {
+      transform: scale(0.97);
+    }
+    .calc-grid button.op {
+      background: #e7f2ff;
+    }
+    .calc-grid button.equal {
+      background: #d9f5d2;
+    }
+    .calc-grid button.clear {
+      background: #ffe0e0;
+    }
+    .memory-control {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .memory-control label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    #memoryButtons {
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    .memory-title {
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .memory-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+    .memory-main {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #fdfdfd;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .memory-small {
+      padding: 4px 6px;
+      font-size: 0.8rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+    .memory-empty {
+      font-size: 0.85rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>記憶ボタン付き電卓</h1>
 
+  <input id="display" type="text" autocomplete="off" />
+
+  <div class="calc-grid">
+    <button type="button" onclick="appendToDisplay('7')">7</button>
+    <button type="button" onclick="appendToDisplay('8')">8</button>
+    <button type="button" onclick="appendToDisplay('9')">9</button>
+    <button type="button" class="op" onclick="appendToDisplay('/')">÷</button>
+
+    <button type="button" onclick="appendToDisplay('4')">4</button>
+    <button type="button" onclick="appendToDisplay('5')">5</button>
+    <button type="button" onclick="appendToDisplay('6')">6</button>
+    <button type="button" class="op" onclick="appendToDisplay('*')">×</button>
+
+    <button type="button" onclick="appendToDisplay('1')">1</button>
+    <button type="button" onclick="appendToDisplay('2')">2</button>
+    <button type="button" onclick="appendToDisplay('3')">3</button>
+    <button type="button" class="op" onclick="appendToDisplay('-')">−</button>
+
+    <button type="button" onclick="appendToDisplay('0')">0</button>
+    <button type="button" onclick="appendToDisplay('.')">.</button>
+    <button type="button" class="clear" onclick="backspace()">⌫</button>
+    <button type="button" class="op" onclick="appendToDisplay('+')">＋</button>
+
+    <button type="button" class="clear" onclick="clearDisplay()">C</button>
+    <button type="button" onclick="appendToDisplay('(')">(</button>
+    <button type="button" onclick="appendToDisplay(')')">)</button>
+    <button type="button" class="equal" onclick="calculate()">=</button>
+  </div>
+
+  <div class="memory-control">
+    <button type="button" onclick="saveCurrentToMemory()">現在の入力を記憶</button>
+    <label>
+      <input type="checkbox" id="editModeToggle" />
+      記憶ボタン編集モード
+    </label>
+  </div>
+
+  <div id="memoryButtons">
+    <div class="memory-title">記憶ボタン</div>
+    <div class="memory-empty">まだ記憶はありません。</div>
+  </div>
+</div>
+
+<script>
+  // ===== 電卓ロジック =====
+  const display = document.getElementById('display');
+
+  function appendToDisplay(text) {
+    display.value += text;
+    display.focus();
+  }
+
+  function clearDisplay() {
+    display.value = '';
+    display.focus();
+  }
+
+  function backspace() {
+    display.value = display.value.slice(0, -1);
+    display.focus();
+  }
+
+  function calculate() {
+    const expr = display.value.trim();
+    if (!expr) return;
+    // 簡単なバリデーション（数字と演算子のみ許可）
+    if (!/^[0-9+\-*/().\s]+$/.test(expr)) {
+      alert('無効な式です。');
+      return;
+    }
+    try {
+      const result = Function('"use strict";return (' + expr + ')')();
+      if (result === undefined || Number.isNaN(result)) {
+        alert('計算エラーです。');
+        return;
+      }
+      display.value = String(result);
+    } catch (e) {
+      alert('計算エラーです。');
+    }
+    display.focus();
+  }
+
+  // Enter で計算
+  display.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      calculate();
+    }
+  });
+
+  // ===== IndexedDB ラッパー =====
+  const DB_NAME = 'memoryCalcDB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'kv';
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function loadMemoryButtonsFromDB() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get('memoryButtons');
+      getReq.onsuccess = () => {
+        const record = getReq.result;
+        resolve(record ? record.value : []);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  async function saveMemoryButtonsToDB(data) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const putReq = store.put({ key: 'memoryButtons', value: data });
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject(putReq.error);
+    });
+  }
+
+  // ===== 記憶ボタンロジック =====
+  let memoryButtonsData = []; // {text: string} の配列
+  let isEditMode = false;
+
+  const memoryContainer = document.getElementById('memoryButtons');
+  const editToggle = document.getElementById('editModeToggle');
+
+  editToggle.addEventListener('change', () => {
+    isEditMode = editToggle.checked;
+    renderMemoryButtons();
+  });
+
+  function renderMemoryButtons() {
+    // タイトルを残したまま中身を再構築
+    memoryContainer.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'memory-title';
+    title.textContent = '記憶ボタン';
+    memoryContainer.appendChild(title);
+
+    if (!memoryButtonsData.length) {
+      const empty = document.createElement('div');
+      empty.className = 'memory-empty';
+      empty.textContent = 'まだ記憶はありません。';
+      memoryContainer.appendChild(empty);
+      return;
+    }
+
+    memoryButtonsData.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'memory-row';
+
+      const mainBtn = document.createElement('button');
+      mainBtn.type = 'button';
+      mainBtn.className = 'memory-main';
+      mainBtn.textContent = item.text;
+      mainBtn.title = item.text;
+
+      if (!isEditMode) {
+        mainBtn.addEventListener('click', () => {
+          insertMemoryText(item.text);
+        });
+      } else {
+        // 編集モード中はクリックしても挿入しない
+        mainBtn.disabled = true;
+      }
+
+      row.appendChild(mainBtn);
+
+      if (isEditMode) {
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'memory-small';
+        upBtn.textContent = '↑';
+        upBtn.title = '上へ';
+        upBtn.disabled = (index === 0);
+        upBtn.addEventListener('click', () => moveMemory(index, -1));
+
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'memory-small';
+        downBtn.textContent = '↓';
+        downBtn.title = '下へ';
+        downBtn.disabled = (index === memoryButtonsData.length - 1);
+        downBtn.addEventListener('click', () => moveMemory(index, +1));
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'memory-small';
+        delBtn.textContent = '✕';
+        delBtn.title = '削除';
+        delBtn.addEventListener('click', () => deleteMemory(index));
+
+        row.appendChild(upBtn);
+        row.appendChild(downBtn);
+        row.appendChild(delBtn);
+      }
+
+      memoryContainer.appendChild(row);
+    });
+  }
+
+  function insertMemoryText(text) {
+    const trimmed = String(text);
+    const isExpression = /[+\-*/]/.test(trimmed);
+    let insertText = trimmed;
+    // 「式ならばカッコ付きで」
+    if (isExpression && !(trimmed.startsWith('(') && trimmed.endsWith(')'))) {
+      insertText = '(' + trimmed + ')';
+    }
+    display.value += insertText;
+    display.focus();
+  }
+
+  async function saveCurrentToMemory() {
+    const value = display.value.trim();
+    if (!value) return;
+
+    memoryButtonsData.push({ text: value });
+    renderMemoryButtons();
+    try {
+      await saveMemoryButtonsToDB(memoryButtonsData);
+    } catch (e) {
+      console.error('IndexedDB 保存エラー:', e);
+    }
+    // 入力欄を空にする
+    display.value = '';
+    display.focus();
+  }
+
+  async function moveMemory(index, delta) {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= memoryButtonsData.length) return;
+    const tmp = memoryButtonsData[index];
+    memoryButtonsData[index] = memoryButtonsData[newIndex];
+    memoryButtonsData[newIndex] = tmp;
+    renderMemoryButtons();
+    try {
+      await saveMemoryButtonsToDB(memoryButtonsData);
+    } catch (e) {
+      console.error('IndexedDB 保存エラー:', e);
+    }
+  }
+
+  async function deleteMemory(index) {
+    memoryButtonsData.splice(index, 1);
+    renderMemoryButtons();
+    try {
+      await saveMemoryButtonsToDB(memoryButtonsData);
+    } catch (e) {
+      console.error('IndexedDB 保存エラー:', e);
+    }
+  }
+
+  // ===== 初期化 =====
+  (async function init() {
+    try {
+      memoryButtonsData = await loadMemoryButtonsFromDB();
+    } catch (e) {
+      console.error('IndexedDB 読み込みエラー:', e);
+      memoryButtonsData = [];
+    }
+    renderMemoryButtons();
+  })();
+</script>
+</body>
+      </html>
