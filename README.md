@@ -12,6 +12,8 @@
 
 [# TestYou7](https://uni928.github.io/TestYou/index7.html)
 
+[# TestYou8](https://uni928.github.io/TestYou/index8.html)
+
 テスト用
 
 ようです。
