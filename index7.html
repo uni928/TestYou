@@ -157,6 +157,12 @@
       border-radius: 50%;
       background: #4f46e5;
     }
+    .total-time {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+      }
   </style>
 </head>
 <body>
@@ -194,6 +200,7 @@
         ※選んだ長さに合わせて、案内の表示時間（秒数）が変わります。<br>
         ※選択内容は自動で保存され、次回も引き継がれます（IndexedDB）。
       </div>
+      <div class="total-time" id="totalTimeDisplay"></div>
       <div class="saved-status" id="savedStatus"></div>
     </section>
 
@@ -247,7 +254,15 @@
         };
       });
     }
+function updateTotalTimeDisplay() {
+  const selected = getSelectedDurationValue();
+  const sec = durationSecondsTable[selected || "normal"];
+  const total = sec * MESSAGES.length;
+  const label = durationLabelMap[selected || "normal"];
 
+  document.getElementById("totalTimeDisplay").textContent =
+    `${label}ならばトータルの磨く時間は ${total} 秒です。`;
+    }
     function saveDurationSetting(durationValue) {
       return openSettingsDB().then((db) => {
         return new Promise((resolve, reject) => {
