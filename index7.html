@@ -163,31 +163,6 @@
   font-weight: 600;
   color: #333;
       }
-    /* スマホ（幅600px以下）の場合、画面いっぱいに広げる */
-@media (max-width: 600px) {
-  body {
-  height: 100dvh;       /* ← これがスマホで正しく全画面フィットする鍵 */
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  margin: 0;
-  padding: 0;
-      }
-
-  .container {
-  flex: 1;               /* 自動で親要素いっぱいに伸びる */
-  max-width: 640px;      /* タブレット・PCでは真ん中に収まる */
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  border-radius: 0;      /* スマホで自然に全画面に見える */
-  overflow-y: auto;      /* 内容が増えたらスクロール */
-  }
-
-  .message-area {
-    min-height: 120px;
-  }
-                                  }
   </style>
 </head>
 <body>
@@ -245,7 +220,6 @@
       </div>
     </section>
   </div>
-
   <script>
     // ===== IndexedDB 周り =====
     const DB_NAME = 'toothbrush-settings-db';
@@ -520,6 +494,30 @@ function updateTotalTimeDisplay() {
           updateSavedStatus('設定の読み込みに失敗しました。');
         });
     });
+  </script>
+  <script>
+// 画面サイズに合わせて自動で拡大する関数
+function adjustFullHeight() {
+  const fullHeight = window.innerHeight;
+  document.body.style.height = fullHeight + "px";
+  
+  const container = document.querySelector(".container");
+  if (container) {
+    container.style.height = fullHeight + "px";
+    container.style.maxHeight = fullHeight + "px";
+  }
+}
+
+// 初回ロード時
+window.addEventListener("load", adjustFullHeight);
+
+// スマホの縦横切り替え・アドレスバー縮小にも追従
+window.addEventListener("resize", adjustFullHeight);
+
+// iPhone Safari の「アドレスバーアニメーションにも追従」
+window.addEventListener("orientationchange", () => {
+  setTimeout(adjustFullHeight, 300);
+});
   </script>
 </body>
                     </html>
