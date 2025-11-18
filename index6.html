@@ -190,6 +190,7 @@
    display.value = before + text + after;
    // 挿入した位置の直後へカーソル移動
    const pos = start + text.length;
+   focusDisplay();
    display.selectionStart = pos;
    display.selectionEnd = pos;
    focusDisplay();
