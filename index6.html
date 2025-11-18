@@ -259,6 +259,11 @@
     const val = display.value;
    const start = display.selectionStart;
    const end   = display.selectionEnd;
+
+       if (start === 0) {
+     focusDisplay();
+     return;
+   }
    // カーソルの１文字前を削除
    const before = val.substring(0, start - 1);
    const after  = val.substring(start);
