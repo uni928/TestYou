@@ -389,6 +389,42 @@
     down: "↓"
   };
 
+  // ★追加：キーごとの矢印配置（どの方向が有効か）
+  function getDirsForKey(keyId) {
+    if (["a","ka","sa","ta","na","ha","ma","ra"].includes(keyId)) {
+      return ["left","up","right","down"];
+    }
+    if (keyId === "ya") return ["up","down"];
+    if (keyId === "wa") return ["up","right"];
+    return null; // space / del など
+  }
+
+  // ★追加：全キーの矢印表示を更新（指定されたキー＋方向だけ強調）
+  function updateAllKeyArrows(activeKeyId, activeDir) {
+    keyElements.forEach(k => {
+      const keyId = k.dataset.keyId;
+      const arrowsEl = k.querySelector(".key-arrows");
+      if (!arrowsEl) return;
+
+      const dirs = getDirsForKey(keyId);
+      if (!dirs) {
+        // space / del などは何もしない
+        return;
+      }
+
+      const parts = dirs.map(dir => {
+        const arrowChar = dirArrow[dir];
+        if (activeKeyId === keyId && activeDir === dir) {
+          // 今やるべき矢印だけ [↑] のように強調
+          return "[" + arrowChar + "]";
+        }
+        return arrowChar;
+      });
+
+      arrowsEl.textContent = parts.join(" ");
+    });
+  }
+
   // ---- 事前登録する単語 ----
   const initialWords = [
     "こんにちは",
@@ -580,8 +616,21 @@
       "進捗：" + (currentStepIndex + 1) + " / " + steps.length;
   }
 
-  function highlightGuideKey(keyId) {
+// 変更前：
+  // function highlightGuideKey(keyId) {
+  //   keyElements.forEach(k => k.classList.remove("guide"));
+  //   if (!keyId) return;
+  //   const el = keyElements.find(k => k.dataset.keyId === keyId);
+  //   if (el) el.classList.add("guide");
+  // }
+
+  // ★変更後：キーの枠＋矢印の両方をガイド表示
+  function highlightGuideKey(keyId, direction = null) {
+    // キー枠のハイライトをクリア
     keyElements.forEach(k => k.classList.remove("guide"));
+    // 矢印強調を更新
+    updateAllKeyArrows(keyId, direction);
+
     if (!keyId) return;
     const el = keyElements.find(k => k.dataset.keyId === keyId);
     if (el) el.classList.add("guide");
@@ -590,13 +639,13 @@
   function showCurrentGuide() {
     if (!currentPattern) {
       guideTextEl.textContent = "";
-      highlightGuideKey(null);
+      highlightGuideKey(null, null);
       return;
     }
     const steps = currentPattern.steps;
     if (currentStepIndex >= steps.length) {
       guideTextEl.textContent = "全てのステップを完了しました。";
-      highlightGuideKey(null);
+      highlightGuideKey(null, null);
       return;
     }
     const step = steps[currentStepIndex];
@@ -604,7 +653,7 @@
     guideTextEl.textContent =
       "ガイド：" +
       "「" + step.char + "」＝「" +
-      getKeyLabel(step.keyId) + "」を「" +
+      getKeyLabel(step.keyId, step.direction) + "」を「" +
       dirText[step.direction] + "」";
     renderPracticeSteps();
   }
