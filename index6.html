@@ -183,13 +183,6 @@
 
  // 現在のカーソル位置に文字を挿入する
  function insertAtCursor(text) {
-   // --- スマホの場合：常に末尾に追加 ---
-   if (isMobile) {
-     display.value += text;
-     focusDisplay();
-     return;
-   }
-
    const start = display.selectionStart;
    const end = display.selectionEnd;
    const before = display.value.substring(0, start);
@@ -205,9 +198,36 @@
   // ===== 電卓ロジック =====
   const display = document.getElementById('display');
 
- function appendToDisplay(text) {
-   insertAtCursor(text);
- }
+  function appendToDisplay(text) {
+    // 挿入位置（PCではカーソル位置、スマホや非フォーカス時は末尾）を推定して直前の文字を確認
+    let pos;
+    if (isMobile) {
+      pos = display.value.length;
+    } else {
+      const isFocused = (document.activeElement === display);
+      if (isFocused && display.selectionStart != null) {
+        pos = display.selectionStart;
+      } else {
+        pos = display.value.length;
+      }
+    }
+    const beforeChar = pos > 0 ? display.value.charAt(pos - 1) : '';
+
+    // . ( ) は「数字の後」以外では無視
+    if (text === '.' || text === '(' || text === ')') {
+      if (!/[0-9]/.test(beforeChar)) {
+        return; // 条件を満たさないので何もしない
+      }
+    }
+    // ÷ × ＋ －（内部的には / * + - ）は「数字 or ) の後」以外では無視
+    if (text === '+' || text === '-' || text === '*' || text === '/') {
+      if (!/[0-9)]/.test(beforeChar)) {
+        return; // 条件を満たさないので何もしない
+      }
+    }
+
+    insertAtCursor(text);
+  }
 
   function clearDisplay() {
     display.value = '';
