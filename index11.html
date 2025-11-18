@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ダミーテキストギャラリー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #050816;
+      --card: rgba(17, 25, 40, 0.92);
+      --card-soft: rgba(17, 25, 40, 0.75);
+      --accent: #5ee7df;
+      --accent2: #b490ff;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text-main: #f5f7ff;
+      --text-sub: #a6accd;
+      --radius-xl: 18px;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.55);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(94, 231, 223, 0.18), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(180, 144, 255, 0.18), transparent 55%),
+        linear-gradient(135deg, #050816 0%, #020617 50%, #0b1120 100%);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px 40px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1120px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(26px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: radial-gradient(circle at 0 0, rgba(148, 163, 255, 0.2), transparent 60%);
+    }
+
+    .header-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .title-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background:
+        conic-gradient(from 180deg, rgba(94, 231, 223, 0.9), rgba(244, 114, 182, 0.8), rgba(180, 144, 255, 0.9), rgba(94, 231, 223, 0.9));
+      padding: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 22px rgba(94, 231, 223, 0.5);
+    }
+
+    .logo-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: radial-gradient(circle at 30% 0%, rgba(148, 163, 255, 0.9), #020617);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .title-main {
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-main span.accent-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.65);
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .title-sub {
+      font-size: 13px;
+      color: var(--text-sub);
+      max-width: 520px;
+    }
+
+    .filter-row {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: var(--text-sub);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: radial-gradient(circle at 0 0, rgba(148, 163, 255, 0.1), transparent 65%);
+    }
+
+    .chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 10px rgba(148, 163, 255, 0.9);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
+      gap: 0;
+      min-height: 460px;
+    }
+
+    /* 左側ナビ */
+    .sidebar {
+      border-right: 1px solid var(--border-subtle);
+      padding: 18px 16px 20px;
+      background: radial-gradient(circle at 0 0, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.98));
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-sub);
+      margin-bottom: 10px;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-item {
+      border-radius: 999px;
+      padding: 9px 11px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      color: var(--text-sub);
+      background: transparent;
+      transition: all 0.18s ease-out;
+    }
+
+    .nav-item:hover {
+      background: rgba(15, 23, 42, 0.88);
+      border-color: rgba(148, 163, 184, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .nav-item.active {
+      background: radial-gradient(circle at 0 0, rgba(94, 231, 223, 0.2), rgba(15, 23, 42, 0.95));
+      border-color: rgba(94, 231, 223, 0.7);
+      color: #e0f2fe;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+    }
+
+    .nav-item span.label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-icon {
+      font-size: 14px;
+    }
+
+    .nav-tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: var(--text-sub);
+    }
+
+    .sidebar-note {
+      margin-top: 18px;
+      font-size: 11px;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    /* 右側内容エリア */
+    .content-area {
+      padding: 18px 18px 22px;
+      overflow-y: auto;
+      max-height: calc(100vh - 160px);
+      scroll-behavior: smooth;
+    }
+
+    .section-card {
+      background: radial-gradient(circle at 0 0, rgba(148, 163, 255, 0.14), transparent 55%);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      padding: 14px 14px 12px;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.9);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(94, 231, 223, 0.16), transparent 55%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease-out;
+    }
+
+    .section-card:hover::before {
+      opacity: 1;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-kicker {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-sub);
+    }
+
+    .section-meta {
+      font-size: 11px;
+      color: var(--text-sub);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    .dummy-block {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 10px 10px 8px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      position: relative;
+    }
+
+    .dummy-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .dummy-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot-small {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 10px rgba(148, 163, 255, 0.9);
+    }
+
+    button.copy-btn {
+      font-size: 11px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: radial-gradient(circle at 0 0, rgba(148, 163, 255, 0.2), rgba(15, 23, 42, 0.95));
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.17s ease-out;
+    }
+
+    button.copy-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.85);
+      border-color: rgba(94, 231, 223, 0.8);
+    }
+
+    button.copy-btn.copied {
+      border-color: rgba(94, 231, 223, 0.95);
+      background: radial-gradient(circle at 0 0, rgba(94, 231, 223, 0.4), rgba(15, 23, 42, 0.95));
+      color: #e0f2fe;
+    }
+
+    .dummy-text {
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .dummy-text code {
+      font-family: "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 2px 5px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+    }
+
+    .dummy-text ul {
+      margin: 0 0 0 1.2rem;
+      padding: 0;
+    }
+
+    .dummy-text li {
+      margin: 0 0 2px;
+    }
+
+    .dummy-note {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    footer {
+      padding: 10px 18px 14px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .footer-right {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .footer-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 14px 10px 20px;
+      }
+      .app-shell {
+        border-radius: 18px;
+      }
+      main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto;
+      }
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 14px;
+        margin-bottom: 2px;
+      }
+      .content-area {
+        max-height: none;
+      }
+      header {
+        padding: 16px 14px 12px;
+      }
+      .title-main {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header>
+    <div class="header-row">
+      <div class="title-block">
+        <div class="logo-badge">
+          <div class="logo-inner">Aa</div>
+        </div>
+        <div>
+          <div class="title-main">
+            ダミーテキストギャラリー
+            <span class="accent-pill">Multi-Language / Emoji / 4-byte</span>
+          </div>
+          <div class="title-sub">
+            各種UI・レイアウト・文字化けチェックに使える、用途別ダミーテキスト集です。
+            コピーしてすぐに貼り付けられるよう、セクションごとに「コピー」ボタンを用意しています。
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="chip"><span class="chip-dot"></span>日本語／ビジネス文</div>
+      <div class="chip"><span class="chip-dot"></span>チャット／SNS</div>
+      <div class="chip"><span class="chip-dot"></span>プログラムコード</div>
+      <div class="chip"><span class="chip-dot"></span>バグ検出用サロゲート文字</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 左ナビ -->
+    <aside class="sidebar">
+      <div class="sidebar-title">Sections</div>
+      <ul class="nav-list">
+        <li class="nav-item active" data-target="sec-greeting">
+          <span class="label">
+            <span class="nav-icon">📨</span>
+            <span>ビジネスメール用あいさつ</span>
+          </span>
+          <span class="nav-tag">JP</span>
+        </li>
+        <li class="nav-item" data-target="sec-long-jp">
+          <span class="label">
+            <span class="nav-icon">📄</span>
+            <span>長文レビュー／説明</span>
+          </span>
+          <span class="nav-tag">JP</span>
+        </li>
+        <li class="nav-item" data-target="sec-chat">
+          <span class="label">
+            <span class="nav-icon">💬</span>
+            <span>チャット・SNS風テキスト</span>
+          </span>
+          <span class="nav-tag">Multi</span>
+        </li>
+        <li class="nav-item" data-target="sec-errors">
+          <span class="label">
+            <span class="nav-icon">⚠️</span>
+            <span>フォームエラー文言集</span>
+          </span>
+          <span class="nav-tag">JP</span>
+        </li>
+        <li class="nav-item" data-target="sec-code">
+          <span class="label">
+            <span class="nav-icon">👨‍💻</span>
+            <span>技術文書・コード断片</span>
+          </span>
+          <span class="nav-tag">Code</span>
+        </li>
+        <li class="nav-item" data-target="sec-bidi">
+          <span class="label">
+            <span class="nav-icon">🌍</span>
+            <span>多言語・RTL混在テキスト</span>
+          </span>
+          <span class="nav-tag">Multi</span>
+        </li>
+        <li class="nav-item" data-target="sec-surrogate">
+          <span class="label">
+            <span class="nav-icon">🧪</span>
+            <span>サロゲート／4バイト文字</span>
+          </span>
+          <span class="nav-tag">Test</span>
+        </li>
+        <li class="nav-item" data-target="sec-list">
+          <span class="label">
+            <span class="nav-icon">📝</span>
+            <span>見出し・リスト・表組み</span>
+          </span>
+          <span class="nav-tag">Layout</span>
+        </li>
+      </ul>
+      <div class="sidebar-note">
+        ・UTF-8で保存してください。<br>
+        ・文字化け／折り返し／高さ崩れなどのチェックにご利用ください。
+      </div>
+    </aside>
+
+    <!-- 右コンテンツ -->
+    <section class="content-area">
+
+      <!-- 1: ビジネスメール用あいさつ -->
+      <article class="section-card" id="sec-greeting">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 01</div>
+            <div class="section-title">ビジネスメール用・短めのあいさつ</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">〜100文字</span>
+            <span class="meta-pill">日本語／敬語</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              スニペット（件名＋冒頭文）
+            </span>
+            <button class="copy-btn" data-copy-for="greeting-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="greeting-text">
+件名：打ち合わせ日程のご相談
+
+お世話になっております。
+株式会社サンプルの山田太郎でございます。
+
+先日はお忙しい中お時間を頂き、誠にありがとうございました。
+本日は、次回打ち合わせの日程につきましてご相談のご連絡を差し上げました。
+          </div>
+        </div>
+        <div class="dummy-note">
+          1行目を件名、2行目以降を本文として想定しています。メールテンプレートや入力フォームのプレースホルダーの見え方確認に。
+        </div>
+      </article>
+
+      <!-- 2: 長文レビュー／説明 -->
+      <article class="section-card" id="sec-long-jp">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 02</div>
+            <div class="section-title">長文レビュー／サービス説明テキスト</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">〜400文字</span>
+            <span class="meta-pill">段落・改行テスト</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              レビュー用ダミーテキスト
+            </span>
+            <button class="copy-btn" data-copy-for="long-jp-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="long-jp-text">
+このサービスは、日々のちょっとした「めんどう」を静かに肩代わりしてくれるアシスタントのような存在です。  
+画面はシンプルですが、必要な情報が自然と目に入ってくるよう余白が丁寧に設計されており、初めて触る人でも迷いにくい印象を受けました。
+
+特に良いと感じたのは、操作に失敗したときのフォローが手厚い点です。  
+取り消しボタンや確認ダイアログがさりげなく用意されており、「もし間違えたらどうしよう」という不安が軽減されます。これは、日常的に使い続けるツールにとって大きな安心材料となるでしょう。
+
+一方で、初期設定の説明はやや情報量が多く、慣れない方には少し敷居の高さを感じさせるかもしれません。  
+今後、ガイドツアーやチュートリアルモードが充実すれば、さらに多くの人に受け入れられるサービスになると感じました。
+          </div>
+        </div>
+        <div class="dummy-note">
+          レスポンシブ時の段落間余白・行間・フォントサイズバランスの調整に使えます。
+        </div>
+      </article>
+
+      <!-- 3: チャット／SNS -->
+      <article class="section-card" id="sec-chat">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 03</div>
+            <div class="section-title">チャット・SNS風テキスト（絵文字多め）</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">改行／絵文字／顔文字</span>
+            <span class="meta-pill">日本語＋英語混在</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              タイムライン／トークログ用
+            </span>
+            <button class="copy-btn" data-copy-for="chat-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="chat-text">
+Aさん：「おはよう〜！☀️ 今日はリモート？それとも出社？😴」
+
+Bさん：「おはよ！今日は午前だけ出社して、午後はカフェで作業する予定〜☕💻  
+Wi-Fi安定してるとこ知ってたら教えて🙏」
+
+Aさん：「いいねそれ！昨日行ったとこ、電源もあってめちゃ良かったよ。  
+ただ、BGMがちょっと大きめだから、集中したいときはイヤホン必須かも😂」
+
+Cさん：「横から失礼…！  
+もしオンラインMTGあるなら、自宅のほうが静かかもだよ〜📹🎧」
+
+System：「接続が一時的に不安定です… Reconnecting… 3… 2… 1… ✅」
+
+Bさん：「たしかにw とりあえず午前の会議が終わったら考える〜 (｀･ω･´)ゞ」
+          </div>
+        </div>
+        <div class="dummy-note">
+          絵文字・半角記号・全角文字が混在したときの折返しや高さの乱れ、バルーンUIなどの検証に。
+        </div>
+      </article>
+
+      <!-- 4: フォームエラー文言 -->
+      <article class="section-card" id="sec-errors">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 04</div>
+            <div class="section-title">フォーム用エラーメッセージ集</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">1行メッセージ</span>
+            <span class="meta-pill">バリデーション文言</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              フォームバリデーション用
+            </span>
+            <button class="copy-btn" data-copy-for="error-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="error-text">
+・必須項目です。入力を確認してください。  
+・メールアドレスの形式が正しくありません。（例：user@example.com）  
+・8文字以上、半角英数字と記号を1種類以上含めてください。  
+・入力された値が上限を超えています。もう一度確認してください。  
+・開始日時は終了日時より前に設定してください。  
+・ファイルサイズが大きすぎます。上限：10MB  
+・ネットワークエラーが発生しました。通信環境をご確認のうえ、再度お試しください。  
+・予期しないエラーが発生しました。しばらく時間をおいて再度お試しください。  
+・このユーザー名は既に使用されています。別の名前をお試しください。  
+・権限がありません。この操作を行うには管理者権限が必要です。
+          </div>
+        </div>
+        <div class="dummy-note">
+          トースト／インラインエラー／モーダルなど、表示コンポーネントのデザイン検証に使えます。
+        </div>
+      </article>
+
+      <!-- 5: 技術文書／コード -->
+      <article class="section-card" id="sec-code">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 05</div>
+            <div class="section-title">技術文書／コードスニペット混在テキスト</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">日本語＋英語＋code</span>
+            <span class="meta-pill">インラインコード表示</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              ドキュメントセクション例
+            </span>
+            <button class="copy-btn" data-copy-for="code-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="code-text">
+このコンポーネントは、テキスト入力と補完候補の表示を組み合わせた UI です。  
+基本的な使い方は次のとおりです。
+
+1. ユーザーがテキストエリアに入力を開始します。
+2. `Ctrl + K` を押すと、現在のテキストをもとに補完リクエストが送信されます。
+3. サーバーからのレスポンスはストリーミングで受信し、候補が順次描画されます。
+
+簡略化した疑似コードは以下の通りです：
+
+<code>
+const controller = new AbortController();
+
+async function fetchCompletion(text) {
+  const res = await fetch("/api/complete", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+    signal: controller.signal,
+  });
+
+  for await (const chunk of readStream(res.body)) {
+    renderCandidate(chunk);
+  }
+}
+</code>
+
+なお、APIキーはブラウザに直接埋め込まず、必ずサーバー側で管理してください。  
+また、ネットワークエラーやタイムアウトが発生した場合には、ユーザーが再試行しやすいよう
+明確なエラーメッセージを表示することが推奨されます。
+          </div>
+        </div>
+        <div class="dummy-note">
+          インラインコードやリストが混ざったドキュメントレイアウトの検証に。
+        </div>
+      </article>
+
+      <!-- 6: 多言語・RTL -->
+      <article class="section-card" id="sec-bidi">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 06</div>
+            <div class="section-title">多言語・右から左（RTL）混在テキスト</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">日本語／英語／العربية</span>
+            <span class="meta-pill">BiDiテスト</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              多言語UI確認用
+            </span>
+            <button class="copy-btn" data-copy-for="bidi-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="bidi-text">
+日本語と English が混在したテキストのサンプルです。  
+一部の単語だけ <b>strong emphasis</b> を行うことで、視線の流れをコントロールできます。
+
+次はアラビア語との混在例です：
+
+العربية (Arabic) と English と 日本語を同じ行に並べると、方向性 (direction) の違いにより  
+予期せぬ折り返しがおきることがあります。  
+例：العربية + English + 日本語 + 12345
+
+また、フランス語やドイツ語など、欧州言語特有のアクセント記号も含めておきます：
+français, über, Straße, crème brûlée, señor, año, português.
+
+レイアウト検証時には、これらがラベルやボタン、タブなどに入ったときの表示崩れも確認してください。
+          </div>
+        </div>
+        <div class="dummy-note">
+          BiDi（双方向テキスト）やアクセント付き文字が含まれたときのUI崩れ検証に。
+        </div>
+      </article>
+
+      <!-- 7: サロゲート／4バイト文字 -->
+      <article class="section-card" id="sec-surrogate">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 07</div>
+            <div class="section-title">サロゲートペア・4バイト文字・絵文字集中テスト</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">絵文字／国旗／合成文字</span>
+            <span class="meta-pill">文字化け検出用</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              ⚠ バグ検出用：UTF-8 / サロゲート
+            </span>
+            <button class="copy-btn" data-copy-for="surrogate-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="surrogate-text">
+【基本的な絵文字】
+😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 😉 😌 😍 🥰 😘 😗 😙 😚 🤗 🤔 🤨 😐 😑 🙄
+
+【人・家族・職業など（複合絵文字・ZWJを含む）】
+👨‍👩‍👧‍👦  👩‍💻  👨‍🔬  🧑‍🔧  🧑‍🚀  🧑‍🚒  
+👩‍❤️‍👩  👨‍❤️‍👨  🧑‍❤️‍🧑  
+🧑‍🦽  🧑‍🦯  🧑‍🦼
+
+【国旗（Regional Indicator Symbols）】
+🇯🇵 🇺🇸 🇨🇦 🇧🇷 🇬🇧 🇫🇷 🇩🇪 🇨🇳 🇰🇷 🇮🇳 🇮🇹 🇪🇸 🇸🇬 🇦🇺 🇳🇿
+
+【記号・音楽記号など（サロゲートを含む可能性が高い文字）】
+𝅘𝅥𝅮 𝄞 𝄢 𝄫 𝄪  
+① ② ③ ④ ⑤ ⑥ ⑦ ⑧ ⑨ ⑩  
+🄰 🄱 🄲 Ⓐ Ⓑ Ⓒ
+
+【外字っぽい漢字・第3水準以降を含む例】
+𠮷（つちよし） 𩸽（ほっけ）  
+髙﨑 𠮟 𡈽 𠮟咤
+
+【横に長いテスト行（折返し・選択時の挙動確認用）】
+😀😀😀😀😀 𠮷𠮷𠮷𠮷𠮷 🍣🍣🍣🍣🍣 🏳️‍🌈🏳️‍🌈🏳️‍🌈🏳️‍🌈🏳️‍🌈 𝄞𝄞𝄞𝄞𝄞 🇯🇵🇯🇵🇯🇵🇯🇵🇯🇵
+
+【混在行】
+テキストABC😀テキスト𠮷XYZ🍣テキスト🏳️‍🌈12345𝄞テキスト🇯🇵
+          </div>
+        </div>
+        <div class="dummy-note">
+          ここで文字化けやカーソル位置のズレが発生する場合、UTF-8／サロゲートペア対応の実装を再確認してください。
+        </div>
+      </article>
+
+      <!-- 8: 見出し・リスト・表組み -->
+      <article class="section-card" id="sec-list">
+        <div class="section-header">
+          <div>
+            <div class="section-kicker">Section 08</div>
+            <div class="section-title">見出し・リスト・簡易表のレイアウトテキスト</div>
+          </div>
+          <div class="section-meta">
+            <span class="meta-pill">見出し階層</span>
+            <span class="meta-pill">リスト／表</span>
+          </div>
+        </div>
+        <div class="dummy-block">
+          <div class="dummy-toolbar">
+            <span class="dummy-label">
+              <span class="dot-small"></span>
+              セクション構造テスト
+            </span>
+            <button class="copy-btn" data-copy-for="list-text">
+              <span>📋</span> コピー
+            </button>
+          </div>
+          <div class="dummy-text" id="list-text">
+【セクションタイトル（H2相当）】
+プロジェクト管理ダッシュボード（ダミーデータ）
+
+【サブセクション（H3相当）】
+1. 今日のタスク
+2. 進行中のプロジェクト
+3. 完了済みの項目
+
+【箇条書きリスト例】
+- デザインレビュー：14:00〜 @オンライン
+- 実装タスク：API統合・UI調整・テストコード追加
+- その他：ドキュメント更新、リリースノート作成
+
+【簡易的な表現（テーブル風）】
+プロジェクト名 | ステータス | 担当 | 期限
+--------------|-----------|------|--------
+新規UI刷新   | 進行中    | 山田 | 2025-05-10
+モバイル対応 | レビュー中| 佐藤 | 2025-05-15
+バグ修正     | 完了      | 鈴木 | 2025-04-30
+
+【フッターテキスト例】
+※ これはダミーデータです。実際のスケジュールとは異なります。
+          </div>
+        </div>
+        <div class="dummy-note">
+          Markdown風テーブル・箇条書きが混ざった一覧レイアウトの表示確認に。
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+  <footer>
+    <div>UTF-8 / no localStorage / no IndexedDB</div>
+    <div class="footer-right">
+      <div class="footer-pill">コピーして自由に改変してご利用ください</div>
+      <div class="footer-pill">UIレイアウト・文字化け検証用</div>
+    </div>
+  </footer>
+</div>
+
+<script>
+  // サイドバーのナビゲーション（スクロール＆アクティブ表示）
+  const navItems = document.querySelectorAll('.nav-item');
+  const sections = document.querySelectorAll('.section-card');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const targetId = item.getAttribute('data-target');
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // スクロール位置によってアクティブなセクションを更新
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach(nav => {
+          nav.classList.toggle('active', nav.getAttribute('data-target') === id);
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(section => observer.observe(section));
+
+  // コピー機能
+  const copyButtons = document.querySelectorAll('.copy-btn');
+
+  copyButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetId = btn.getAttribute('data-copy-for');
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const text = target.innerText.replace(/\s+$/g, '');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // fallback
+          const temp = document.createElement('textarea');
+          temp.value = text;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          document.body.removeChild(temp);
+        }
+        btn.classList.add('copied');
+        btn.textContent = '✅ コピーしました';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = '<span>📋</span> コピー';
+        }, 1300);
+      } catch (err) {
+        console.error('コピーに失敗しました', err);
+      }
+    });
+  });
+</script>
+</body>
+</html>
