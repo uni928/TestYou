@@ -139,7 +139,12 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--accent-soft);
   }
-
+/* ★追加：ガイド枠を方向に応じて少しズラす */
+  .key.guide-up    { transform: translateY(-4px); }
+  .key.guide-down  { transform: translateY( 4px); }
+  .key.guide-left  { transform: translateX(-4px); }
+  .key.guide-right { transform: translateX( 4px); }
+  .key.guide-center{ transform: scale(1.03); }
   .current-word {
     font-size: 1.1rem;
     font-weight: 600;
@@ -616,25 +621,33 @@
       "進捗：" + (currentStepIndex + 1) + " / " + steps.length;
   }
 
-// 変更前：
-  // function highlightGuideKey(keyId) {
-  //   keyElements.forEach(k => k.classList.remove("guide"));
-  //   if (!keyId) return;
-  //   const el = keyElements.find(k => k.dataset.keyId === keyId);
-  //   if (el) el.classList.add("guide");
-  // }
+// ★変更後：キー枠＋矢印の両方をガイド表示（方向ズラし対応）
+  function highlightGuideKey(keyId, direction) {
+    // 全キーの guide クラスをリセット
+    keyElements.forEach(k => {
+      k.classList.remove("guide", "guide-up", "guide-down", "guide-left", "guide-right", "guide-center");
+    });
 
-  // ★変更後：キーの枠＋矢印の両方をガイド表示
-  function highlightGuideKey(keyId, direction = null) {
-    // キー枠のハイライトをクリア
-    keyElements.forEach(k => k.classList.remove("guide"));
     // 矢印強調を更新
     updateAllKeyArrows(keyId, direction);
 
     if (!keyId) return;
+
     const el = keyElements.find(k => k.dataset.keyId === keyId);
-    if (el) el.classList.add("guide");
-  }
+    if (!el) return;
+
+    // 基本の青枠
+    el.classList.add("guide");
+
+    // ★方向に応じてズラすクラスを付与
+    switch (direction) {
+      case "up":    el.classList.add("guide-up"); break;
+      case "down":  el.classList.add("guide-down"); break;
+      case "left":  el.classList.add("guide-left"); break;
+      case "right": el.classList.add("guide-right"); break;
+      case "center": el.classList.add("guide-center"); break;
+    }
+        }
 
   function showCurrentGuide() {
     if (!currentPattern) {
