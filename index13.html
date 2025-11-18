@@ -622,7 +622,7 @@
   }
 
 // ★変更後：キー枠＋矢印の両方をガイド表示（方向ズラし対応）
-  function highlightGuideKey(keyId, direction) {
+  function highlightGuideKey(keyId, direction = null) {
     // 全キーの guide クラスをリセット
     keyElements.forEach(k => {
       k.classList.remove("guide", "guide-up", "guide-down", "guide-left", "guide-right", "guide-center");
@@ -662,7 +662,7 @@
       return;
     }
     const step = steps[currentStepIndex];
-    highlightGuideKey(step.keyId);
+    highlightGuideKey(step.keyId, step.direction);
     guideTextEl.textContent =
       "ガイド：" +
       "「" + step.char + "」＝「" +
