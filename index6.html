@@ -172,7 +172,7 @@
 
 <script>
 // スマホかどうか簡易判定
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isMobile = window.innerWidth <= 810;
 
   // フォーカス用ヘルパー（スマホではフォーカスしない）
   function focusDisplay() {
@@ -237,6 +237,10 @@
     const beforeChar = pos > 0 ? display.value.charAt(pos - 1) : '';
 
     // . ( ) は「数字の後」以外では無視
+if(display.selectionStart == 0 && text === '(') {
+insertAtCursor(text);
+return;
+}
     if (text === '.' || text === '(' || text === ')') {
       if (!/[0-9]/.test(beforeChar)) {
         return; // 条件を満たさないので何もしない
