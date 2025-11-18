@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Time Memory Calendar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-soft: rgba(15, 23, 42, 0.9);
+      --bg-softer: rgba(15, 23, 42, 0.7);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.25);
+      --accent-strong: #0ea5e9;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #fb7185;
+      --radius-lg: 18px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.75);
+      --transition-fast: 0.18s ease-out;
+      --glass: backdrop-filter: blur(22px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      color: var(--text-main);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1080px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: linear-gradient(120deg, rgba(56, 189, 248, 0.2), transparent);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 18px 35px rgba(15, 23, 42, 0.7);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-header::before {
+      content: "";
+      position: absolute;
+      inset: -60%;
+      opacity: 0.3;
+      background:
+        radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.25), transparent 55%),
+        radial-gradient(circle at 100% 120%, rgba(8, 47, 73, 0.6), transparent 55%);
+      pointer-events: none;
+    }
+
+    .app-header-main {
+      position: relative;
+      z-index: 1;
+    }
+
+    .app-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+    }
+
+    .pill {
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .month-nav {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .month-label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-width: 130px;
+      text-align: center;
+    }
+
+    .icon-button {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast),
+        transform 0.08s ease-out;
+    }
+
+    .icon-button:hover {
+      background: rgba(148, 163, 184, 0.28);
+      color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    .icon-button:active {
+      transform: translateY(0);
+      opacity: 0.9;
+    }
+
+    .app-main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.35fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 780px) {
+      body {
+        padding: 10px;
+      }
+      .app-main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: var(--bg-soft);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(30, 64, 175, 0.8);
+      box-shadow: var(--shadow-soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.08), transparent 60%);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      padding: 14px 16px 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #cbd5f5;
+    }
+
+    .card-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Calendar */
+    .calendar {
+      margin-top: 4px;
+    }
+
+    .weekday-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 4px 0 6px;
+      border-bottom: 1px solid rgba(30, 64, 175, 0.8);
+    }
+
+    .weekday-label {
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      opacity: 0.85;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      padding-top: 6px;
+    }
+
+    .day-cell {
+      position: relative;
+      min-height: 64px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(30, 64, 175, 0.7);
+      padding: 6px 7px 7px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      overflow: hidden;
+      transition: border-color var(--transition-fast),
+        box-shadow var(--transition-fast), transform 0.1s ease-out,
+        background var(--transition-fast);
+    }
+
+    .day-cell.has-data {
+      border-color: rgba(56, 189, 248, 0.7);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.09), rgba(15, 23, 42, 0.94));
+    }
+
+    .day-cell.today {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5), 0 0 30px rgba(56, 189, 248, 0.12);
+    }
+
+    .day-cell.selected {
+      outline: 1px solid rgba(248, 250, 252, 0.85);
+      box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.7),
+        0 0 20px rgba(148, 163, 184, 0.4);
+    }
+
+    .day-cell.empty {
+      background: transparent;
+      border-style: dashed;
+      border-color: rgba(30, 64, 175, 0.8);
+      cursor: default;
+    }
+
+    .day-cell:not(.empty):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.9);
+    }
+
+    .date-label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #e5e7eb;
+    }
+
+    .date-label-pill {
+      font-size: 0.64rem;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(30, 64, 175, 0.85);
+      border: 1px solid rgba(129, 140, 248, 0.75);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .time-label {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    .time-label strong {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+    }
+
+    .day-meta {
+      font-size: 0.68rem;
+      color: rgba(148, 163, 184, 0.9);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      opacity: 0.85;
+    }
+
+    .day-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2);
+    }
+
+    .day-meta span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 68px;
+      text-align: right;
+    }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 780px) {
+      .stats-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .stat-card {
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(30, 64, 175, 0.9);
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), rgba(15, 23, 42, 0.9));
+      font-size: 0.76rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .stat-caption {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* History */
+    .divider {
+      border-top: 1px dashed rgba(55, 65, 81, 0.9);
+      margin: 12px 0 9px;
+    }
+
+    .history-section {
+      margin-top: 4px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .history-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #cbd5f5;
+    }
+
+    .history-date {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    .history-list {
+      max-height: 190px;
+      overflow-y: auto;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px dashed rgba(75, 85, 99, 0.95);
+      padding: 6px 8px;
+      font-size: 0.75rem;
+    }
+
+    .history-list.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 5px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(30, 64, 175, 0.7);
+      margin-bottom: 4px;
+    }
+
+    .history-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .history-time {
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .history-duration {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      border: none;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      padding: 3px 7px;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      transition: opacity 0.12s ease-out, transform 0.06s ease-out;
+    }
+
+    .action-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-0.5px);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+      opacity: 0.8;
+    }
+
+    .action-btn.edit {
+      background: rgba(56, 189, 248, 0.12);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.7);
+    }
+
+    .action-btn.delete {
+      background: rgba(248, 113, 113, 0.1);
+      color: #fecaca;
+      border: 1px solid rgba(248, 113, 113, 0.7);
+    }
+
+    .history-edit-inputs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      font-size: 0.72rem;
+    }
+
+    .history-edit-inputs label {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .history-edit-inputs input[type="time"] {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 6px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: var(--text-main);
+      padding: 1px 4px;
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .history-edit-buttons {
+      display: flex;
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    .history-edit-buttons .action-btn {
+      padding: 2px 6px;
+    }
+
+    .history-edit-buttons .save {
+      background: rgba(34, 197, 94, 0.13);
+      color: #bbf7d0;
+      border: 1px solid rgba(34, 197, 94, 0.7);
+    }
+
+    .history-edit-buttons .cancel {
+      background: rgba(148, 163, 184, 0.1);
+      color: #e5e7eb;
+      border: 1px solid rgba(148, 163, 184, 0.65);
+    }
+
+    /* Right side */
+    .timer-display {
+      font-variant-numeric: tabular-nums;
+      font-size: 2.1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .timer-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: rgba(15, 23, 42, 0.9);
+      margin-top: 6px;
+    }
+
+    .status-dot-on {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+    }
+
+    .status-dot-off {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.8);
+      box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.3);
+    }
+
+    .primary-button {
+      margin-top: 12px;
+      width: 100%;
+      border-radius: 999px;
+      padding: 10px 14px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      box-shadow: 0 14px 30px rgba(8, 47, 73, 0.9);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.08s ease-out, box-shadow 0.12s ease-out,
+        opacity 0.08s ease-out, filter 0.12s ease-out;
+    }
+
+    .primary-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 40px rgba(8, 47, 73, 1);
+      filter: brightness(1.03);
+    }
+
+    .primary-button:active {
+      transform: translateY(0);
+      box-shadow: 0 12px 24px rgba(8, 47, 73, 0.9);
+      opacity: 0.92;
+    }
+
+    .primary-button.secondary {
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.95), #fb7185);
+      box-shadow: 0 14px 30px rgba(127, 29, 29, 0.95);
+    }
+
+    .hint-text {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    .hint-text strong {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+
+    .last-session {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .last-session strong {
+      color: #e5e7eb;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(30, 64, 175, 0.9);
+      border: 1px solid rgba(129, 140, 248, 0.9);
+      color: #e5e7eb;
+    }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="app-header-main">
+        <div class="app-title">
+          Time Memory Calendar
+          <span class="pill">
+            <span>IndexedDB Auto Save</span>
+          </span>
+        </div>
+        <div class="app-subtitle">
+          「記憶開始」ボタンで計測を開始し、日付をクリックするとその日の履歴を確認・編集できます。
+        </div>
+      </div>
+      <div class="month-nav">
+        <button id="prevMonthBtn" class="icon-button" title="前の月">
+          &#x25C0;
+        </button>
+        <div id="monthLabel" class="month-label"></div>
+        <button id="nextMonthBtn" class="icon-button" title="次の月">
+          &#x25B6;
+        </button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- 左：カレンダー -->
+      <section class="card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Calendar</div>
+              <div class="card-subtitle">
+                1 日の合計時間を「X.Xh」で表示します。色が付いている日は「記憶」がある日です。
+              </div>
+            </div>
+          </div>
+
+          <div class="calendar">
+            <div class="weekday-row">
+              <div class="weekday-label">Mon</div>
+              <div class="weekday-label">Tue</div>
+              <div class="weekday-label">Wed</div>
+              <div class="weekday-label">Thu</div>
+              <div class="weekday-label">Fri</div>
+              <div class="weekday-label">Sat</div>
+              <div class="weekday-label">Sun</div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-label">今日の合計</div>
+              <div id="todayTotalText" class="stat-value">--</div>
+              <div class="stat-caption">記憶中はリアルタイムで加算されます</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">この月の合計</div>
+              <div id="monthTotalText" class="stat-value">--</div>
+              <div class="stat-caption">カレンダーに表示中の 1 か月分</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">直近 30 日の中央値</div>
+              <div id="median30Text" class="stat-value">--</div>
+              <div class="stat-caption">
+                記憶がある日のみ対象（1 日あたりの合計時間）
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- 履歴表示 -->
+          <section class="history-section">
+            <div class="history-header">
+              <div class="history-title">History</div>
+              <div id="historyDateLabel" class="history-date">
+                日付をクリックすると、その日の履歴が表示されます。
+              </div>
+            </div>
+            <div id="historyList" class="history-list empty">
+              この日に記憶されたセッションはありません。
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- 右：操作パネル -->
+      <section class="card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Session</div>
+              <div class="card-subtitle">
+                「記憶開始」〜「記憶終了」までの時間を 1 セッションとして保存します（秒単位）。
+              </div>
+            </div>
+            <div class="badge">
+              <span>Auto Resume</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <div class="timer-sub" id="timerSub">
+              まだ記憶は開始していません。
+            </div>
+            <div class="status-pill">
+              <div id="statusDot" class="status-dot-off"></div>
+              <div id="statusText">待機中</div>
+            </div>
+
+            <button id="toggleButton" class="primary-button">
+              <span>記憶開始</span>
+            </button>
+
+            <p class="hint-text">
+              <strong>リアルタイム保存：</strong> ボタン操作のたびに
+              IndexedDB に保存されます。ブラウザを閉じても、次に開いたときに
+              「記憶中」の状態や記録済みの時間が復元されます。
+            </p>
+
+            <div class="divider"></div>
+
+            <div class="last-session" id="lastSessionText">
+              最後に記憶したセッションはまだありません。
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ===== IndexedDB 設定 =====
+    const DB_NAME = "timeMemoryCalendarDB";
+    const DB_VERSION = 1;
+    const STORE_RECORDS = "records";
+    const STORE_META = "meta";
+
+    let db = null;
+    let recordsMap = new Map(); // dateKey => { date, sessions[], totalSeconds }
+
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth(); // 0-11
+
+    let currentSessionStart = null; // Date
+    let timerIntervalId = null;
+    let lastSessionMeta = null;
+
+    const monthLabelEl = document.getElementById("monthLabel");
+    const calendarGridEl = document.getElementById("calendarGrid");
+    const todayTotalTextEl = document.getElementById("todayTotalText");
+    const monthTotalTextEl = document.getElementById("monthTotalText");
+    const median30TextEl = document.getElementById("median30Text");
+    const timerDisplayEl = document.getElementById("timerDisplay");
+    const timerSubEl = document.getElementById("timerSub");
+    const statusDotEl = document.getElementById("statusDot");
+    const statusTextEl = document.getElementById("statusText");
+    const toggleButtonEl = document.getElementById("toggleButton");
+    const lastSessionTextEl = document.getElementById("lastSessionText");
+
+    const historyDateLabelEl = document.getElementById("historyDateLabel");
+    const historyListEl = document.getElementById("historyList");
+
+    document.getElementById("prevMonthBtn").addEventListener("click", () => {
+      changeMonth(-1);
+    });
+    document.getElementById("nextMonthBtn").addEventListener("click", () => {
+      changeMonth(1);
+    });
+    toggleButtonEl.addEventListener("click", onToggleClicked);
+
+    // 選択中の日付（デフォルトは今日）
+    let selectedDateKey = null;
+    // 履歴編集中のセッション
+    let editingSession = null; // {dateKey, index}
+
+    function openDatabase() {
+      if (!("indexedDB" in window)) {
+        alert("このブラウザは IndexedDB に対応していません。別のブラウザをお試しください。");
+        return;
+      }
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onupgradeneeded = (event) => {
+        const dbInstance = event.target.result;
+        if (!dbInstance.objectStoreNames.contains(STORE_RECORDS)) {
+          dbInstance.createObjectStore(STORE_RECORDS, { keyPath: "date" });
+        }
+        if (!dbInstance.objectStoreNames.contains(STORE_META)) {
+          dbInstance.createObjectStore(STORE_META, { keyPath: "key" });
+        }
+      };
+
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        initializeFromDB();
+      };
+
+      request.onerror = (event) => {
+        console.error("IndexedDB open error:", event.target.error);
+      };
+    }
+
+    function tx(storeName, mode = "readonly") {
+      return db.transaction(storeName, mode).objectStore(storeName);
+    }
+
+    function loadRecords() {
+      return new Promise((resolve, reject) => {
+        const store = tx(STORE_RECORDS, "readonly");
+        const req = store.getAll();
+        req.onsuccess = () => {
+          recordsMap.clear();
+          (req.result || []).forEach((rec) => {
+            recordsMap.set(rec.date, rec);
+          });
+          resolve();
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function loadMeta(key) {
+      return new Promise((resolve, reject) => {
+        const store = tx(STORE_META, "readonly");
+        const req = store.get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function saveRecord(rec) {
+      return new Promise((resolve, reject) => {
+        const store = tx(STORE_RECORDS, "readwrite");
+        const req = store.put(rec);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function saveMeta(obj) {
+      return new Promise((resolve, reject) => {
+        const store = tx(STORE_META, "readwrite");
+        const req = store.put(obj);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function deleteMeta(key) {
+      return new Promise((resolve, reject) => {
+        const store = tx(STORE_META, "readwrite");
+        const req = store.delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function initializeFromDB() {
+      loadRecords()
+        .then(() => Promise.all([loadMeta("currentSession"), loadMeta("lastSession")]))
+        .then(([currentSession, lastSession]) => {
+          if (currentSession && currentSession.startTime) {
+            currentSessionStart = new Date(currentSession.startTime);
+          } else {
+            currentSessionStart = null;
+          }
+          lastSessionMeta = lastSession;
+
+          const now = new Date();
+          selectedDateKey = formatDateKey(now);
+
+          renderCalendar();
+          updateStats();
+          updateTodayPanel();
+          updateLastSessionUI();
+          setButtonState(!!currentSessionStart);
+          updateSelectedDayHighlight();
+          renderHistory();
+
+          if (currentSessionStart) {
+            startTimerLoop();
+          }
+        })
+        .catch((err) => {
+          console.error("initializeFromDB error:", err);
+          const now = new Date();
+          selectedDateKey = formatDateKey(now);
+          renderCalendar();
+          updateStats();
+          updateTodayPanel();
+          renderHistory();
+        });
+    }
+
+    // ===== 日付ユーティリティ =====
+    function pad2(n) {
+      return n.toString().padStart(2, "0");
+    }
+
+    function formatDateKey(date) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function parseDateKey(dateKey) {
+      const [y, m, d] = dateKey.split("-").map((v) => parseInt(v, 10));
+      return new Date(y, m - 1, d);
+    }
+
+    function formatTimeHM(date) {
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
+    function formatMinutesHuman(totalMinutes) {
+      const m = Math.max(0, Math.round(totalMinutes));
+      const hours = Math.floor(m / 60);
+      const minutes = m % 60;
+      if (hours === 0) return `${minutes}分`;
+      if (minutes === 0) return `${hours}時間`;
+      return `${hours}時間${minutes}分`;
+    }
+
+    function formatSecondsToHMS(totalSeconds) {
+      const s = Math.max(0, Math.round(totalSeconds));
+      const hours = Math.floor(s / 3600);
+      const minutes = Math.floor((s % 3600) / 60);
+      const seconds = s % 60;
+      return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+    }
+
+    function formatSecondsDecimalHours(totalSeconds, digits = 1) {
+      const h = totalSeconds / 3600;
+      return `${h.toFixed(digits)}h`;
+    }
+
+    function getMonthLabel(year, month) {
+      return `${year}年 ${month + 1}月`;
+    }
+
+    function formatTimeForInput(date) {
+      const s = date.getSeconds();
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(s)}`;
+    }
+
+    function createDateFromKeyAndTime(dateKey, timeStr) {
+      const [h, m, s] = timeStr.split(":").map((v) => parseInt(v, 10) || 0);
+      const [year, month, day] = dateKey.split("-").map((v) => parseInt(v, 10));
+      return new Date(year, month - 1, day, h, m, s);
+    }
+
+    // totalSeconds を取得（古いレコードの totalMinutes もケア）
+    function getTotalSeconds(rec) {
+      if (!rec) return 0;
+      if (typeof rec.totalSeconds === "number") return rec.totalSeconds;
+      if (typeof rec.totalMinutes === "number") return rec.totalMinutes * 60;
+      return 0;
+    }
+
+    function getSessionSeconds(session) {
+      if (!session) return 0;
+      if (typeof session.seconds === "number") return session.seconds;
+      if (typeof session.minutes === "number") return session.minutes * 60;
+      return 0;
+    }
+
+    function getLastSessionSeconds(meta) {
+      if (!meta) return 0;
+      if (typeof meta.seconds === "number") return meta.seconds;
+      if (typeof meta.minutes === "number") return meta.minutes * 60;
+      return 0;
+    }
+
+    // ===== レンダリング =====
+    function renderCalendar() {
+      monthLabelEl.textContent = getMonthLabel(currentYear, currentMonth);
+      calendarGridEl.innerHTML = "";
+
+      const firstOfMonth = new Date(currentYear, currentMonth, 1);
+      const firstDayIndex = (firstOfMonth.getDay() + 6) % 7; // 月曜=0
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      const today = new Date();
+      const todayKey = formatDateKey(today);
+
+      // 空セル（前月ぶん）
+      for (let i = 0; i < firstDayIndex; i++) {
+        const cell = document.createElement("div");
+        cell.className = "day-cell empty";
+        calendarGridEl.appendChild(cell);
+      }
+
+      // 日付セル
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const dateKey = formatDateKey(date);
+        const rec = recordsMap.get(dateKey);
+        const totalSeconds = getTotalSeconds(rec);
+
+        const cell = document.createElement("div");
+        cell.classList.add("day-cell");
+        cell.dataset.dateKey = dateKey;
+
+        if (dateKey === todayKey) {
+          cell.classList.add("today");
+        }
+        if (totalSeconds > 0) {
+          cell.classList.add("has-data");
+        }
+        if (selectedDateKey === dateKey) {
+          cell.classList.add("selected");
+        }
+
+        cell.addEventListener("click", () => {
+          onDateCellClicked(dateKey);
+        });
+
+        const dateLabelDiv = document.createElement("div");
+        dateLabelDiv.className = "date-label";
+
+        if (dateKey === todayKey) {
+          dateLabelDiv.innerHTML = `<span class="date-label-pill">今日 <span>${day}</span></span>`;
+        } else {
+          dateLabelDiv.textContent = day;
+        }
+
+        const timeLabelDiv = document.createElement("div");
+        timeLabelDiv.className = "time-label";
+
+        if (totalSeconds > 0) {
+          const sessionsCount = (rec && rec.sessions) ? rec.sessions.length : 0;
+          timeLabelDiv.innerHTML = `<strong>${formatSecondsDecimalHours(totalSeconds)}</strong>`;
+          const metaDiv = document.createElement("div");
+          metaDiv.className = "day-meta";
+          const dot = document.createElement("div");
+          dot.className = "day-dot";
+          const metaLabel = document.createElement("span");
+          metaLabel.textContent = `${sessionsCount} セッション`;
+          metaDiv.appendChild(dot);
+          metaDiv.appendChild(metaLabel);
+          cell.appendChild(dateLabelDiv);
+          cell.appendChild(timeLabelDiv);
+          cell.appendChild(metaDiv);
+        } else {
+          timeLabelDiv.innerHTML = `<span style="opacity:0.7;">--</span>`;
+          cell.appendChild(dateLabelDiv);
+          cell.appendChild(timeLabelDiv);
+        }
+
+        calendarGridEl.appendChild(cell);
+      }
+    }
+
+    function updateSelectedDayHighlight() {
+      const cells = calendarGridEl.querySelectorAll(".day-cell");
+      cells.forEach((cell) => {
+        cell.classList.remove("selected");
+        const key = cell.dataset.dateKey;
+        if (key && key === selectedDateKey) {
+          cell.classList.add("selected");
+        }
+      });
+    }
+
+    function updateStats() {
+      const today = new Date();
+      const todayKey = formatDateKey(today);
+      const todayRecord = recordsMap.get(todayKey);
+      const todayBaseSeconds = getTotalSeconds(todayRecord);
+      let totalTodaySeconds = todayBaseSeconds;
+
+      if (currentSessionStart) {
+        const now = new Date();
+        const elapsedSeconds = Math.max(0, Math.round((now - currentSessionStart) / 1000));
+        const currentSessionDateKey = formatDateKey(currentSessionStart);
+        if (currentSessionDateKey === todayKey) {
+          totalTodaySeconds += elapsedSeconds;
+        }
+      }
+
+      // 今日の合計
+      if (totalTodaySeconds > 0) {
+        todayTotalTextEl.textContent = formatMinutesHuman(totalTodaySeconds / 60);
+      } else {
+        todayTotalTextEl.textContent = "--";
+      }
+
+      // この月の合計（保存済みのみ）
+      let monthTotalSeconds = 0;
+      for (const [dateKey, rec] of recordsMap.entries()) {
+        const totalSeconds = getTotalSeconds(rec);
+        if (!totalSeconds) continue;
+        const d = parseDateKey(dateKey);
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          monthTotalSeconds += totalSeconds;
+        }
+      }
+      if (monthTotalSeconds > 0) {
+        monthTotalTextEl.textContent = formatMinutesHuman(monthTotalSeconds / 60);
+      } else {
+        monthTotalTextEl.textContent = "--";
+      }
+
+      // 直近 30 日の中央値（保存済みのみ）
+      const cutoff = new Date(today);
+      cutoff.setDate(cutoff.getDate() - 29);
+
+      const valuesSeconds = [];
+      for (const [dateKey, rec] of recordsMap.entries()) {
+        const totalSeconds = getTotalSeconds(rec);
+        if (!totalSeconds) continue;
+        const d = parseDateKey(dateKey);
+        if (d >= cutoff && d <= today && totalSeconds > 0) {
+          valuesSeconds.push(totalSeconds);
+        }
+      }
+      if (valuesSeconds.length === 0) {
+        median30TextEl.textContent = "--";
+      } else {
+        valuesSeconds.sort((a, b) => a - b);
+        const mid = Math.floor(valuesSeconds.length / 2);
+        let medianSeconds;
+        if (valuesSeconds.length % 2 === 0) {
+          medianSeconds = (valuesSeconds[mid - 1] + valuesSeconds[mid]) / 2;
+        } else {
+          medianSeconds = valuesSeconds[mid];
+        }
+        median30TextEl.textContent = formatMinutesHuman(medianSeconds / 60);
+      }
+    }
+
+    function updateTodayPanel() {
+      const now = new Date();
+      const todayKey = formatDateKey(now);
+      const todayRecord = recordsMap.get(todayKey);
+      const baseSeconds = getTotalSeconds(todayRecord);
+      let totalTodaySeconds = baseSeconds;
+      let elapsedSeconds = 0;
+
+      if (currentSessionStart) {
+        elapsedSeconds = Math.max(0, Math.round((now - currentSessionStart) / 1000));
+        const sessionDateKey = formatDateKey(currentSessionStart);
+        if (sessionDateKey === todayKey) {
+          totalTodaySeconds += elapsedSeconds;
+        }
+      }
+
+      // タイマー表示（セッション単体の経過時間）
+      if (currentSessionStart) {
+        timerDisplayEl.textContent = formatSecondsToHMS(elapsedSeconds);
+      } else {
+        timerDisplayEl.textContent = "00:00:00";
+      }
+
+      // サブテキスト
+      if (currentSessionStart) {
+        const startHM = formatTimeHM(currentSessionStart);
+        timerSubEl.textContent = `${startHM} から記憶中（今日の合計: ${formatMinutesHuman(
+          totalTodaySeconds / 60
+        )}）`;
+      } else if (totalTodaySeconds > 0) {
+        timerSubEl.textContent = `今日の合計: ${formatMinutesHuman(totalTodaySeconds / 60)}`;
+      } else {
+        timerSubEl.textContent = "まだ記憶は開始していません。";
+      }
+
+      // カレンダー上の今日セルの X.Xh 表示も更新
+      const todayCell = calendarGridEl.querySelector(
+        `.day-cell[data-date-key="${todayKey}"] .time-label`
+      );
+      if (todayCell) {
+        if (totalTodaySeconds > 0) {
+          todayCell.innerHTML = `<strong>${formatSecondsDecimalHours(totalTodaySeconds)}</strong>`;
+        } else {
+          todayCell.innerHTML = `<span style="opacity:0.7;">--</span>`;
+        }
+      }
+
+      updateStats();
+    }
+
+    function updateLastSessionUI() {
+      if (!lastSessionMeta) {
+        lastSessionTextEl.textContent = "最後に記憶したセッションはまだありません。";
+        return;
+      }
+      const { dateKey, start, end } = lastSessionMeta;
+      const totalSeconds = getLastSessionSeconds(lastSessionMeta);
+      const d = parseDateKey(dateKey);
+      const label = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+      const startD = new Date(start);
+      const endD = new Date(end);
+      lastSessionTextEl.innerHTML = `
+        <strong>${label}</strong> のセッションを記憶しました。<br />
+        ${formatTimeHM(startD)} 〜 ${formatTimeHM(endD)}（${formatMinutesHuman(
+        totalSeconds / 60
+      )}）
+      `;
+    }
+
+    function setButtonState(isRecording) {
+      if (isRecording) {
+        toggleButtonEl.classList.add("secondary");
+        toggleButtonEl.innerHTML = `<span>記憶終了</span>`;
+        statusDotEl.className = "status-dot-on";
+        statusTextEl.textContent = "記憶中";
+      } else {
+        toggleButtonEl.classList.remove("secondary");
+        toggleButtonEl.innerHTML = `<span>記憶開始</span>`;
+        statusDotEl.className = "status-dot-off";
+        statusTextEl.textContent = "待機中";
+      }
+    }
+
+    function startTimerLoop() {
+      stopTimerLoop();
+      timerIntervalId = setInterval(() => {
+        updateTodayPanel();
+      }, 1000);
+    }
+
+    function stopTimerLoop() {
+      if (timerIntervalId != null) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+      }
+    }
+
+    // ===== 履歴表示 =====
+    function onDateCellClicked(dateKey) {
+      selectedDateKey = dateKey;
+      editingSession = null;
+      updateSelectedDayHighlight();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (!selectedDateKey) {
+        historyDateLabelEl.textContent = "日付をクリックすると、その日の履歴が表示されます。";
+        historyListEl.classList.add("empty");
+        historyListEl.innerHTML = "この日に記憶されたセッションはありません。";
+        return;
+      }
+
+      const d = parseDateKey(selectedDateKey);
+      historyDateLabelEl.textContent =
+        `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+
+      const rec = recordsMap.get(selectedDateKey);
+      if (!rec || !rec.sessions || rec.sessions.length === 0) {
+        historyListEl.classList.add("empty");
+        historyListEl.innerHTML = "この日に記憶されたセッションはありません。";
+        return;
+      }
+
+      historyListEl.classList.remove("empty");
+      historyListEl.innerHTML = "";
+
+      rec.sessions.forEach((session, index) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        const main = document.createElement("div");
+        main.className = "history-main";
+
+        const startD = new Date(session.start);
+        const endD = new Date(session.end);
+        const seconds = getSessionSeconds(session);
+
+        const isEditing =
+          editingSession &&
+          editingSession.dateKey === selectedDateKey &&
+          editingSession.index === index;
+
+        if (!isEditing) {
+          const time = document.createElement("div");
+          time.className = "history-time";
+          time.textContent = `${formatTimeHM(startD)} 〜 ${formatTimeHM(endD)}`;
+
+          const duration = document.createElement("div");
+          duration.className = "history-duration";
+          duration.textContent = `長さ: ${formatMinutesHuman(seconds / 60)}（${formatSecondsDecimalHours(
+            seconds
+          )}）`;
+
+          main.appendChild(time);
+          main.appendChild(duration);
+        } else {
+          const editContainer = document.createElement("div");
+          editContainer.className = "history-edit-inputs";
+
+          const startLabel = document.createElement("label");
+          startLabel.textContent = "開始:";
+          const startInput = document.createElement("input");
+          startInput.type = "time";
+          startInput.step = "1";
+          startInput.value = formatTimeForInput(startD);
+          startLabel.appendChild(startInput);
+
+          const endLabel = document.createElement("label");
+          endLabel.textContent = "終了:";
+          const endInput = document.createElement("input");
+          endInput.type = "time";
+          endInput.step = "1";
+          endInput.value = formatTimeForInput(endD);
+          endLabel.appendChild(endInput);
+
+          editContainer.appendChild(startLabel);
+          editContainer.appendChild(endLabel);
+
+          const buttons = document.createElement("div");
+          buttons.className = "history-edit-buttons";
+
+          const saveBtn = document.createElement("button");
+          saveBtn.className = "action-btn save";
+          saveBtn.textContent = "保存";
+          saveBtn.addEventListener("click", () => {
+            const startStr = startInput.value;
+            const endStr = endInput.value;
+            if (!startStr || !endStr) {
+              alert("開始・終了時刻を入力してください。");
+              return;
+            }
+            const newStart = createDateFromKeyAndTime(selectedDateKey, startStr);
+            const newEnd = createDateFromKeyAndTime(selectedDateKey, endStr);
+            if (newEnd <= newStart) {
+              alert("終了時刻は開始時刻より後にしてください。");
+              return;
+            }
+            const newSeconds = Math.max(1, Math.round((newEnd - newStart) / 1000));
+            applySessionEdit(selectedDateKey, index, newStart, newEnd, newSeconds);
+          });
+
+          const cancelBtn = document.createElement("button");
+          cancelBtn.className = "action-btn cancel";
+          cancelBtn.textContent = "キャンセル";
+          cancelBtn.addEventListener("click", () => {
+            editingSession = null;
+            renderHistory();
+          });
+
+          buttons.appendChild(saveBtn);
+          buttons.appendChild(cancelBtn);
+
+          main.appendChild(editContainer);
+          main.appendChild(buttons);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "history-actions";
+
+        if (!isEditing) {
+          const editBtn = document.createElement("button");
+          editBtn.className = "action-btn edit";
+          editBtn.textContent = "編集";
+          editBtn.addEventListener("click", () => {
+            editingSession = { dateKey: selectedDateKey, index };
+            renderHistory();
+          });
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "action-btn delete";
+          deleteBtn.textContent = "削除";
+          deleteBtn.addEventListener("click", () => {
+            if (confirm("このセッションを削除しますか？")) {
+              deleteSession(selectedDateKey, index);
+            }
+          });
+
+          actions.appendChild(editBtn);
+          actions.appendChild(deleteBtn);
+        }
+
+        item.appendChild(main);
+        item.appendChild(actions);
+        historyListEl.appendChild(item);
+      });
+    }
+
+    function applySessionEdit(dateKey, index, newStart, newEnd, newSeconds) {
+      const rec = recordsMap.get(dateKey);
+      if (!rec || !rec.sessions || !rec.sessions[index]) return;
+
+      const session = rec.sessions[index];
+      const oldSeconds = getSessionSeconds(session);
+
+      session.start = newStart.toISOString();
+      session.end = newEnd.toISOString();
+      session.seconds = newSeconds;
+      session.minutes = Math.round(newSeconds / 60);
+
+      const prevTotal = getTotalSeconds(rec);
+      rec.totalSeconds = Math.max(0, prevTotal - oldSeconds + newSeconds);
+      rec.totalMinutes = Math.round(rec.totalSeconds / 60);
+
+      recordsMap.set(dateKey, rec);
+      editingSession = null;
+
+      Promise.all([saveRecord(rec)])
+        .then(() => {
+          renderCalendar();
+          updateTodayPanel();
+          renderHistory();
+        })
+        .catch((err) => console.error("applySessionEdit save error:", err));
+    }
+
+    function deleteSession(dateKey, index) {
+      const rec = recordsMap.get(dateKey);
+      if (!rec || !rec.sessions || !rec.sessions[index]) return;
+
+      const session = rec.sessions[index];
+      const secondsToSubtract = getSessionSeconds(session);
+
+      rec.sessions.splice(index, 1);
+      const prevTotal = getTotalSeconds(rec);
+      rec.totalSeconds = Math.max(0, prevTotal - secondsToSubtract);
+      rec.totalMinutes = Math.round(rec.totalSeconds / 60);
+
+      recordsMap.set(dateKey, rec);
+      editingSession = null;
+
+      Promise.all([saveRecord(rec)])
+        .then(() => {
+          renderCalendar();
+          updateTodayPanel();
+          renderHistory();
+        })
+        .catch((err) => console.error("deleteSession save error:", err));
+    }
+
+    // ===== 操作 =====
+    function onToggleClicked() {
+      if (!db) {
+        alert("データベース初期化中です。少し待ってから再度お試しください。");
+        return;
+      }
+
+      if (currentSessionStart) {
+        endSession();
+      } else {
+        startSession();
+      }
+    }
+
+    function startSession() {
+      currentSessionStart = new Date();
+      setButtonState(true);
+      startTimerLoop();
+      saveMeta({ key: "currentSession", startTime: currentSessionStart.toISOString() }).catch(
+        (err) => console.error("save currentSession meta error:", err)
+      );
+      updateTodayPanel();
+    }
+
+    function endSession() {
+      if (!currentSessionStart) return;
+      const endTime = new Date();
+      const startTime = currentSessionStart;
+
+      let seconds = Math.round((endTime - startTime) / 1000);
+      if (seconds < 1) seconds = 1; // 1 秒未満でも最低 1 秒として扱う
+      const minutes = Math.round(seconds / 60);
+
+      const dateKey = formatDateKey(startTime);
+      let rec = recordsMap.get(dateKey);
+      if (!rec) {
+        rec = { date: dateKey, sessions: [], totalSeconds: 0 };
+      }
+      if (!Array.isArray(rec.sessions)) {
+        rec.sessions = [];
+      }
+
+      rec.sessions.push({
+        start: startTime.toISOString(),
+        end: endTime.toISOString(),
+        seconds: seconds,
+      });
+
+      const prevTotalSeconds = getTotalSeconds(rec);
+      rec.totalSeconds = prevTotalSeconds + seconds;
+      // 互換性のために totalMinutes も更新しておく
+      rec.totalMinutes = Math.round(rec.totalSeconds / 60);
+
+      recordsMap.set(dateKey, rec);
+      currentSessionStart = null;
+      stopTimerLoop();
+      setButtonState(false);
+
+      Promise.all([
+        saveRecord(rec),
+        deleteMeta("currentSession"),
+        saveMeta({
+          key: "lastSession",
+          dateKey,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          seconds,
+          minutes,
+        }),
+      ])
+        .then(() => {
+          lastSessionMeta = {
+            dateKey,
+            start: startTime.toISOString(),
+            end: endTime.toISOString(),
+            seconds,
+            minutes,
+          };
+          renderCalendar();
+          updateTodayPanel();
+          updateLastSessionUI();
+
+          // 終了した日が現在選択中なら履歴も更新
+          if (selectedDateKey === dateKey) {
+            renderHistory();
+          }
+        })
+        .catch((err) => {
+          console.error("endSession save error:", err);
+        });
+    }
+
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear -= 1;
+      } else if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear += 1;
+      }
+      renderCalendar();
+      updateStats();
+      updateSelectedDayHighlight();
+      renderHistory();
+    }
+
+    // ===== 初期化 =====
+    document.addEventListener("DOMContentLoaded", () => {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth();
+      selectedDateKey = formatDateKey(now);
+      openDatabase();
+    });
+  </script>
+</body>
+</html>
