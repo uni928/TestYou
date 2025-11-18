@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>URLだけでページをつくるツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at top left, #4f46e5, #0f172a 60%);
+      --card-bg: rgba(15, 23, 42, 0.85);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.2);
+      --border-subtle: rgba(148, 163, 184, 0.4);
+      --text-main: #e5e7eb;
+      --text-soft: #9ca3af;
+      --danger: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background: var(--bg-gradient), #020617;
+      background-attachment: fixed;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 0.8);
+      padding: 20px 20px 18px;
+      backdrop-filter: blur(24px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 650;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-pill {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-soft);
+      color: var(--accent);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-soft);
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .badge {
+      border-radius: 999px;
+      border: 1px dashed rgba(148, 163, 184, 0.4);
+      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+    }
+
+    .layout-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 800px) {
+      .layout-two {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      max-height: 60vh;
+      resize: vertical;
+      border-radius: 14px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-main);
+      padding: 10px 12px;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.7);
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px rgba(56, 189, 248, 0.5),
+        0 0 0 1px rgba(15, 23, 42, 1);
+    }
+
+    .small-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .field-caption {
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .mode-toggle {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-subtle);
+      gap: 4px;
+    }
+
+    .mode-option {
+      position: relative;
+    }
+
+    .mode-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mode-option span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-soft);
+      transition: background 0.16s ease, color 0.16s ease, transform 0.06s ease;
+    }
+
+    .mode-option input:checked + span {
+      background: var(--accent-soft);
+      color: var(--accent);
+      transform: translateY(-0.5px);
+    }
+
+    .mode-option span::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.9);
+    }
+
+    .mode-option input:checked + span::before {
+      background: var(--accent);
+      border-color: transparent;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .url-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .url-input-row {
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .url-input {
+      flex: 1;
+      min-height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text-main);
+      padding: 8px 11px;
+      font-size: 12px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      overflow-wrap: break-word;
+      word-break: break-all;
+      resize: vertical;
+      outline: none;
+    }
+
+    .url-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.96);
+      color: var(--text-main);
+      font-size: 12px;
+      padding: 7px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background 0.14s ease, transform 0.05s ease, box-shadow 0.1s ease, border-color 0.1s ease;
+    }
+
+    .btn-primary {
+      border-color: rgba(56, 189, 248, 0.8);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.16), rgba(8, 47, 73, 0.9));
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 1);
+    }
+
+    .btn:hover {
+      background: rgba(15, 23, 42, 0.9);
+      transform: translateY(-0.3px);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-primary:hover {
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.25), rgba(8, 47, 73, 0.95));
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-icon {
+      font-size: 14px;
+    }
+
+    .tiny-info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-soft);
+      margin-top: 2px;
+    }
+
+    .tiny-warning {
+      color: var(--danger);
+      opacity: 0.9;
+    }
+
+    .viewer-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      padding: 14px 16px 12px;
+      box-shadow:
+        0 22px 60px rgba(15, 23, 42, 1),
+        0 0 0 1px rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(26px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .viewer-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .viewer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: rgba(15, 23, 42, 0.96);
+    }
+
+    .viewer-pill span {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .viewer-main {
+      margin-top: 4px;
+      border-radius: 14px;
+      background: #0b1120;
+      border: 1px solid rgba(30, 64, 175, 0.7);
+      padding: 12px 14px;
+      min-height: 60vh;
+      color: #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .viewer-main pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .pill-dot-green {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+    }
+
+    .pill-dot-blue {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
+    }
+
+    .link-like {
+      color: var(--accent);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .link-like:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="editorSection">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="title">
+            URLだけでページをつくる
+            <span class="title-pill">URL Renderer</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-soft);display:flex;align-items:center;gap:6px;">
+          <span style="width:7px;height:7px;border-radius:999px;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7);"></span>
+          live encode
+        </div>
+      </div>
+      <p class="subtitle">
+        下のエディタに書いた内容を、URLクエリにそのまま埋め込みます。<br />
+        生成されたURLを X / LINE / メールなどに貼れば、そのURLを開いた人の画面には「この内容だけ」が表示されます。
+      </p>
+
+      <div class="badge-row">
+        <span class="badge">
+          <span class="badge-dot"></span> HTML / プレーンテキスト両対応
+        </span>
+        <span class="badge">
+          <span class="badge-dot"></span> 保存なし（localStorage / IndexedDB 不使用）
+        </span>
+        <span class="badge">
+          <span class="badge-dot"></span> 同じファイルで「作成」と「表示」
+        </span>
+      </div>
+
+      <div class="layout-two">
+        <div>
+          <div class="small-label-row">
+            <label>
+              編集内容
+            </label>
+            <div class="mode-toggle" id="modeToggle">
+              <label class="mode-option">
+                <input type="radio" name="renderMode" value="html"  />
+                <span>HTMLとして表示</span>
+              </label>
+              <label class="mode-option">
+                <input type="radio" name="renderMode" value="text" checked/>
+                <span>プレーンテキスト</span>
+              </label>
+            </div>
+          </div>
+          <textarea id="contentInput" placeholder="こんにちは"></textarea>
+          <div class="field-caption">
+            ※ HTML モードでは &lt;h1&gt; や &lt;p&gt; などのタグがそのまま効きます。
+          </div>
+        </div>
+
+        <div>
+          <div class="small-label-row">
+            <label>共有用URL</label>
+            <div style="font-size:11px;color:var(--text-soft);">
+              ここをそのまま X などに貼ってください
+            </div>
+          </div>
+
+          <div class="url-field">
+            <textarea id="urlOutput" class="url-input" readonly></textarea>
+            <div class="url-input-row">
+              <button class="btn btn-primary" id="copyBtn">
+                <span class="btn-icon">📋</span> URL をコピー
+              </button>
+              <button class="btn" id="openBtn">
+                <span class="btn-icon">🔗</span> プレビューを開く
+              </button>
+            </div>
+            <div class="tiny-info-row">
+              <div>URL 長さ: <span id="urlLength">0</span> 文字</div>
+              <div class="tiny-warning">
+                ※ ブラウザやSNSによっては「とても長いURL」は正しく開けない場合があります
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="font-size:11px;color:var(--text-soft);text-align:center;">
+      このHTMLファイルをそのままサーバーに置くだけで使えます（クエリ例: <code>?d=...&amp;m=html</code>）。
+    </div>
+  </div>
+
+  <!-- 表示専用モード -->
+  <div id="viewerSection" style="display:none;width:100%;">
+    <div class="viewer-shell">
+      <div class="viewer-toolbar">
+        <div class="viewer-pill">
+          <span class="pill-dot-green"></span>
+          <span>RENDER MODE</span>
+          <span id="viewerModeLabel">HTML</span>
+        </div>
+
+      </div>
+      <div class="viewer-main" id="viewerContent"></div>
+    </div>
+  </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <script>
+
+    (function () {
+      const editorSection = document.getElementById("editorSection");
+      const viewerSection = document.getElementById("viewerSection");
+
+      const params = new URLSearchParams(window.location.search);
+      const hasData = params.has("d");
+      const data = params.get("d") || "";
+      const mode = params.get("m") || "html";
+
+      if (hasData) {
+        // 表示専用モード
+        editorSection.style.display = "none";
+        viewerSection.style.display = "block";
+
+        const viewerContent = document.getElementById("viewerContent");
+        const viewerModeLabel = document.getElementById("viewerModeLabel");
+        const backToEditor = document.getElementById("backToEditor");
+
+        viewerModeLabel.textContent = (mode === "text") ? "TEXT" : "HTML";
+
+        if (mode === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = decompressFromBase64String(data);
+          viewerContent.innerHTML = "";
+          viewerContent.appendChild(pre);
+        } else {
+          // HTMLとして表示
+          viewerContent.innerHTML = decompresshtml(data);
+        }
+
+        backToEditor.addEventListener("click", function (e) {
+          e.preventDefault();
+          // エディタモードで開き直す（d / m を消す）
+          window.location.href = window.location.origin + window.location.pathname;
+        });
+
+        return; // 以降はエディタ用の処理
+      }
+
+      // --- エディタモード ---
+      editorSection.style.display = "block";
+      viewerSection.style.display = "none";
+
+      const contentInput = document.getElementById("contentInput");
+      const urlOutput = document.getElementById("urlOutput");
+      const copyBtn = document.getElementById("copyBtn");
+      const openBtn = document.getElementById("openBtn");
+      const urlLengthLabel = document.getElementById("urlLength");
+      const modeInputs = document.querySelectorAll('input[name="renderMode"]');
+
+function compressToBase64String(text) {
+  return LZString.compressToEncodedURIComponent(text);
+}
+function decompressFromBase64String(base64) {
+  return LZString.decompressFromEncodedURIComponent(base64);
+}
+
+function compresshtml(A){
+	A=A.replace(/\r\n|\r/g,"\n").split("");
+	for(var W=11907,MIN=3,a=62,b,c,d,e,f,i,l,n=32,o,p,r,s,t,u,z=A.length,H={},L=[],N=[],L=[0],O=[0],M=["_"];a;)M[a--]=String.fromCharCode(a+(a<10?48:a<36?55:61));
+
+	// Unicodeの符号化
+	O.e=function(c,e){e=f;
+		if(c<128){
+			if(e^(f=(c>>5)+32))this[a++]=M[f];this[a++]=M[c&31]}
+		else if(12287<c&&c<12544){
+			if(e^(f=(c>>5&7)+36))this[a++]=M[f];this[a++]=M[c&31]}
+		else if(65279<c&&c<65440){
+			if(e^(f=(c>>5&7)+44))this[a++]=M[f];this[a++]=M[c&31]}
+		else{if(e^(f=(c-(c%=1984))/1984+49))this[a++]="m"+M[f-49];this[a++]=M[(c-(c%=62))/62]+M[c]}};
+
+	// LZ factorization
+	for(;a<z;++b>=O[a]||(O[a]=b,L[a]=65536+c)){
+		b=O[a],r=a%W,l=r+W,c=2,e=f=0,t=a<W?-1:a-W,p=H[i=A[a]+A[a+1]+A[a+2]];
+		for(H[i]=a;p>t;){
+			i=e<f?e:f;
+			if(A[p+i]===A[a+i]){
+				for(;A[++i+p]===A[a+i];);
+				if(i>c){d=~p+a;s=d<3969?15:16;
+					for(u=d<3969?b+2:b+3;i>c;o>=O[a+c]||(O[a+c]=o,L[a+c]=65536*c+d))
+						o=++c<s?u+1:u+(c-s<60?2:(o=c-s-60)<63?3:o<3969?4:5);
+					if(a+i===z)break}
+			}
+			if(A[p+i]<A[a+i])N[r]=p,p=N[r=p%W+W],f=i;
+			else N[l]=p,p=N[l=p%W],e=i}
+		N[l]=N[r]=-1;
+		c=A[a++].charCodeAt();e=n;
+		if(c<128)e^(n=(c>>5)+32)&&++b;
+		else if(12287<c&&c<12544)e^(n=(c>>5&7)+36)&&++b;
+		else if(65279<c&&c<65440)e^(n=(c>>5&7)+44)&&++b;
+		else e^(n=(c-(c%1984))/1984+49)&&(b+=2),++b
+	}
+	for(p=N.length=O.length=0;n=N[p++]=L[a],a-=n/65536|0;);
+	for(f=32;d=N[--p];){
+			l=d/65536|0;d&=65535;
+		if(l<MIN)O.e(d);
+		else{l-=MIN;
+			if(d<3969)O[a++]=M[l<13?l+50:62];
+			else{if(d<7938)d-=3969,O[a++]="m"+M[l<13?l+34:47];
+			else d-=7938,O[a++]="m"+M[l<13?l+48:61];--l}
+			if(l>11)if((l-=12)<60)O[a++]=M[l];
+			else for(O[a++]=M[(l-=60)<63?60:l<3969?61:62];O[a++]=M[l%63],l=l/63|0;);
+			O[a++]=M[(d-(d%=63))/63]+M[d]}}
+	return O.join("")
+}
+function decompresshtml(A){
+	for(var a=62,b,c=1,l,n,o=-1,p,r,L={_:0},O=[],S=String.fromCharCode;a;)L[S(a+(a<11?47:a<37?54:60))]=a--;
+	for(A=A.split("");(l=L[A[a++]])>-1;)
+		if(l>49){
+			if(l>61)if((p=L[A[a++]])<60)l+=p;
+			else for(l+=60,n=1;l+=L[A[a++]]*n,--p>59;)n*=63;
+			for(p=o-L[A[a++]]*63-L[A[a++]];47<l--;)O[++o]=O[p++]}
+		else{
+			if(l>31){n=l<(p=36)?l-32:l<44?l+348:l>48?L[p=0,A[a++]]:l+1996;
+				if(n>33&&!p){p=3969;
+					if(n>47)n-=14,p+=p;
+					if(n>46)if((l=L[A[a++]])<60)n+=l;
+					else for(n+=60,r=1;n+=L[A[a++]]*r,--l>59;)r*=63;
+					for(p=o-L[A[a++]]*63-L[A[a++]]-p;31<n--;)O[++o]=O[p++];continue}
+					l=L[A[a++]];b=n<<5;c=p}
+			O[++o]=S(c?b|l:(b|l)*62+L[A[a++]])}
+	return O.join("")
+}
+      function getCurrentMode() {
+        const checked = document.querySelector('input[name="renderMode"]:checked');
+        return checked ? checked.value : "html";
+      }
+
+      function buildUrlFromContent() {
+        const base = window.location.origin + window.location.pathname;
+        const mode = getCurrentMode();
+        const content = mode == "html" ? compresshtml(contentInput.value) : compressToBase64String(contentInput.value) || "";
+
+        const p = new URLSearchParams();
+        p.set("d", content);
+        p.set("m", mode);
+
+        const url = base + "?" + p.toString();
+        urlOutput.value = url;
+        urlLengthLabel.textContent = url.length.toString();
+      }
+
+      // 初期値
+      buildUrlFromContent();
+
+      contentInput.addEventListener("input", buildUrlFromContent);
+      modeInputs.forEach((input) => {
+        input.addEventListener("change", buildUrlFromContent);
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        const text = urlOutput.value.trim();
+        if (!text) return;
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            // フォールバック
+            urlOutput.select();
+            document.execCommand("copy");
+          }
+          copyBtn.textContent = "コピーしました！";
+          setTimeout(() => {
+            copyBtn.innerHTML = '<span class="btn-icon">📋</span> URL をコピー';
+          }, 1500);
+        } catch (e) {
+          alert("コピーに失敗しました。手動で選択してコピーしてください。");
+        }
+      });
+
+      openBtn.addEventListener("click", () => {
+        const text = urlOutput.value.trim();
+        if (!text) return;
+        window.open(text, "_blank", "noopener,noreferrer");
+      });
+    })();
+  </script>
+</body>
+</html>
