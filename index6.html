@@ -260,6 +260,16 @@
    const start = display.selectionStart;
    const end   = display.selectionEnd;
 
+   // 選択範囲がある場合はその範囲を削除
+   if (start !== end) {
+     const before = val.substring(0, start);
+     const after  = val.substring(end);
+     display.value = before + after;
+     display.selectionStart = start;
+     display.selectionEnd   = start;
+     focusDisplay();
+     return;
+   }
        if (start === 0) {
      focusDisplay();
      return;
