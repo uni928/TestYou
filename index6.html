@@ -183,6 +183,13 @@
 
  // 現在のカーソル位置に文字を挿入する
  function insertAtCursor(text) {
+   // --- スマホの場合：常に末尾に追加 ---
+   if (isMobile) {
+     display.value += text;
+     focusDisplay();
+     return;
+   }
+
    const start = display.selectionStart;
    const end = display.selectionEnd;
    const before = display.value.substring(0, start);
