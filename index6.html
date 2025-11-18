@@ -234,14 +234,14 @@
     }
     const beforeChar = pos > 0 ? display.value.charAt(pos - 1) : '';
 
-    // . ) は「数字の後」以外では無視
-    if (text === '.' || text === ')') {
+    // . は「数字の後」以外では無視
+    if (text === '.') {
       if (!/[0-9]/.test(beforeChar)) {
         return; // 条件を満たさないので何もしない
       }
     }
-    // ÷ × ＋ －（内部的には / * + - ）は「数字 or ) の後」以外では無視
-    if (text === '+' || text === '-' || text === '*' || text === '/') {
+    // ) ÷ × ＋ －（内部的には / * + - ）は「数字 or ) の後」以外では無視
+    if (text === ')' || text === '+' || text === '-' || text === '*' || text === '/') {
       if (!/[0-9)]/.test(beforeChar)) {
         return; // 条件を満たさないので何もしない
       }
