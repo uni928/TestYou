@@ -256,6 +256,8 @@
 
   function backspace() {
     focusDisplay();
+   const start = display.selectionStart;
+   const end   = display.selectionEnd;
    // カーソルの１文字前を削除
    const before = val.substring(0, start - 1);
    const after  = val.substring(start);
