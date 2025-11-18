@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>文字列から数値を取り出して計算するツール</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 20px auto; }
+    textarea { width: 100%; height: 150px; }
+    button { margin-top: 10px; padding: 6px 16px; }
+    .result-box {
+      background: #fafafa; border: 1px solid #ddd;
+      padding: 8px; white-space: pre-wrap; margin-top: 6px;
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <h2>文字列から数値を取り出して計算するツール（8桁日付を除外）</h2>
+
+  <textarea id="inputText" placeholder="例）あああ2000いいい-3000ううう&#10;20240101 ← 日付なので無視"></textarea>
+  <br>
+  <button id="calcButton">計算する</button>
+
+  <h3>計算式</h3>
+  <div id="expression" class="result-box"></div>
+
+  <h3>計算結果</h3>
+  <div id="result" class="result-box"></div>
+
+  <h3>抽出された数値一覧（※日付は除外）</h3>
+  <div id="numbersList" class="result-box"></div>
+
+<script>
+document.getElementById("calcButton").addEventListener("click", function () {
+  const text = document.getElementById("inputText").value;
+
+  // +/-付き数値取得
+  const regex = /[+-]?\d+/g;
+  const rawMatches = text.match(regex);
+
+  const expressionEl = document.getElementById("expression");
+  const resultEl = document.getElementById("result");
+  const numbersListEl = document.getElementById("numbersList");
+
+  if (!rawMatches) {
+    expressionEl.textContent = "数値が見つかりませんでした。";
+    resultEl.textContent = "";
+    numbersListEl.textContent = "";
+    return;
+  }
+
+  // 8桁日付を除外した数値だけを採用する
+  const matches = rawMatches.filter(n => {
+    const s = n.replace(/^[+]/, ""); // 先頭の+だけ除去（-は残す）
+
+    // 8桁の数字（例：20240115）は除外
+    if (/^\-?\d{8}$/.test(s)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (matches.length === 0) {
+    expressionEl.textContent = "計算対象の数値がありませんでした（8桁日付のみ検出されました）。";
+    resultEl.textContent = "";
+    numbersListEl.textContent = rawMatches.join("\n");
+    return;
+  }
+
+  let sum = 0;
+  let expr = "";
+  let listText = "";
+
+  matches.forEach((numStr, index) => {
+    const value = parseInt(numStr);
+
+    sum += value;
+
+    if (index === 0) {
+      expr += numStr;
+    } else {
+      expr += (numStr.startsWith("-") ? numStr : "+" + numStr);
+    }
+
+    listText += `${index + 1}: ${numStr}\n`;
+  });
+
+  expr += "=" + sum;
+
+  expressionEl.textContent = expr;
+  resultEl.textContent = sum;
+  numbersListEl.textContent = listText.trim();
+});
+</script>
+</body>
+</html>
