@@ -191,10 +191,32 @@
    // 挿入した位置の直後へカーソル移動
    const pos = start + text.length;
    focusDisplay();
-   display.selectionStart = pos;
-   display.selectionEnd = pos;
+   setCursor((before + text).length);
    focusDisplay();
  }
+
+   // スマホで selectionStart が動かない問題への対応：
+  // 必要な時だけ readonly を一時的に解除してカーソル移動可能にする
+   function setCursor(pos) {
+     const wasReadonly = display.hasAttribute('readonly');
+
+     if (isMobile) {
+       // 一瞬 readonly を外してカーソル移動を可能にする
+       if (wasReadonly) display.removeAttribute('readonly');
+
+       display.selectionStart = pos;
+       display.selectionEnd = pos;
+
+       // すぐ readonly を戻す
+       if (wasReadonly) display.setAttribute('readonly', 'readonly');
+
+       return;
+    }
+
+     // PC側は普通にセットできる
+     display.selectionStart = pos;
+     display.selectionEnd = pos;
+   }
   
   // ===== 電卓ロジック =====
   const display = document.getElementById('display');
