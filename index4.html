@@ -170,13 +170,78 @@
   background-repeat: no-repeat;
 }
 
+/* ▼ 追加：ヘッダー左側（タイトル＋サブタイトル） */
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ▼ 追加：サブタイトル用 */
+.header-subtitle {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ▼ 追加：右上のファイルドロップ＆選択パネル */
+#fileDropArea {
+  position: relative;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: 11px;
+  color: #f9fafb;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* ドラッグ中の強調表示 */
+#fileDropArea.dragover {
+  background: rgba(37, 99, 235, 0.4);
+  border-style: solid;
+}
+
+/* ボタン風ラベル */
+.file-drop-label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* 補足説明 */
+.file-drop-hint {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+/* 実際の input[type=file] は隠す */
+#fileInput {
+  display: none;
+}
+
+
   </style>
 </head>
 <body>
 
 <header>
-  <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
-  <div style="font-size:12px; opacity:0.8;">宣言へジャンプ／戻るで呼び出しへ</div>
+  <div class="header-left">
+    <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
+    <div class="header-subtitle">宣言へジャンプ／戻るで呼び出しへ</div>
+  </div>
+
+  <!-- ▼ 追加：画面右上のファイルドロップ＆選択パネル -->
+  <div id="fileDropArea">
+    <div class="file-drop-label">ファイルからコードを追加</div>
+    <div class="file-drop-hint">
+      ここにドラッグ＆ドロップ<br>
+      またはクリックして選択
+    </div>
+    <input type="file" id="fileInput" multiple>
+  </div>
 </header>
 
 <main>
@@ -210,6 +275,9 @@ const codeContent = document.getElementById("codeContent");
 const analyzeButton = document.getElementById("analyzeButton");
 const sampleButton = document.getElementById("sampleButton");
 const backButton = document.getElementById("backButton");
+// ▼ 追加：ファイルドロップ／選択用の要素
+const fileDropArea = document.getElementById("fileDropArea");
+const fileInput = document.getElementById("fileInput");
 
 let scrollHistory = [];
 let currentHighlightLine = null;
@@ -316,6 +384,44 @@ function buildCodeView(codeText) {
   });
 }
 
+// ▼ 追加：選択／ドロップされたファイルを順に末尾へ追加する
+function appendFilesToEditor(fileList) {
+  const files = Array.from(fileList);
+  if (files.length === 0) return;
+
+  const appendNext = (index) => {
+    if (index >= files.length) return;
+
+    const file = files[index];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const text = e.target.result ?? "";
+
+      // 既にテキストがあって末尾が改行で終わっていなければ改行を追加
+      if (codeInput.value && !codeInput.value.endsWith("\n")) {
+        codeInput.value += "\n";
+      }
+
+      // ファイル名コメントを挿入してから中身を追加（不要ならコメント行を削除可）
+      codeInput.value += `// ===== ${file.name} =====\n`;
+      codeInput.value += text + "\n";
+
+      appendNext(index + 1);
+    };
+
+    reader.onerror = () => {
+      // 読み込み失敗時も次へ
+      appendNext(index + 1);
+    };
+
+    reader.readAsText(file);
+  };
+
+  appendNext(0);
+}
+
+
 function selectElementContents(el) {
   const r = document.createRange();
   r.selectNodeContents(el);
@@ -410,6 +516,46 @@ function calc(x,y){ return add(x,y) + mul(x,y) + unknown(x,y); }`;
   codeInput.value = sample;
   buildCodeView(sample);
 });
+
+// ▼ 追加：ドロップエリアをクリックしたらファイル選択ダイアログを開く
+fileDropArea.addEventListener("click", () => {
+  fileInput.click();
+});
+
+// ▼ 追加：input[type=file] でファイルが選択されたとき
+fileInput.addEventListener("change", (e) => {
+  const files = e.target.files;
+  if (files && files.length > 0) {
+    appendFilesToEditor(files);
+  }
+  // 同じファイルを連続選択できるようにリセット
+  fileInput.value = "";
+});
+
+// ▼ 追加：ドラッグオーバー時の見た目変更＆ドロップ許可
+fileDropArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  fileDropArea.classList.add("dragover");
+});
+
+fileDropArea.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  fileDropArea.classList.remove("dragover");
+});
+
+fileDropArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  fileDropArea.classList.remove("dragover");
+
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) {
+    appendFilesToEditor(files);
+  }
+});
+
 
 window.addEventListener("DOMContentLoaded", () => {
   //sampleButton.click();
