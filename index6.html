@@ -180,14 +180,27 @@
       display.focus();
     }
   }
+
+ // 現在のカーソル位置に文字を挿入する
+ function insertAtCursor(text) {
+   const start = display.selectionStart;
+   const end = display.selectionEnd;
+   const before = display.value.substring(0, start);
+   const after  = display.value.substring(end);
+   display.value = before + text + after;
+   // 挿入した位置の直後へカーソル移動
+   const pos = start + text.length;
+   display.selectionStart = pos;
+   display.selectionEnd = pos;
+   focusDisplay();
+ }
   
   // ===== 電卓ロジック =====
   const display = document.getElementById('display');
 
-  function appendToDisplay(text) {
-    display.value += text;
-    focusDisplay();
-  }
+ function appendToDisplay(text) {
+   insertAtCursor(text);
+ }
 
   function clearDisplay() {
     display.value = '';
