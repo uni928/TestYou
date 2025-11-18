@@ -328,25 +328,47 @@ function jumpToDeclaration(targetId, callId) {
   const target = document.getElementById(targetId);
   if (!target) return;
 
-  const scrollY = window.scrollY;
+  // 現在のスクロール位置と「押した呼び出し元ID」を履歴に保存
+  const scrollY = window.scrollY || document.documentElement.scrollTop;
   scrollHistory.push({ scrollY, callId });
   backButton.hidden = false;
 
-  if (currentHighlightLine) currentHighlightLine.classList.remove("decl-highlight");
-  if (currentCallHighlight) currentCallHighlight.classList.remove("call-highlight");
+  // 以前のハイライトを解除
+  if (currentHighlightLine) {
+    currentHighlightLine.classList.remove("decl-highlight");
+    currentHighlightLine = null;
+  }
+  if (currentCallHighlight) {
+    currentCallHighlight.classList.remove("call-highlight");
+    currentCallHighlight = null;
+  }
 
-  const lineEl = target.closest(".code-line");
+  // 宣言行の DOM（.code-line 単位）を取得
+  const lineEl = target.closest(".code-line") || target;
+
+  // 宣言行全体を選択
   selectElementContents(lineEl);
+
+  // 宣言行までスクロール（中央あたりに表示）
   lineEl.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  // 宣言行をハイライト
   lineEl.classList.add("decl-highlight");
   currentHighlightLine = lineEl;
 
-  // ★ 修正：呼び出し「先」（宣言側のメソッド名）にチェックをつける
-  const declEl = document.getElementById(targetId);
-  if (declEl) {
-      declEl.classList.add("method-checked");
-  }
+  // ★ 呼び出し先（宣言側のメソッド名）にチェックを付与
+  target.classList.add("method-checked");
+
+  // ★ この宣言をターゲットにしている全ての呼び出し元にもチェックを付与
+  // buildCodeView 内で .call に data-target="${declarations[name][0]}" を付けている前提
+  const relatedCalls = document.querySelectorAll(
+    `.code-token.call[data-target="${targetId}"]`
+  );
+  relatedCalls.forEach(callEl => {
+    callEl.classList.add("method-checked");
+  });
 }
+
 
 
 
