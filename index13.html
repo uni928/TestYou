@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>フリック練習ツール（フリック表版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #f4f4f4;
+    --fg: #222;
+    --accent: #007aff;
+    --accent-soft: rgba(0,122,255,0.12);
+    --border: #ddd;
+    --danger: #f53d3d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .app {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 12px 12px 32px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 8px 0 12px;
+    text-align: center;
+  }
+  h2 {
+    font-size: 1.05rem;
+    margin: 16px 0 8px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+  }
+  label {
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 4px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    outline: none;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  button {
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.9rem;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: #eee;
+    color: #333;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .info {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 4px;
+  }
+  .small {
+    font-size: 0.8rem;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eee;
+    font-size: 0.75rem;
+    margin-right: 4px;
+  }
+  .list {
+    margin-top: 6px;
+    font-size: 0.8rem;
+  }
+  .list-item {
+    padding: 2px 0;
+  }
+  .status {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+  }
+  .status.ok { color: #0a9d3f; }
+  .status.ng { color: var(--danger); }
+  .divider {
+    margin: 10px 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* 擬似キーボード */
+  .keyboard-wrapper {
+    margin-top: 8px;
+  }
+  .keyboard-title {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  .keyboard {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    touch-action: none;
+  }
+  .key {
+    background: #fafafa;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.1rem;
+    user-select: none;
+    position: relative;
+  }
+  .key-label-main {
+    font-size: 1.2rem;
+  }
+  .key-label-sub {
+    font-size: 0.6rem;
+    opacity: 0.7;
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+  }
+  .key-arrows {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  .key.guide {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+
+  .current-word {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .step-progress {
+    font-size: 0.85rem;
+    margin-top: 2px;
+  }
+  .guide-text {
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .pattern-list {
+    margin-top: 6px;
+    font-size: 0.8rem;
+  }
+  .pattern-step {
+    display: inline-block;
+    margin: 2px 2px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #f0f0f0;
+  }
+  .mapping-table {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .mapping-table th,
+  .mapping-table td {
+    border: 1px solid var(--border);
+    padding: 2px 4px;
+    text-align: center;
+  }
+  .mapping-table th {
+    background: #fafafa;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>フリック練習ツール（フリック表版）</h1>
+
+  <!-- 1. 単語登録（フリック表から自動生成） -->
+  <div class="card">
+    <h2>1. 単語の登録（フリック表から自動生成）</h2>
+    <label for="wordInput">単語（ひらがなのみ対応）</label>
+    <input id="wordInput" type="text" placeholder="例：こんにちは">
+    <div class="info">
+      あらかじめ用意したフリック表（「あ←い」「あ↑う」など）から、単語のフリック手順を自動生成します。
+      <br>※対応文字：あ〜お、か〜こ、さ〜そ、た〜と、な〜の、は〜ほ、ま〜も、やゆよ、ら〜ろ、わをん
+    </div>
+    <div class="btn-row">
+      <button id="addWordBtn">この単語を登録</button>
+      <button id="clearWordsBtn" class="secondary">登録をすべて削除</button>
+    </div>
+    <div class="status" id="registerStatus"></div>
+    <div class="list" id="wordListArea">
+      <span class="small">登録済み単語：0件</span>
+    </div>
+  </div>
+
+  <!-- 擬似キーボード -->
+  <div class="card keyboard-wrapper">
+    <div class="keyboard-title">
+      擬似フリックキーボード
+      <span class="small">（矢印方向にスライド）</span>
+    </div>
+    <div class="keyboard" id="keyboard">
+      <div class="key" data-key-id="a">
+        <span class="key-label-main">あ</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">あ行</span>
+      </div>
+      <div class="key" data-key-id="ka">
+        <span class="key-label-main">か</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">か行</span>
+      </div>
+      <div class="key" data-key-id="sa">
+        <span class="key-label-main">さ</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">さ行</span>
+      </div>
+
+      <div class="key" data-key-id="ta">
+        <span class="key-label-main">た</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">た行</span>
+      </div>
+      <div class="key" data-key-id="na">
+        <span class="key-label-main">な</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">な行</span>
+      </div>
+      <div class="key" data-key-id="ha">
+        <span class="key-label-main">は</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">は行</span>
+      </div>
+
+      <div class="key" data-key-id="ma">
+        <span class="key-label-main">ま</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">ま行</span>
+      </div>
+      <div class="key" data-key-id="ya">
+        <span class="key-label-main">や</span>
+        <span class="key-arrows">↑ ↓</span>
+        <span class="key-label-sub">や行</span>
+      </div>
+      <div class="key" data-key-id="ra">
+        <span class="key-label-main">ら</span>
+        <span class="key-arrows">← ↑ → ↓</span>
+        <span class="key-label-sub">ら行</span>
+      </div>
+
+      <div class="key" data-key-id="wa">
+        <span class="key-label-main">わ</span>
+        <span class="key-arrows">↑ →</span>
+        <span class="key-label-sub">わ行</span>
+      </div>
+      <div class="key" data-key-id="space">
+        <span class="key-label-main">空白</span>
+        <span class="key-label-sub">space</span>
+      </div>
+      <div class="key" data-key-id="del">
+        <span class="key-label-main">削除</span>
+        <span class="key-label-sub">del</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ランダム出題で練習 -->
+  <div class="card">
+    <h2>2. ランダム出題で練習</h2>
+    <div class="btn-row">
+      <button id="startPracticeBtn" disabled>ランダムに出題</button>
+      <button id="stopPracticeBtn" class="secondary" disabled>練習を終了</button>
+    </div>
+    <div class="divider"></div>
+    <div class="current-word" id="currentWord">（まだ出題されていません）</div>
+    <div class="step-progress" id="stepProgress"></div>
+    <div class="guide-text" id="guideText"></div>
+    <div class="status" id="practiceStatus"></div>
+    <div class="pattern-list">
+      <div class="small">この単語のフリック手順：</div>
+      <div id="practiceStepsArea" class="small">（出題中のみ表示されます）</div>
+    </div>
+  </div>
+
+  <!-- 3. フリック表（参考用） -->
+  <div class="card">
+    <h2>3. フリック対応表（内部で使用）</h2>
+    <div class="info">
+      例：<code>{"い": {key:"あ", dir:"←"}}</code>、<code>{"う": {key:"あ", dir:"↑"}}</code> など。
+    </div>
+    <table class="mapping-table" id="mappingTable">
+      <thead>
+        <tr><th>文字</th><th>キー</th><th>方向</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  // ---- フリック対応表 ----
+  // direction: "center" | "left" | "right" | "up" | "down"
+  const flickTable = {
+    // あ行
+    "あ": { keyId: "a", direction: "center" },
+    "い": { keyId: "a", direction: "left"   },
+    "う": { keyId: "a", direction: "up"     },
+    "え": { keyId: "a", direction: "right"  },
+    "お": { keyId: "a", direction: "down"   },
+
+    // か行
+    "か": { keyId: "ka", direction: "center" },
+    "き": { keyId: "ka", direction: "left"   },
+    "く": { keyId: "ka", direction: "up"     },
+    "け": { keyId: "ka", direction: "right"  },
+    "こ": { keyId: "ka", direction: "down"   },
+
+    // さ行
+    "さ": { keyId: "sa", direction: "center" },
+    "し": { keyId: "sa", direction: "left"   },
+    "す": { keyId: "sa", direction: "up"     },
+    "せ": { keyId: "sa", direction: "right"  },
+    "そ": { keyId: "sa", direction: "down"   },
+
+    // た行
+    "た": { keyId: "ta", direction: "center" },
+    "ち": { keyId: "ta", direction: "left"   },
+    "つ": { keyId: "ta", direction: "up"     },
+    "て": { keyId: "ta", direction: "right"  },
+    "と": { keyId: "ta", direction: "down"   },
+
+    // な行
+    "な": { keyId: "na", direction: "center" },
+    "に": { keyId: "na", direction: "left"   },
+    "ぬ": { keyId: "na", direction: "up"     },
+    "ね": { keyId: "na", direction: "right"  },
+    "の": { keyId: "na", direction: "down"   },
+
+    // は行
+    "は": { keyId: "ha", direction: "center" },
+    "ひ": { keyId: "ha", direction: "left"   },
+    "ふ": { keyId: "ha", direction: "up"     },
+    "へ": { keyId: "ha", direction: "right"  },
+    "ほ": { keyId: "ha", direction: "down"   },
+
+    // ま行
+    "ま": { keyId: "ma", direction: "center" },
+    "み": { keyId: "ma", direction: "left"   },
+    "む": { keyId: "ma", direction: "up"     },
+    "め": { keyId: "ma", direction: "right"  },
+    "も": { keyId: "ma", direction: "down"   },
+
+    // や行（左右は未使用）
+    "や": { keyId: "ya", direction: "center" },
+    "ゆ": { keyId: "ya", direction: "up"     },
+    "よ": { keyId: "ya", direction: "down"   },
+
+    // ら行
+    "ら": { keyId: "ra", direction: "center" },
+    "り": { keyId: "ra", direction: "left"   },
+    "る": { keyId: "ra", direction: "up"     },
+    "れ": { keyId: "ra", direction: "right"  },
+    "ろ": { keyId: "ra", direction: "down"   },
+
+    // わ行（簡易仕様）
+    "わ": { keyId: "wa", direction: "center" },
+    "を": { keyId: "wa", direction: "up"     },
+    "ん": { keyId: "wa", direction: "right"  }
+  };
+
+  const dirText = {
+    center: "タップ",
+    left: "左フリック",
+    right: "右フリック",
+    up: "上フリック",
+    down: "下フリック"
+  };
+  const dirArrow = {
+    center: "・",
+    left: "←",
+    right: "→",
+    up: "↑",
+    down: "↓"
+  };
+
+  // ---- 状態 ----
+  const MODE_IDLE = "idle";
+  const MODE_PRACTICE = "practice";
+  let mode = MODE_IDLE;
+
+  const patterns = []; // {id, word, steps:[{char, keyId, direction}]}
+  let currentPattern = null;
+  let currentStepIndex = 0;
+
+  let pointerState = null; // {id, keyId, startX, startY}
+
+  // ---- 要素取得 ----
+  const wordInput = document.getElementById("wordInput");
+  const addWordBtn = document.getElementById("addWordBtn");
+  const clearWordsBtn = document.getElementById("clearWordsBtn");
+  const registerStatus = document.getElementById("registerStatus");
+  const wordListArea = document.getElementById("wordListArea");
+
+  const keyboard = document.getElementById("keyboard");
+  const keyElements = Array.from(keyboard.querySelectorAll(".key"));
+
+  const startPracticeBtn = document.getElementById("startPracticeBtn");
+  const stopPracticeBtn = document.getElementById("stopPracticeBtn");
+  const currentWordEl = document.getElementById("currentWord");
+  const stepProgressEl = document.getElementById("stepProgress");
+  const guideTextEl = document.getElementById("guideText");
+  const practiceStatusEl = document.getElementById("practiceStatus");
+  const practiceStepsArea = document.getElementById("practiceStepsArea");
+
+  const mappingTableBody = document.querySelector("#mappingTable tbody");
+
+  // ---- 初期表示：フリック表をテーブルに展開 ----
+  function renderMappingTable() {
+    const entries = Object.entries(flickTable);
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    mappingTableBody.innerHTML = "";
+    for (const [ch, info] of entries) {
+      const tr = document.createElement("tr");
+      const keyLabel = getKeyLabel(info.keyId);
+      const td1 = document.createElement("td");
+      const td2 = document.createElement("td");
+      const td3 = document.createElement("td");
+      td1.textContent = ch;
+      td2.textContent = keyLabel;
+      td3.textContent = dirText[info.direction] + "（" + dirArrow[info.direction] + "）";
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      mappingTableBody.appendChild(tr);
+    }
+  }
+
+  function getKeyLabel(keyId) {
+    const el = keyElements.find(k => k.dataset.keyId === keyId);
+    if (!el) return keyId;
+    return el.querySelector(".key-label-main").textContent;
+  }
+
+  // ---- 単語 → フリック手順変換 ----
+  function wordToSteps(word) {
+    const chars = Array.from(word);
+    const steps = [];
+    const unknown = new Set();
+    for (const ch of chars) {
+      const info = flickTable[ch];
+      if (!info) {
+        if (ch.trim() !== "") {
+          unknown.add(ch);
+        }
+        continue;
+      }
+      steps.push({
+        char: ch,
+        keyId: info.keyId,
+        direction: info.direction
+      });
+    }
+    return { steps, unknown: Array.from(unknown) };
+  }
+
+  // ---- 単語登録 ----
+  function updateWordList() {
+    const count = patterns.length;
+    if (count === 0) {
+      wordListArea.innerHTML = "<span class=\"small\">登録済み単語：0件</span>";
+      startPracticeBtn.disabled = true;
+      return;
+    }
+    startPracticeBtn.disabled = false;
+    const div = document.createElement("div");
+    div.className = "small";
+    const label = document.createElement("div");
+    label.textContent = "登録済み単語：" + count + "件";
+    div.appendChild(label);
+    patterns.forEach(p => {
+      const item = document.createElement("div");
+      item.className = "list-item";
+      item.textContent = "・" + p.word + "（ステップ数 " + p.steps.length + "）";
+      div.appendChild(item);
+    });
+    wordListArea.innerHTML = "";
+    wordListArea.appendChild(div);
+  }
+
+  addWordBtn.addEventListener("click", () => {
+    const word = wordInput.value.trim();
+    registerStatus.textContent = "";
+    registerStatus.className = "status";
+
+    if (!word) {
+      registerStatus.textContent = "単語を入力してください。";
+      registerStatus.classList.add("ng");
+      return;
+    }
+
+    const { steps, unknown } = wordToSteps(word);
+
+    if (unknown.length > 0) {
+      registerStatus.textContent =
+        "対応していない文字が含まれています：" + unknown.join(" ");
+      registerStatus.classList.add("ng");
+      return;
+    }
+
+    if (steps.length === 0) {
+      registerStatus.textContent = "有効なひらがなが1文字もありませんでした。";
+      registerStatus.classList.add("ng");
+      return;
+    }
+
+    const pattern = {
+      id: Date.now() + "_" + Math.random().toString(16).slice(2),
+      word,
+      steps
+    };
+    patterns.push(pattern);
+    wordInput.value = "";
+
+    registerStatus.textContent =
+      "登録しました：「" + word + "」 （ステップ数 " + steps.length + "）";
+    registerStatus.classList.add("ok");
+
+    updateWordList();
+  });
+
+  clearWordsBtn.addEventListener("click", () => {
+    if (!confirm("登録済みの単語をすべて削除しますか？")) return;
+    patterns.splice(0, patterns.length);
+    currentPattern = null;
+    currentStepIndex = 0;
+    updateWordList();
+    resetPracticeView();
+    practiceStatusEl.textContent = "登録単語をすべて削除しました。";
+    practiceStatusEl.className = "status";
+  });
+
+  // ---- 練習 ----
+  function setMode(newMode) {
+    mode = newMode;
+  }
+
+  function resetPracticeView() {
+    currentWordEl.textContent = "（まだ出題されていません）";
+    stepProgressEl.textContent = "";
+    guideTextEl.textContent = "";
+    practiceStatusEl.textContent = "";
+    practiceStatusEl.className = "status";
+    practiceStepsArea.textContent = "（出題中のみ表示されます）";
+    highlightGuideKey(null);
+    stopPracticeBtn.disabled = true;
+  }
+
+  function startRandomPractice() {
+    if (patterns.length === 0) return;
+    const idx = Math.floor(Math.random() * patterns.length);
+    currentPattern = patterns[idx];
+    currentStepIndex = 0;
+    setMode(MODE_PRACTICE);
+
+    stopPracticeBtn.disabled = false;
+
+    currentWordEl.textContent = "問題：「" + currentPattern.word + "」";
+    practiceStatusEl.textContent = "ガイドにしたがってフリックしてください。";
+    practiceStatusEl.className = "status";
+    renderPracticeSteps();
+    showCurrentGuide();
+  }
+
+  function renderPracticeSteps() {
+    if (!currentPattern) {
+      practiceStepsArea.textContent = "（出題中のみ表示されます）";
+      return;
+    }
+    const steps = currentPattern.steps;
+    practiceStepsArea.innerHTML = "";
+    steps.forEach((step, idx) => {
+      const span = document.createElement("span");
+      span.className = "pattern-step";
+      let mark = "";
+      if (idx === currentStepIndex) mark = " ▶";
+      if (idx < currentStepIndex) mark = " ✓";
+
+      span.textContent =
+        (idx + 1) + ": 「" + step.char + "」→" +
+        getKeyLabel(step.keyId) + " " + dirText[step.direction] + mark;
+      practiceStepsArea.appendChild(span);
+    });
+    stepProgressEl.textContent =
+      "進捗：" + (currentStepIndex + 1) + " / " + steps.length;
+  }
+
+  function highlightGuideKey(keyId) {
+    keyElements.forEach(k => k.classList.remove("guide"));
+    if (!keyId) return;
+    const el = keyElements.find(k => k.dataset.keyId === keyId);
+    if (el) el.classList.add("guide");
+  }
+
+  function showCurrentGuide() {
+    if (!currentPattern) {
+      guideTextEl.textContent = "";
+      highlightGuideKey(null);
+      return;
+    }
+    const steps = currentPattern.steps;
+    if (currentStepIndex >= steps.length) {
+      guideTextEl.textContent = "全てのステップを完了しました。";
+      highlightGuideKey(null);
+      return;
+    }
+    const step = steps[currentStepIndex];
+    highlightGuideKey(step.keyId);
+    guideTextEl.textContent =
+      "ガイド：" +
+      "「" + step.char + "」＝「" +
+      getKeyLabel(step.keyId) + "」を「" +
+      dirText[step.direction] + "」";
+    renderPracticeSteps();
+  }
+
+  function onCorrectStep() {
+    if (!currentPattern) return;
+    const total = currentPattern.steps.length;
+    currentStepIndex++;
+    if (currentStepIndex >= total) {
+      practiceStatusEl.textContent =
+        "正解！全てのステップを再現できました。";
+      practiceStatusEl.className = "status ok";
+      stepProgressEl.textContent = "進捗：" + total + " / " + total;
+      guideTextEl.textContent =
+        "お疲れさまでした。「ランダムに出題」を押すと次の問題に進みます。";
+      highlightGuideKey(null);
+    } else {
+      practiceStatusEl.textContent = "OK！次のステップへ。";
+      practiceStatusEl.className = "status ok";
+      showCurrentGuide();
+    }
+  }
+
+  function onWrongStep() {
+    if (!currentPattern) return;
+    const expected = currentPattern.steps[currentStepIndex];
+    practiceStatusEl.textContent =
+      "違います。 ガイドの通りに「" +
+      getKeyLabel(expected.keyId) + "」を「" +
+      dirText[expected.direction] + "」してください。";
+    practiceStatusEl.className = "status ng";
+  }
+
+  startPracticeBtn.addEventListener("click", () => {
+    startRandomPractice();
+  });
+
+  stopPracticeBtn.addEventListener("click", () => {
+    setMode(MODE_IDLE);
+    resetPracticeView();
+    practiceStatusEl.textContent = "練習を終了しました。";
+  });
+
+  // ---- 擬似キーボード：フリック検知 ----
+  function getDirectionFromDelta(dx, dy) {
+    const threshold = 20; // 「矢印から外にスライド」くらいの距離
+    const distSq = dx * dx + dy * dy;
+    if (distSq < threshold * threshold) return "center";
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? "right" : "left";
+    } else {
+      return dy > 0 ? "down" : "up";
+    }
+  }
+
+  keyElements.forEach(keyEl => {
+    keyEl.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const keyId = keyEl.dataset.keyId;
+      pointerState = {
+        id: e.pointerId,
+        keyId,
+        startX: e.clientX,
+        startY:
