@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>フリック練習ツール（フリック表版）</title>
+<title>フリック練習ツール（事前登録版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   :root {
@@ -42,23 +42,6 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     border: 1px solid var(--border);
   }
-  label {
-    font-size: 0.85rem;
-    display: block;
-    margin-bottom: 4px;
-  }
-  input[type="text"] {
-    width: 100%;
-    padding: 8px 10px;
-    font-size: 1rem;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    outline: none;
-  }
-  input[type="text"]:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-soft);
-  }
   .btn-row {
     display: flex;
     flex-wrap: wrap;
@@ -89,14 +72,6 @@
   }
   .small {
     font-size: 0.8rem;
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #eee;
-    font-size: 0.75rem;
-    margin-right: 4px;
   }
   .list {
     margin-top: 6px;
@@ -208,24 +183,17 @@
 </head>
 <body>
 <div class="app">
-  <h1>フリック練習ツール（フリック表版）</h1>
+  <h1>フリック練習ツール（事前登録版）</h1>
 
-  <!-- 1. 単語登録（フリック表から自動生成） -->
+  <!-- 0. 登録済み単語の一覧表示 -->
   <div class="card">
-    <h2>1. 単語の登録（フリック表から自動生成）</h2>
-    <label for="wordInput">単語（ひらがなのみ対応）</label>
-    <input id="wordInput" type="text" placeholder="例：こんにちは">
+    <h2>登録済み単語</h2>
     <div class="info">
-      あらかじめ用意したフリック表（「あ←い」「あ↑う」など）から、単語のフリック手順を自動生成します。
-      <br>※対応文字：あ〜お、か〜こ、さ〜そ、た〜と、な〜の、は〜ほ、ま〜も、やゆよ、ら〜ろ、わをん
+      単語はあらかじめコード内で登録されています。<br>
+      「ランダムに出題」を押して、擬似キーボードでフリック練習をします。
     </div>
-    <div class="btn-row">
-      <button id="addWordBtn">この単語を登録</button>
-      <button id="clearWordsBtn" class="secondary">登録をすべて削除</button>
-    </div>
-    <div class="status" id="registerStatus"></div>
     <div class="list" id="wordListArea">
-      <span class="small">登録済み単語：0件</span>
+      （読み込み中…）
     </div>
   </div>
 
@@ -233,7 +201,7 @@
   <div class="card keyboard-wrapper">
     <div class="keyboard-title">
       擬似フリックキーボード
-      <span class="small">（矢印方向にスライド）</span>
+      <span class="small">（キーの矢印の向きにスライド）</span>
     </div>
     <div class="keyboard" id="keyboard">
       <div class="key" data-key-id="a">
@@ -302,7 +270,7 @@
 
   <!-- 2. ランダム出題で練習 -->
   <div class="card">
-    <h2>2. ランダム出題で練習</h2>
+    <h2>ランダム出題で練習</h2>
     <div class="btn-row">
       <button id="startPracticeBtn" disabled>ランダムに出題</button>
       <button id="stopPracticeBtn" class="secondary" disabled>練習を終了</button>
@@ -320,7 +288,7 @@
 
   <!-- 3. フリック表（参考用） -->
   <div class="card">
-    <h2>3. フリック対応表（内部で使用）</h2>
+    <h2>フリック対応表（内部で使用）</h2>
     <div class="info">
       例：<code>{"い": {key:"あ", dir:"←"}}</code>、<code>{"う": {key:"あ", dir:"↑"}}</code> など。
     </div>
@@ -421,6 +389,20 @@
     down: "↓"
   };
 
+  // ---- 事前登録する単語 ----
+  const initialWords = [
+    "こんにちは",
+    "おはよう",
+    "さようなら",
+    "すし",
+    "いぬ",
+    "ねこ",
+    "やま",
+    "かわ",
+    "らいおん",
+    "まつり"
+  ];
+
   // ---- 状態 ----
   const MODE_IDLE = "idle";
   const MODE_PRACTICE = "practice";
@@ -433,10 +415,6 @@
   let pointerState = null; // {id, keyId, startX, startY}
 
   // ---- 要素取得 ----
-  const wordInput = document.getElementById("wordInput");
-  const addWordBtn = document.getElementById("addWordBtn");
-  const clearWordsBtn = document.getElementById("clearWordsBtn");
-  const registerStatus = document.getElementById("registerStatus");
   const wordListArea = document.getElementById("wordListArea");
 
   const keyboard = document.getElementById("keyboard");
@@ -452,7 +430,13 @@
 
   const mappingTableBody = document.querySelector("#mappingTable tbody");
 
-  // ---- 初期表示：フリック表をテーブルに展開 ----
+  // ---- フリック表をテーブルに展開 ----
+  function getKeyLabel(keyId) {
+    const el = keyElements.find(k => k.dataset.keyId === keyId);
+    if (!el) return keyId;
+    return el.querySelector(".key-label-main").textContent;
+  }
+
   function renderMappingTable() {
     const entries = Object.entries(flickTable);
     entries.sort((a, b) => a[0].localeCompare(b[0]));
@@ -473,13 +457,7 @@
     }
   }
 
-  function getKeyLabel(keyId) {
-    const el = keyElements.find(k => k.dataset.keyId === keyId);
-    if (!el) return keyId;
-    return el.querySelector(".key-label-main").textContent;
-  }
-
-  // ---- 単語 → フリック手順変換 ----
+  // ---- 単語 → フリック手順 ----
   function wordToSteps(word) {
     const chars = Array.from(word);
     const steps = [];
@@ -487,9 +465,7 @@
     for (const ch of chars) {
       const info = flickTable[ch];
       if (!info) {
-        if (ch.trim() !== "") {
-          unknown.add(ch);
-        }
+        if (ch.trim() !== "") unknown.add(ch);
         continue;
       }
       steps.push({
@@ -501,83 +477,55 @@
     return { steps, unknown: Array.from(unknown) };
   }
 
-  // ---- 単語登録 ----
+  // ---- 単語一覧の表示 ----
   function updateWordList() {
     const count = patterns.length;
     if (count === 0) {
-      wordListArea.innerHTML = "<span class=\"small\">登録済み単語：0件</span>";
+      wordListArea.innerHTML = "<span class=\"small\">登録済み単語：0件（対応外の文字のみでした）</span>";
       startPracticeBtn.disabled = true;
       return;
     }
     startPracticeBtn.disabled = false;
-    const div = document.createElement("div");
-    div.className = "small";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "small";
+
     const label = document.createElement("div");
     label.textContent = "登録済み単語：" + count + "件";
-    div.appendChild(label);
+    wrapper.appendChild(label);
+
     patterns.forEach(p => {
       const item = document.createElement("div");
       item.className = "list-item";
       item.textContent = "・" + p.word + "（ステップ数 " + p.steps.length + "）";
-      div.appendChild(item);
+      wrapper.appendChild(item);
     });
+
     wordListArea.innerHTML = "";
-    wordListArea.appendChild(div);
+    wordListArea.appendChild(wrapper);
   }
 
-  addWordBtn.addEventListener("click", () => {
-    const word = wordInput.value.trim();
-    registerStatus.textContent = "";
-    registerStatus.className = "status";
-
-    if (!word) {
-      registerStatus.textContent = "単語を入力してください。";
-      registerStatus.classList.add("ng");
-      return;
-    }
-
-    const { steps, unknown } = wordToSteps(word);
-
-    if (unknown.length > 0) {
-      registerStatus.textContent =
-        "対応していない文字が含まれています：" + unknown.join(" ");
-      registerStatus.classList.add("ng");
-      return;
-    }
-
-    if (steps.length === 0) {
-      registerStatus.textContent = "有効なひらがなが1文字もありませんでした。";
-      registerStatus.classList.add("ng");
-      return;
-    }
-
-    const pattern = {
-      id: Date.now() + "_" + Math.random().toString(16).slice(2),
-      word,
-      steps
-    };
-    patterns.push(pattern);
-    wordInput.value = "";
-
-    registerStatus.textContent =
-      "登録しました：「" + word + "」 （ステップ数 " + steps.length + "）";
-    registerStatus.classList.add("ok");
-
+  // ---- 初期単語をパターン化して登録 ----
+  function initPatternsFromInitialWords() {
+    patterns.length = 0;
+    initialWords.forEach(word => {
+      const { steps, unknown } = wordToSteps(word);
+      if (unknown.length > 0) {
+        // 未対応文字を含む場合はスキップ（必要ならコンソールに出して確認）
+        console.warn("未対応文字を含むためスキップ:", word, "unknown:", unknown);
+        return;
+      }
+      if (steps.length === 0) return;
+      patterns.push({
+        id: Date.now() + "_" + Math.random().toString(16).slice(2),
+        word,
+        steps
+      });
+    });
     updateWordList();
-  });
+  }
 
-  clearWordsBtn.addEventListener("click", () => {
-    if (!confirm("登録済みの単語をすべて削除しますか？")) return;
-    patterns.splice(0, patterns.length);
-    currentPattern = null;
-    currentStepIndex = 0;
-    updateWordList();
-    resetPracticeView();
-    practiceStatusEl.textContent = "登録単語をすべて削除しました。";
-    practiceStatusEl.className = "status";
-  });
-
-  // ---- 練習 ----
+  // ---- 練習ロジック ----
   function setMode(newMode) {
     mode = newMode;
   }
@@ -720,4 +668,50 @@
         id: e.pointerId,
         keyId,
         startX: e.clientX,
-        startY:
+        startY: e.clientY
+      };
+      keyEl.setPointerCapture(e.pointerId);
+    });
+
+    keyEl.addEventListener("pointerup", (e) => {
+      if (!pointerState || pointerState.id !== e.pointerId) return;
+      const dx = e.clientX - pointerState.startX;
+      const dy = e.clientY - pointerState.startY;
+      const direction = getDirectionFromDelta(dx, dy);
+      const keyId = pointerState.keyId;
+      keyEl.releasePointerCapture(e.pointerId);
+      pointerState = null;
+      handleFlick(keyId, direction);
+    });
+
+    keyEl.addEventListener("pointercancel", () => {
+      pointerState = null;
+    });
+  });
+
+  function handleFlick(keyId, direction) {
+    // space / del は無視
+    if (keyId === "space" || keyId === "del") return;
+    if (mode !== MODE_PRACTICE || !currentPattern) return;
+
+    const expected = currentPattern.steps[currentStepIndex];
+    if (!expected) return;
+
+    if (expected.keyId === keyId && expected.direction === direction) {
+      onCorrectStep();
+    } else {
+      onWrongStep();
+    }
+  }
+
+  // ---- 初期化 ----
+  renderMappingTable();
+  initPatternsFromInitialWords();
+  resetPracticeView();
+  if (patterns.length > 0) {
+    practiceStatusEl.textContent = "「ランダムに出題」を押して練習を始めてください。";
+  }
+})();
+</script>
+</body>
+</html>
