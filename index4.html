@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -153,6 +154,21 @@
       font-size: 11px;
       color: #555;
     }
+
+/* ▼ 宣言ジャンプ済みメソッドにつく緑丸チェックアイコン */
+.method-checked::after {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  vertical-align: middle;
+
+  /* SVG の Base64。緑色の丸に白のチェック */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiBmaWxsPSIjMjJjNTVlIi8+PHBhdGggc3Ryb2tlPSIjZmZmIiBkPSJNOC4yIDExLjkgMTEgMTQgMTYuMiA5Ii8+PC9zdmc+');
+  background-size: contain;
+  background-repeat: no-repeat;
+}
 
   </style>
 </head>
@@ -324,7 +340,15 @@ function jumpToDeclaration(targetId, callId) {
   lineEl.scrollIntoView({ behavior: "smooth", block: "center" });
   lineEl.classList.add("decl-highlight");
   currentHighlightLine = lineEl;
+
+  // ★ 修正：呼び出し「先」（宣言側のメソッド名）にチェックをつける
+  const declEl = document.getElementById(targetId);
+  if (declEl) {
+      declEl.classList.add("method-checked");
+  }
 }
+
+
 
 function goBack() {
   if (scrollHistory.length === 0) {
