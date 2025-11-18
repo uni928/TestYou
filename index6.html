@@ -234,12 +234,8 @@
     }
     const beforeChar = pos > 0 ? display.value.charAt(pos - 1) : '';
 
-    // . ( ) は「数字の後」以外では無視
-if(display.selectionStart == 0 && text === '(') {
-insertAtCursor(text);
-return;
-}
-    if (text === '.' || text === '(' || text === ')') {
+    // . ) は「数字の後」以外では無視
+    if (text === '.' || text === ')') {
       if (!/[0-9]/.test(beforeChar)) {
         return; // 条件を満たさないので何もしない
       }
