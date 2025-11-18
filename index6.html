@@ -255,8 +255,18 @@
   }
 
   function backspace() {
-    display.value = display.value.slice(0, -1);
     focusDisplay();
+   // カーソルの１文字前を削除
+   const before = val.substring(0, start - 1);
+   const after  = val.substring(start);
+   display.value = before + after;
+
+   // カーソルを１文字左へ
+   const newPos = start - 1;
+   display.selectionStart = newPos;
+   display.selectionEnd   = newPos;
+
+   focusDisplay();
   }
 
   function calculate() {
