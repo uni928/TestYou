@@ -222,6 +222,18 @@
   display: none;
 }
 
+/* ▼ チェックボックスのテキストが見やすくなる */
+#rightClickReturn {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* ▼ スマホ & タブレット（タッチ端末）では非表示 */
+@media (hover: none) and (pointer: coarse) {
+  .rightclick-option {
+    display: none !important;
+  }
+}
 
   </style>
 </head>
@@ -232,7 +244,13 @@
     <h1>コードリーダー（メソッド宣言ジャンプ対応）</h1>
     <div class="header-subtitle">宣言へジャンプ／戻るで呼び出しへ</div>
   </div>
-
+<!-- ▼ 右クリック戻るオプション（PC のみ表示） -->
+<div class="rightclick-option" style="margin-left: 16px; font-size: 12px; color: #fff;">
+  <label style="cursor: pointer;">
+    <input type="checkbox" id="rightClickReturn" checked>
+    右クリックで呼び出しに戻る
+  </label>
+</div>
   <!-- ▼ 追加：画面右上のファイルドロップ＆選択パネル -->
   <div id="fileDropArea">
     <div class="file-drop-label">ファイルからコードを追加</div>
@@ -242,6 +260,7 @@
     </div>
     <input type="file" id="fileInput" multiple>
   </div>
+
 </header>
 
 <main>
@@ -278,6 +297,9 @@ const backButton = document.getElementById("backButton");
 // ▼ 追加：ファイルドロップ／選択用の要素
 const fileDropArea = document.getElementById("fileDropArea");
 const fileInput = document.getElementById("fileInput");
+
+// ▼ 追加：右クリック戻るの ON/OFF チェックボックス
+const rightClickReturn = document.getElementById("rightClickReturn");
 
 let scrollHistory = [];
 let currentHighlightLine = null;
@@ -556,10 +578,34 @@ fileDropArea.addEventListener("drop", (e) => {
   }
 });
 
+// ▼ 修正：チェックボックスが ON のときだけ右クリックで戻る
+document.addEventListener("mousedown", (e) => {
+  if (e.button === 2) {
+    if (rightClickReturn.checked) {
+      e.preventDefault(); // 右クリックメニューを出さない
+      goBack();
+    }
+  }
+});
+
+// ▼ 修正：右クリック戻りが ON のときだけ右クリックメニューを無効化
+document.addEventListener("contextmenu", (e) => {
+  if (rightClickReturn.checked) {
+    e.preventDefault();
+  }
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   //sampleButton.click();
 });
+
+// ▼ タッチ端末（スマホ・タブレット）は常に OFF
+if (matchMedia("(hover: none) and (pointer: coarse)").matches) {
+  const rightClickReturn = document.getElementById("rightClickReturn");
+  if (rightClickReturn) {
+    rightClickReturn.checked = false;
+  }
+}
 </script>
 
 </body>
