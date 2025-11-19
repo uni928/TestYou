@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>\n 改行変換ツール（カスタムトークン対応）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    :root {
+        --bg-gradient-start: #141e30;
+        --bg-gradient-end: #243b55;
+        --card-bg: rgba(255, 255, 255, 0.06);
+        --card-border: rgba(255, 255, 255, 0.18);
+        --accent: #4ade80;
+        --accent-soft: rgba(74, 222, 128, 0.12);
+        --accent-strong: #22c55e;
+        --text-main: #e5e7eb;
+        --text-sub: #9ca3af;
+        --danger: #f97373;
+        --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.45);
+        --radius-xl: 20px;
+        --radius-full: 999px;
+        --transition-fast: 0.18s ease-out;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #1e293b 0, #020617 48%, #000 100%);
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 1080px;
+        margin: 0 auto;
+    }
+
+    .app-header {
+        text-align: center;
+        margin-bottom: 18px;
+    }
+
+    .app-title {
+        font-size: clamp(1.5rem, 2.1vw + 1rem, 2.4rem);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 18px;
+        border-radius: var(--radius-full);
+        background: radial-gradient(circle at top, rgba(74, 222, 128, 0.18), transparent 52%);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        box-shadow: 0 0 45px rgba(74, 222, 128, 0.15);
+    }
+
+    .app-title span.icon {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 30% 20%, #4ade80, #16a34a);
+        color: #022c22;
+        font-size: 1.1rem;
+        box-shadow: 0 0 22px rgba(74, 222, 128, 0.55);
+    }
+
+    .app-subtitle {
+        margin-top: 10px;
+        font-size: 0.9rem;
+        color: var(--text-sub);
+    }
+
+    .card {
+        border-radius: 24px;
+        background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.96));
+        padding: 18px 20px 20px;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        backdrop-filter: blur(22px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card::before {
+        content: "";
+        position: absolute;
+        inset: -40%;
+        background:
+            radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.2), transparent 60%),
+            radial-gradient(circle at 100% 100%, rgba(74, 222, 128, 0.18), transparent 55%);
+        opacity: 0.62;
+        mix-blend-mode: screen;
+        pointer-events: none;
+    }
+
+    .card-inner {
+        position: relative;
+        z-index: 1;
+    }
+
+    .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+        align-items: center;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 11px;
+        border-radius: var(--radius-full);
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.55);
+        font-size: 0.75rem;
+        color: var(--text-sub);
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(74, 222, 128, 0.9);
+    }
+
+    .mode-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: var(--radius-full);
+        padding: 4px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.55);
+        font-size: 0.78rem;
+    }
+
+    .mode-pill button {
+        border: none;
+        background: transparent;
+        color: var(--text-sub);
+        padding: 5px 10px;
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        font-size: 0.78rem;
+        transition: background var(--transition-fast), color var(--transition-fast), transform 0.12s ease-out;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .mode-pill button.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+    }
+
+    .mode-pill button:hover {
+        transform: translateY(-0.5px);
+    }
+
+    /* カスタム改行文字エリア */
+    .token-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 8px 0 14px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .token-label {
+        font-size: 0.8rem;
+        color: var(--text-sub);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .token-label strong {
+        color: #e5e7eb;
+    }
+
+    .token-input-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .token-input {
+        min-width: 80px;
+        max-width: 140px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        background: rgba(15, 23, 42, 0.98);
+        color: var(--text-main);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        outline: none;
+        transition: border var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    }
+
+    .token-input:focus {
+        border-color: var(--accent);
+        box-shadow:
+            0 0 0 1px rgba(22, 163, 74, 0.7),
+            0 0 18px rgba(34, 197, 94, 0.5);
+        background: rgba(15, 23, 42, 1);
+    }
+
+    .token-note {
+        font-size: 0.7rem;
+        color: var(--text-sub);
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+        gap: 14px;
+    }
+
+    @media (max-width: 800px) {
+        .grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .panel {
+        background: rgba(15, 23, 42, 0.93);
+        border-radius: 18px;
+        padding: 12px 12px 12px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 0, rgba(148, 163, 184, 0.07) 40%, transparent 100%);
+        opacity: 0.45;
+        mix-blend-mode: soft-light;
+        pointer-events: none;
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        gap: 8px;
+    }
+
+    .panel-title {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-sub);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .panel-title span.dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 30%, #facc15, #f97316);
+        box-shadow: 0 0 16px rgba(248, 250, 252, 0.5);
+    }
+
+    .panel-badge {
+        font-size: 0.7rem;
+        border-radius: 999px;
+        padding: 2px 9px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        color: var(--text-sub);
+    }
+
+    .textarea-wrapper {
+        position: relative;
+        margin-top: 4px;
+    }
+
+    textarea {
+        width: 100%;
+        min-height: 180px;
+        resize: vertical;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.65);
+        background: rgba(15, 23, 42, 0.98);
+        color: var(--text-main);
+        padding: 10px 10px 28px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.86rem;
+        line-height: 1.6;
+        outline: none;
+        transition: border var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), transform 0.12s ease-out;
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.4);
+    }
+
+    textarea::placeholder {
+        color: #6b7280;
+    }
+
+    textarea:focus {
+        border-color: var(--accent);
+        box-shadow:
+            0 0 0 1px rgba(22, 163, 74, 0.7),
+            0 0 32px rgba(34, 197, 94, 0.5);
+        background: rgba(15, 23, 42, 1);
+        transform: translateY(-0.5px);
+    }
+
+    .textarea-footer {
+        position: absolute;
+        inset-inline: 8px;
+        bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+        font-size: 0.7rem;
+        color: #6b7280;
+    }
+
+    .textarea-footer span {
+        pointer-events: auto;
+    }
+
+    .textarea-footer button {
+        pointer-events: auto;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: background var(--transition-fast), color var(--transition-fast), transform 0.12s ease-out;
+    }
+
+    .textarea-footer button:hover {
+        background: rgba(55, 65, 81, 0.85);
+        color: #e5e7eb;
+        transform: translateY(-0.5px);
+    }
+
+    .textarea-footer button.primary {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--accent);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .textarea-footer button.primary:hover {
+        background: rgba(34, 197, 94, 0.24);
+        color: var(--accent-strong);
+    }
+
+    .toolbar {
+        margin: 14px 2px 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .btn-group {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .btn {
+        border-radius: var(--radius-full);
+        padding: 6px 14px;
+        border: none;
+        font-size: 0.8rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.96);
+        color: var(--text-main);
+        border: 1px solid rgba(148, 163, 184, 0.65);
+        transition:
+            background var(--transition-fast),
+            border-color var(--transition-fast),
+            transform 0.12s ease-out,
+            box-shadow 0.18s ease-out;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.65);
+    }
+
+    .btn.primary {
+        background: linear-gradient(135deg, #4ade80, #16a34a);
+        color: #022c22;
+        border-color: rgba(22, 163, 74, 0.9);
+        box-shadow: 0 15px 45px rgba(34, 197, 94, 0.65);
+    }
+
+    .btn.ghost {
+        background: rgba(15, 23, 42, 0.96);
+    }
+
+    .btn.danger {
+        border-color: rgba(248, 113, 113, 0.9);
+        color: #fecaca;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+        background: rgba(15, 23, 42, 0.96);
+    }
+
+    .btn.primary:hover {
+        background: linear-gradient(135deg, #bbf7d0, #4ade80);
+        box-shadow: 0 18px 55px rgba(34, 197, 94, 0.8);
+    }
+
+    .btn:active {
+        transform: translateY(0px) scale(0.99);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.75);
+    }
+
+    .btn-icon {
+        font-size: 0.9rem;
+    }
+
+    .info-text {
+        font-size: 0.72rem;
+        color: var(--text-sub);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .info-text code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        background: rgba(15, 23, 42, 0.94);
+        border-radius: 999px;
+        padding: 2px 7px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        font-size: 0.7rem;
+        color: #e5e7eb;
+    }
+
+    .footer-note {
+        margin-top: 10px;
+        text-align: right;
+        font-size: 0.7rem;
+        color: var(--text-sub);
+        opacity: 0.9;
+    }
+
+    .badge-pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 5px;
+    }
+
+    .badge-pill {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        color: var(--text-sub);
+    }
+
+    .badge-pill strong {
+        color: #e5e7eb;
+        font-weight: 500;
+    }
+
+    .counter {
+        font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+</style>
+</head>
+<body>
+<div class="app-shell">
+    <header class="app-header">
+        <div class="app-title">
+            <span class="icon">↵</span>
+            <span>改行変換ツール</span>
+        </div>
+        <p class="app-subtitle">
+            任意の文字列（初期値：<code>\n</code>）を「本物の改行」と相互変換します。
+        </p>
+    </header>
+
+    <main class="card">
+        <div class="card-inner">
+            <div class="pill-row">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span>リアルタイム変換モード</span>
+                </div>
+                <div class="mode-pill">
+                    <button id="modeReplace" class="active" type="button">
+                        <span>🪄</span> トークン → 改行
+                    </button>
+                    <button id="modeReverse" type="button">
+                        <span>↩</span> 改行 → トークン
+                    </button>
+                </div>
+            </div>
+
+            <!-- 改行トークン指定エリア -->
+            <div class="token-row">
+                <div class="token-label">
+                    <strong>改行として扱う文字</strong>
+                </div>
+                <div class="token-input-wrap">
+                    <input id="tokenInput" type="text" class="token-input" value="\n">
+                </div>
+                <div class="token-note">
+                    例：<code>\n</code> / <code>&lt;br&gt;</code> / <code>【改行】</code> など。空欄だと変換しません。
+                </div>
+            </div>
+
+            <section class="grid">
+                <!-- 入力 -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="dot"></span>
+                            INPUT
+                        </div>
+                        <div class="panel-badge">元テキスト</div>
+                    </div>
+
+                    <div class="textarea-wrapper">
+                        <textarea id="inputText" placeholder="例：こんにちは\nはじめまして\nよろしくお願いします。"></textarea>
+                        <div class="textarea-footer">
+                            <span class="counter" id="inputCount">0 文字</span>
+                            <span>
+                                <button type="button" id="btnSample">サンプル</button>
+                                <button type="button" class="danger" id="btnClearInput">入力クリア</button>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 出力 -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="dot"></span>
+                            OUTPUT
+                        </div>
+                        <div class="panel-badge">変換結果</div>
+                    </div>
+
+                    <div class="textarea-wrapper">
+                        <textarea id="outputText" placeholder="ここに変換結果が表示されます。" readonly></textarea>
+                        <div class="textarea-footer">
+                            <span class="counter" id="outputCount">0 文字</span>
+                            <span>
+                                <button type="button" id="btnCopy" class="primary">コピー</button>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- 操作ボタン -->
+            <div class="toolbar">
+                <div class="btn-group">
+                    <button id="btnConvert" class="btn primary" type="button">
+                        <span class="btn-icon">⚡</span> 変換する
+                    </button>
+                    <button id="btnSwap" class="btn ghost" type="button">
+                        <span class="btn-icon">⇄</span> 入力と出力を入れ替え
+                    </button>
+                </div>
+                <div class="info-text">
+                    <span>ヒント：</span>
+                    <code id="hintToken">\n</code> を含むテキストなら、その部分が改行として扱われます。
+                </div>
+            </div>
+
+            <div class="badge-pill-list">
+                <span class="badge-pill"><strong>⌨️ Ctrl + Enter</strong> で変換</span>
+                <span class="badge-pill"><strong>⌘ + Enter</strong> でもOK（Mac）</span>
+                <span class="badge-pill"><strong>リアルタイム連動</strong>：入力・トークン変更時に自動変換</span>
+            </div>
+
+            <p class="footer-note">
+                ブラウザのみで完結するクライアントサイド変換なので、テキストは外部に送信されません。
+            </p>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const input = document.getElementById("inputText");
+    const output = document.getElementById("outputText");
+    const btnConvert = document.getElementById("btnConvert");
+    const btnSwap = document.getElementById("btnSwap");
+    const btnCopy = document.getElementById("btnCopy");
+    const btnClearInput = document.getElementById("btnClearInput");
+    const btnSample = document.getElementById("btnSample");
+    const modeReplace = document.getElementById("modeReplace");
+    const modeReverse = document.getElementById("modeReverse");
+    const tokenInput = document.getElementById("tokenInput");
+    const inputCount = document.getElementById("inputCount");
+    const outputCount = document.getElementById("outputCount");
+    const hintToken = document.getElementById("hintToken");
+
+    let currentMode = "replace"; // replace: token -> 改行, reverse: 改行 -> token
+
+    // バックスラッシュが2つ書かれているので、初期表示として \n に見えるようになっています
+    // hint表示もトークンに同期
+    function updateHintToken() {
+        hintToken.textContent = tokenInput.value || "（未設定）";
+    }
+
+    function formatCount(text) {
+        return text.length + " 文字";
+    }
+
+    function updateCounts() {
+        inputCount.textContent = formatCount(input.value);
+        outputCount.textContent = formatCount(output.value);
+    }
+
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function convertText() {
+        const value = input.value;
+        const token = tokenInput.value;
+
+        // トークン未指定なら変換せずコピーだけ
+        if (!token) {
+            output.value = value;
+            updateCounts();
+            return;
+        }
+
+        let result = value;
+
+        if (currentMode === "replace") {
+            // トークン → 改行
+            if (token === "\\n") {
+                // 元の仕様を踏襲：\\n はそのまま残し、\n だけ改行に
+                const placeholder = "__BACKSLASH_N__PLACEHOLDER__";
+                result = result.replace(/\\\\n/g, placeholder);   // \\n を退避
+                result = result.replace(/\\n/g, "\n");            // \n を改行へ
+                result = result.replace(new RegExp(placeholder, "g"), "\\\\n"); // 退避を戻す
+            } else {
+                const tokenRegex = new RegExp(escapeRegExp(token), "g");
+                result = result.replace(tokenRegex, "\n");
+            }
+        } else {
+            // 改行 → トークン
+            result = value.replace(/\r\n|\r|\n/g, token);
+        }
+
+        output.value = result;
+        updateCounts();
+    }
+
+    function setMode(mode) {
+        if (mode === currentMode) return;
+        currentMode = mode;
+        if (mode === "replace") {
+            modeReplace.classList.add("active");
+            modeReverse.classList.remove("active");
+        } else {
+            modeReverse.classList.add("active");
+            modeReplace.classList.remove("active");
+        }
+        convertText(); // モード変更時にも即変換
+    }
+
+    btnConvert.addEventListener("click", convertText);
+
+    btnSwap.addEventListener("click", () => {
+        const tmp = input.value;
+        input.value = output.value;
+        output.value = tmp;
+        updateCounts();
+        convertText();
+        input.focus();
+    });
+
+    btnCopy.addEventListener("click", async () => {
+        if (!output.value) return;
+        try {
+            await navigator.clipboard.writeText(output.value);
+            const original = btnCopy.textContent;
+            btnCopy.textContent = "コピーしました";
+            btnCopy.disabled = true;
+            setTimeout(() => {
+                btnCopy.textContent = original;
+                btnCopy.disabled = false;
+            }, 1200);
+        } catch (e) {
+            alert("クリップボードへのコピーに失敗しました。");
+        }
+    });
+
+    btnClearInput.addEventListener("click", () => {
+        input.value = "";
+        output.value = "";
+        updateCounts();
+        input.focus();
+    });
+
+    btnSample.addEventListener("click", () => {
+        input.value =
+            "こんにちは\\n" +
+            "はじめまして、\\n\\n" +
+            "このツールは、テキスト内の \\n を本物の改行に変換します。\\n" +
+            "試しに変換してみてください。\\n" +
+            "ただのバックスラッシュは \\\\n のように残せます。";
+        convertText();
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    });
+
+    input.addEventListener("input", () => {
+        convertText();
+    });
+
+    // トークン変更時もリアルタイム変換
+    tokenInput.addEventListener("input", () => {
+        updateHintToken();
+        convertText();
+    });
+
+    // Ctrl+Enter / Cmd+Enter で変換
+    input.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            convertText();
+        }
+    });
+
+    modeReplace.addEventListener("click", () => setMode("replace"));
+    modeReverse.addEventListener("click", () => setMode("reverse"));
+
+    // 初期状態
+    updateHintToken();
+    updateCounts();
+})();
+</script>
+</body>
+</html>
