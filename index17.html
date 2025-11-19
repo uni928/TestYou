@@ -76,12 +76,6 @@
         transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
         font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
-    .option-btn span.factor {
-        display: block;
-        font-size: 0.8rem;
-        color: #777;
-        margin-top: 2px;
-    }
     .option-btn:hover {
         background: #f0f8ff;
         box-shadow: 0 2px 6px rgba(0,0,0,0.08);
@@ -105,7 +99,6 @@
         border: none;
         cursor: pointer;
         font-size: 0.85rem;
-        transition: background 0.15s, transform 0.1s;
     }
     .btn-reset {
         background: #eee;
@@ -125,7 +118,6 @@
         color: #777;
         line-height: 1.4;
     }
-
     @media (min-width: 640px) {
         .options {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -138,15 +130,15 @@
 <div class="game-container">
     <h1>数を大きくしていくゲーム</h1>
     <p class="description">
-        最初は 100 からスタートします。<br>
+        最初は 100 からスタートします。  
         毎ターン、現在の数値の <strong>0.95倍〜1.05倍</strong> の中から
-        ランダムに5個の候補が現れます。<br>
+        ランダムに5個の候補が現れます。  
         好きな数を選んで、どんどん巨大な数に育ててください。
     </p>
 
     <div class="label-row">
         <span>現在の数値</span>
-        <span>形式：小数第10位まで × 10の◯乗</span>
+        <span>10桁以内は通常表示</span>
     </div>
     <div id="currentValue" class="number-display">-</div>
 
@@ -164,16 +156,15 @@
     </div>
 
     <p class="note">
-        ※巨大数も、<code>1.2345678901 × 10の123乗</code> のように表現できます。<br>
-        ※ハードモードでは、0.97倍〜1.03倍の候補になります（リセットで元に戻ります）。
+        ※巨大数は「1.2345678901 × 10の123乗」形式になります。<br>
+        ※ハードモードでは0.90〜1.10倍になります。
     </p>
 </div>
 
 <script>
 (function() {
-    // 現在値・最大値は「mantissa × 10^exponent」で管理
-    let current = { mantissa: 1, exponent: 2 }; // 100 = 1 × 10^2
-    let maxValue = { mantissa: 1, exponent: 2 }; // 最大値（初期は100）
+    let current = { mantissa: 1, exponent: 2 }; // 100
+    let maxValue = { mantissa: 1, exponent: 2 };
     let turnCount = 0;
     let hardMode = false;
 
@@ -197,32 +188,23 @@
         return { mantissa, exponent };
     }
 
+    // ★ 10桁以内ならそのまま表示
     function formatScientific(val) {
-    const m = val.mantissa;
-    const e = val.exponent;
+        const m = val.mantissa;
+        const e = val.exponent;
 
-    // 10桁以内なら通常表記
-    // ＝整数部分の桁数が10以下 && exponent >= 0 のとき
-    if (e >= 0 && e <= 9) {
-        // 通常表記 → mantissa × 10^exponent を計算して整数化
-        let normal = m * Math.pow(10, e);
-
-        // 桁が10桁以内か判定（丸め誤差対策で少し余裕を見て固定小数化）
-        let str = Math.round(normal).toString();
-        if (str.length <= 10) {
-            return str;
+        if (e >= 0 && e <= 9) {
+            let normal = m * Math.pow(10, e);
+            let str = Math.round(normal).toString();
+            if (str.length <= 10) {
+                return str;
+            }
         }
+        return m.toFixed(10) + " × 10の" + e + "乗";
     }
 
-    // 11桁以上 → 科学表記（小数10桁）
-    return m.toFixed(10) + " × 10の" + e + "乗";
-}
-
     function compareValue(a, b) {
-        // a > b -> 1, a == b -> 0, a < b -> -1
-        if (a.exponent !== b.exponent) {
-            return a.exponent > b.exponent ? 1 : -1;
-        }
+        if (a.exponent !== b.exponent) return a.exponent > b.exponent ? 1 : -1;
         if (a.mantissa > b.mantissa) return 1;
         if (a.mantissa < b.mantissa) return -1;
         return 0;
@@ -232,7 +214,6 @@
         currentValueEl.textContent = formatScientific(current);
         maxValueLabelEl.textContent = formatScientific(maxValue);
         turnCountEl.textContent = turnCount;
-
         generateOptions();
     }
 
@@ -242,8 +223,8 @@
         let options = [];
         let hasGreater = false;
 
-        const minFactor = hardMode ? 0.97 : 0.95;
-        const maxFactor = hardMode ? 1.03 : 1.05;
+        const minFactor = hardMode ? 0.90 : 0.95;
+        const maxFactor = hardMode ? 1.10 : 1.05;
 
         for (let i = 0; i < 5; i++) {
             let factor = minFactor + (maxFactor - minFactor) * Math.random();
@@ -252,37 +233,29 @@
             let m = current.mantissa * factor;
             let e = current.exponent;
             const normalized = normalize(m, e);
+
             options.push({
-                value: normalized,
-                factor
+                value: normalized
             });
         }
 
-        // 万一すべて1.0未満だった場合、最後の1つを「1.0〜maxFactor」に強制
         if (!hasGreater) {
             const factor = 1.0 + (maxFactor - 1.0) * Math.random();
             let m = current.mantissa * factor;
             let e = current.exponent;
             const normalized = normalize(m, e);
-            options[options.length - 1] = {
-                value: normalized,
-                factor
-            };
+            options[options.length - 1] = { value: normalized };
         }
 
-        // シャッフル
         for (let i = options.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [options[i], options[j]] = [options[j], options[i]];
         }
 
-        options.forEach((opt, idx) => {
+        options.forEach((opt) => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
-            btn.innerHTML = `
-                ${formatScientific(opt.value)}
-                <span class="factor">× ${opt.factor.toFixed(4)}</span>
-            `;
+            btn.innerHTML = `${formatScientific(opt.value)}`;
             btn.addEventListener('click', () => chooseOption(opt.value));
             optionsEl.appendChild(btn);
         });
@@ -292,16 +265,14 @@
         current = normalize(newValue.mantissa, newValue.exponent);
         turnCount++;
 
-        // 最大値更新
         if (compareValue(current, maxValue) > 0) {
             maxValue = { mantissa: current.mantissa, exponent: current.exponent };
         }
-
         updateDisplay();
     }
 
     function resetGame() {
-        current = { mantissa: 1, exponent: 2 }; // 100
+        current = { mantissa: 1, exponent: 2 };
         maxValue = { mantissa: 1, exponent: 2 };
         turnCount = 0;
         hardMode = false;
@@ -311,18 +282,16 @@
 
     function toggleHardMode() {
         hardMode = !hardMode;
-        hardBtn.textContent = hardMode ? "ハードモード中（0.97〜1.03）" : "ハードモード開始";
-        // モードを変えたら、次のターンの候補を更新
+        hardBtn.textContent = hardMode ? "ハードモード中（0.90〜1.10）" : "ハードモード開始";
         generateOptions();
     }
 
     resetBtn.addEventListener('click', resetGame);
     hardBtn.addEventListener('click', toggleHardMode);
 
-    // 初期化
     updateDisplay();
 })();
 </script>
 
 </body>
-  </html>
+</html>
