@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>お金の貸し借り管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 16px;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 20px 24px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 8px;
+    text-align: center;
+  }
+  h2 {
+    font-size: 1.2rem;
+    margin: 16px 0 8px;
+    border-left: 4px solid #3b82f6;
+    padding-left: 8px;
+  }
+  .description {
+    font-size: 0.9rem;
+    color: #4b5563;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .input-section {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #f9fafb;
+  }
+  .input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .field {
+    flex: 1 1 150px;
+    min-width: 130px;
+  }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+    color: #374151;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 0.9rem;
+  }
+  input[type="number"] {
+    text-align: right;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: -2px;
+    margin-bottom: 4px;
+  }
+  button {
+    cursor: pointer;
+    border-radius: 999px;
+    border: none;
+    padding: 6px 14px;
+    font-size: 0.9rem;
+  }
+  #addButton {
+    background: #3b82f6;
+    color: white;
+    margin-top: 16px;
+  }
+  #addButton:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  #clearAllButton {
+    background: #f97373;
+    color: white;
+    margin-left: 8px;
+  }
+  .summary-section {
+    margin-top: 10px;
+  }
+  #personSummary {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #personSummary button {
+    background: #e5f0ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    border: 1px solid transparent;
+  }
+  #personSummary button.active {
+    background: #1d4ed8;
+    color: white;
+  }
+  .formula-section {
+    margin-top: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #f9fafb;
+  }
+  .formula-label {
+    font-size: 0.85rem;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+  .formula {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #111827;
+    color: #e5e7eb;
+    min-height: 1.4em;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .total {
+    margin-top: 6px;
+    font-weight: bold;
+    font-size: 0.95rem;
+  }
+  .total span {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .total-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+  .list-section {
+    margin-top: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th, td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 4px 6px;
+    text-align: left;
+  }
+  th {
+    background: #f3f4f6;
+    font-weight: 600;
+  }
+  td.amount {
+    text-align: right;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  td.memo {
+    color: #4b5563;
+  }
+  td .delete-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #fecaca;
+  }
+  .empty-message {
+    font-size: 0.8rem;
+    color: #6b7280;
+    text-align: center;
+    padding: 6px 0;
+  }
+
+  /* ▼ 追加：バックアップ用セクション */
+  .backup-section {
+    margin-top: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #eef2ff;
+  }
+  .backup-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  #exportJsonButton {
+    background: #10b981;
+    color: #ffffff;
+  }
+  #importJsonLabel {
+    background: #6366f1;
+    color: #ffffff;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  #importJsonInput {
+    display: none;
+  }
+  .backup-note {
+    font-size: 0.8rem;
+    color: #374151;
+  }
+  .backup-note strong {
+    color: #b91c1c;
+  }
+
+  @media (max-width: 640px) {
+    .container {
+      padding: 12px;
+    }
+    .input-row {
+      flex-direction: column;
+    }
+    th, td {
+      font-size: 0.8rem;
+    }
+    .backup-buttons {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>お金の貸し借り管理</h1>
+  <div class="description">
+    相手ごとの貸し借りを記録して、合計・計算式を自動計算します。<br>
+    データはブラウザの IndexedDB に保存され、次回も続きから再開できます。
+  </div>
+
+  <div class="input-section">
+    <h2>貸し借りの追加</h2>
+    <div class="input-row">
+      <div class="field">
+        <label for="nameInput">相手の名前</label>
+        <input id="nameInput" type="text" list="nameList" placeholder="例）田中さん">
+        <datalist id="nameList"></datalist>
+      </div>
+      <div class="field">
+        <label for="dateInput">日付</label>
+        <input id="dateInput" type="date">
+      </div>
+      <div class="field">
+        <label for="amountInput">金額（円）</label>
+        <input id="amountInput" type="number" step="1" inputmode="decimal" placeholder="例）1000 や -500">
+      </div>
+    </div>
+    <div class="hint">
+      ※金額は「あなたから見て」プラスなら「貸した」、マイナスなら「借りた」扱いになります。
+    </div>
+    <div class="input-row">
+      <div class="field" style="flex: 1 1 100%;">
+        <label for="memoInput">メモ（任意）</label>
+        <input id="memoInput" type="text" placeholder="例）昼ごはん代立て替え">
+      </div>
+    </div>
+    <div style="margin-top: 6px;">
+      <button id="addButton">＋ 追加</button>
+      <button id="clearAllButton">全データ削除</button>
+    </div>
+  </div>
+
+  <!-- ▼ 追加：バックアップ（JSONエクスポート・インポート） -->
+  <div class="backup-section">
+    <h2>バックアップ（JSON エクスポート／インポート）</h2>
+    <div class="backup-buttons">
+      <button id="exportJsonButton">JSONエクスポート（ダウンロード）</button>
+      <label id="importJsonLabel">
+        JSONインポート（ファイル選択）
+        <input id="importJsonInput" type="file" accept="application/json,.json">
+      </label>
+    </div>
+    <div class="backup-note">
+      ブラウザのキャッシュ削除や端末故障などで <strong>IndexedDB のデータが消える可能性があります</strong>。<br>
+      月に一度など、<strong>定期的に JSON をエクスポートしてバックアップ</strong>しておくことをおすすめします。
+    </div>
+  </div>
+
+  <div class="summary-section">
+    <h2>人ごとの合計</h2>
+    <ul id="personSummary"></ul>
+    <div id="summaryEmpty" class="empty-message" style="display:none;">
+      まだ記録がありません。上のフォームから追加してください。
+    </div>
+  </div>
+
+  <div class="formula-section">
+    <h2>貸し借りの計算式と合計</h2>
+    <div id="formulaPersonLabel" class="formula-label">
+      （「人ごとの合計」から人をクリックすると、その人の計算式が表示されます）
+    </div>
+    <div id="formulaExpression" class="formula"></div>
+    <div id="formulaTotal" class="total"></div>
+    <div id="formulaTotalHint" class="total-hint" style="display:none;">
+      ＋はあなたが貸している合計、－はあなたが借りている合計を表します。
+    </div>
+  </div>
+
+  <div class="list-section">
+    <h2>すべての記録</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 90px;">日付</th>
+          <th style="width: 120px;">相手</th>
+          <th style="width: 100px;">金額</th>
+          <th>メモ</th>
+          <th style="width: 70px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="entryTableBody">
+      </tbody>
+    </table>
+    <div id="entryEmpty" class="empty-message" style="display:none;">
+      記録がありません。
+    </div>
+  </div>
+</div>
+
+<script>
+  // IndexedDB 関連
+  const DB_NAME = "moneyLendBorrowDB";
+  const DB_VERSION = 1;
+  const STORE_NAME = "entries";
+
+  let db = null;
+  let entriesCache = [];
+  let selectedPersonName = null;
+
+  const APP_EXPORT_VERSION = 1;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initDateToday();
+    initDB();
+    setupEventListeners();
+  });
+
+  function initDateToday() {
+    const dateInput = document.getElementById("dateInput");
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  function initDB() {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, {
+          keyPath: "id",
+          autoIncrement: true
+        });
+        store.createIndex("name", "name", { unique: false });
+        store.createIndex("date", "date", { unique: false });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      db = event.target.result;
+      loadAllEntries();
+    };
+
+    request.onerror = () => {
+      alert("IndexedDB の初期化に失敗しました。ブラウザの設定をご確認ください。");
+    };
+  }
+
+  function setupEventListeners() {
+    document.getElementById("addButton").addEventListener("click", onAddEntry);
+    document.getElementById("clearAllButton").addEventListener("click", onClearAll);
+
+    document.getElementById("personSummary").addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-name]");
+      if (!btn) return;
+      selectedPersonName = btn.dataset.name;
+      renderSummaryAndFormula(); // ボタンの active クラスも含めて再描画
+    });
+
+    document.getElementById("entryTableBody").addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-id]");
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      deleteEntry(id);
+    });
+
+    // ▼ JSON エクスポート／インポート
+    document.getElementById("exportJsonButton").addEventListener("click", onExportJson);
+    document.getElementById("importJsonInput").addEventListener("change", onImportJsonFileSelected);
+  }
+
+  // 追加ボタン押下時
+  function onAddEntry() {
+    const nameInput = document.getElementById("nameInput");
+    const dateInput = document.getElementById("dateInput");
+    const amountInput = document.getElementById("amountInput");
+    const memoInput = document.getElementById("memoInput");
+
+    const name = nameInput.value.trim();
+    const date = dateInput.value || getTodayString();
+    const amount = Number(amountInput.value);
+    const memo = memoInput.value.trim();
+
+    if (!name) {
+      alert("相手の名前を入力してください。");
+      nameInput.focus();
+      return;
+    }
+    if (!amountInput.value) {
+      alert("金額を入力してください。（マイナスも可）");
+      amountInput.focus();
+      return;
+    }
+    if (Number.isNaN(amount)) {
+      alert("金額が数値として認識できません。");
+      amountInput.focus();
+      return;
+    }
+
+    const entry = {
+      name,
+      date,
+      amount,
+      memo,
+      createdAt: new Date().toISOString()
+    };
+
+    addEntryToDB(entry);
+  }
+
+  function getTodayString() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function addEntryToDB(entry) {
+    if (!db) return;
+
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.add(entry);
+
+    req.onsuccess = () => {
+      tx.oncomplete = () => {
+        // 入力を軽くリセット（相手名・日付は残してもよいが、ここではメモと金額をクリア）
+        document.getElementById("amountInput").value = "";
+        document.getElementById("memoInput").value = "";
+        document.getElementById("amountInput").focus();
+        loadAllEntries();
+      };
+    };
+
+    req.onerror = () => {
+      alert("データの保存に失敗しました。");
+    };
+  }
+
+  function loadAllEntries() {
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = (event) => {
+      entriesCache = event.target.result || [];
+      renderAll();
+    };
+
+    req.onerror = () => {
+      alert("データの読み込みに失敗しました。");
+    };
+  }
+
+  // 1件削除
+  function deleteEntry(id) {
+    if (!db) return;
+    if (!confirm("この記録を削除しますか？")) return;
+
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.delete(id);
+
+    req.onsuccess = () => {
+      tx.oncomplete = () => {
+        loadAllEntries();
+      };
+    };
+
+    req.onerror = () => {
+      alert("削除に失敗しました。");
+    };
+  }
+
+  // 全削除
+  function onClearAll() {
+    if (!db) return;
+    if (!confirm("すべての貸し借りデータを完全に削除します。よろしいですか？")) return;
+
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.clear();
+
+    req.onsuccess = () => {
+      tx.oncomplete = () => {
+        entriesCache = [];
+        selectedPersonName = null;
+        renderAll();
+      };
+    };
+
+    req.onerror = () => {
+      alert("削除に失敗しました。");
+    };
+  }
+
+  // 画面全体の再描画
+  function renderAll() {
+    renderNameDatalist();
+    renderSummaryAndFormula();
+    renderEntryTable();
+  }
+
+  function renderNameDatalist() {
+    const datalist = document.getElementById("nameList");
+    const names = Array.from(new Set(entriesCache.map(e => e.name))).sort((a, b) => a.localeCompare(b, "ja"));
+    datalist.innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join("");
+  }
+
+  function renderSummaryAndFormula() {
+    const summaryList = document.getElementById("personSummary");
+    const summaryEmpty = document.getElementById("summaryEmpty");
+
+    const nameMap = new Map(); // name -> { total, entries }
+    for (const e of entriesCache) {
+      if (!nameMap.has(e.name)) {
+        nameMap.set(e.name, { total: 0, entries: [] });
+      }
+      const obj = nameMap.get(e.name);
+      obj.total += Number(e.amount) || 0;
+      obj.entries.push(e);
+    }
+
+    const names = Array.from(nameMap.keys()).sort((a, b) => a.localeCompare(b, "ja"));
+
+    if (names.length === 0) {
+      summaryList.innerHTML = "";
+      summaryEmpty.style.display = "block";
+      selectedPersonName = null;
+    } else {
+      summaryEmpty.style.display = "none";
+      // 選択中の人がいなくなっていたらリセット
+      if (!selectedPersonName || !nameMap.has(selectedPersonName)) {
+        selectedPersonName = names[0];
+      }
+
+      summaryList.innerHTML = names.map(name => {
+        const data = nameMap.get(name);
+        const total = data.total;
+        const isActive = (name === selectedPersonName);
+        return `
+          <li>
+            <button data-name="${escapeHtml(name)}" class="${isActive ? "active" : ""}">
+              ${escapeHtml(name)}：${formatYen(total)}
+            </button>
+          </li>
+        `;
+      }).join("");
+    }
+
+    renderFormula(nameMap);
+  }
+
+  // 選択中の人の計算式と合計
+  function renderFormula(nameMap) {
+    const labelEl = document.getElementById("formulaPersonLabel");
+    const exprEl = document.getElementById("formulaExpression");
+    const totalEl = document.getElementById("formulaTotal");
+    const hintEl = document.getElementById("formulaTotalHint");
+
+    exprEl.textContent = "";
+    totalEl.textContent = "";
+    hintEl.style.display = "none";
+
+    if (!selectedPersonName || !nameMap || !nameMap.has(selectedPersonName)) {
+      labelEl.textContent = "（「人ごとの合計」から人をクリックすると、その人の計算式が表示されます）";
+      return;
+    }
+
+    const data = nameMap.get(selectedPersonName);
+    const entries = data.entries.slice().sort((a, b) => {
+      // 日付昇順 → ID 昇順
+      if (a.date === b.date) {
+        return (a.id || 0) - (b.id || 0);
+      }
+      return a.date.localeCompare(b.date);
+    });
+
+    labelEl.textContent = `【${selectedPersonName} さんの計算】`;
+
+    if (entries.length === 0) {
+      exprEl.textContent = "";
+      totalEl.textContent = "合計：0 円";
+      return;
+    }
+
+    let expr = "";
+    let total = 0;
+
+    entries.forEach((e, index) => {
+      const v = Number(e.amount) || 0;
+      total += v;
+      const abs = Math.abs(v);
+      const formatted = formatNumber(abs);
+
+      if (index === 0) {
+        expr += (v < 0 ? "-" : "") + formatted;
+      } else {
+        if (v >= 0) {
+          expr += " + " + formatted;
+        } else {
+          expr += " - " + formatted;
+        }
+      }
+    });
+
+    expr += " = " + formatNumber(total);
+
+    exprEl.textContent = expr;
+    totalEl.innerHTML = `合計：<span>${formatYenNumber(total)}</span>`;
+    hintEl.style.display = "block";
+  }
+
+  function renderEntryTable() {
+    const tbody = document.getElementById("entryTableBody");
+    const emptyEl = document.getElementById("entryEmpty");
+
+    if (entriesCache.length === 0) {
+      tbody.innerHTML = "";
+      emptyEl.style.display = "block";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+
+    const sorted = entriesCache.slice().sort((a, b) => {
+      // 日付降順 → createdAt 降順
+      if (a.date === b.date) {
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      }
+      return b.date.localeCompare(a.date);
+    });
+
+    tbody.innerHTML = sorted.map(e => {
+      const date = e.date || "";
+      const name = e.name || "";
+      const amount = Number(e.amount) || 0;
+      const memo = e.memo || "";
+      return `
+        <tr>
+          <td>${escapeHtml(date)}</td>
+          <td>${escapeHtml(name)}</td>
+          <td class="amount">${formatYenNumber(amount)}</td>
+          <td class="memo">${escapeHtml(memo)}</td>
+          <td><button class="delete-btn" data-id="${e.id}">削除</button></td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // ▼ JSON エクスポート処理
+  function onExportJson() {
+    if (!entriesCache || entriesCache.length === 0) {
+      if (!confirm("現在、記録が 0 件です。それでも空のバックアップを出力しますか？")) {
+        return;
+      }
+    }
+
+    const exportData = {
+      app: "money-lend-borrow",
+      version: APP_EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      entries: entriesCache
+    };
+
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mi = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const fileName = `money-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}.json`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    alert("JSON のエクスポートを行いました。安全な場所に保存しておいてください。");
+  }
+
+  // ▼ JSON インポート（ファイル選択）
+  function onImportJsonFileSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    // 同じファイルを続けて選べるように value リセット
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!confirm("選択した JSON からデータを読み込みます。\n現在のデータは上書きされますがよろしいですか？")) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const obj = JSON.parse(text);
+
+        if (!obj || !Array.isArray(obj.entries)) {
+          alert("JSON の形式が不正です。（entries 配列が見つかりません）");
+          return;
+        }
+
+        importEntriesToDB(obj.entries);
+      } catch (err) {
+        console.error(err);
+        alert("JSON の読み込みに失敗しました。ファイルの形式をご確認ください。");
+      }
+    };
+    reader.onerror = () => {
+      alert("ファイルの読み込みに失敗しました。");
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  // JSON から DB に書き込み（全クリアしてから追加）
+  function importEntriesToDB(entries) {
+    if (!db) {
+      alert("IndexedDB が初期化されていません。ページを再読み込みしてから再度お試しください。");
+      return;
+    }
+
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    // まず全削除
+    const clearReq = store.clear();
+    clearReq.onerror = () => {
+      alert("既存データの削除に失敗しました。インポートを中止します。");
+    };
+
+    clearReq.onsuccess = () => {
+      // entries を追加
+      for (const raw of entries) {
+        // id は再採番させるため削除しておく
+        const { id, ...rest } = raw || {};
+        if (!rest.name || !rest.date || typeof rest.amount === "undefined") {
+          // 必須項目が欠けているレコードはスキップ
+          continue;
+        }
+        // createdAt が無い場合のフォールバック
+        if (!rest.createdAt) {
+          rest.createdAt = new Date().toISOString();
+        }
+        store.add(rest);
+      }
+    };
+
+    tx.oncomplete = () => {
+      loadAllEntries();
+      alert("JSON からのインポートが完了しました。");
+    };
+
+    tx.onerror = () => {
+      alert("JSON からのインポート中にエラーが発生しました。");
+    };
+  }
+
+  // ユーティリティ
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function formatNumber(num) {
+    return new Intl.NumberFormat("ja-JP").format(num);
+  }
+
+  function formatYen(num) {
+    return formatNumber(num) + " 円";
+  }
+
+  function formatYenNumber(num) {
+    const sign = num < 0 ? "-" : "";
+    const abs = Math.abs(num);
+    return sign + formatNumber(abs) + " 円";
+  }
+</script>
+</body>
+  </html>
