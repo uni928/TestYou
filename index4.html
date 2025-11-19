@@ -606,6 +606,23 @@ if (matchMedia("(hover: none) and (pointer: coarse)").matches) {
     rightClickReturn.checked = false;
   }
 }
+
+  // ▼ localStorage の設定を読み込んで反映する（PC だけ有効）
+if (!matchMedia("(hover: none) and (pointer: coarse)").matches) {
+  const saved = localStorage.getItem("rightClickReturn");
+  if (saved !== null) {
+    rightClickReturn.checked = saved === "true";
+  }
+}
+
+  // ▼ チェックボックス変更時に保存
+rightClickReturn.addEventListener("change", () => {
+  // スマホ・タブレットでは常に OFF（保存しない）
+  if (matchMedia("(hover: none) and (pointer: coarse)").matches) return;
+
+  localStorage.setItem("rightClickReturn", rightClickReturn.checked);
+});
+  
 </script>
 
 </body>
