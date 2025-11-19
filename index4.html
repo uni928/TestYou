@@ -586,6 +586,13 @@ document.addEventListener("mousedown", (e) => {
       goBack();
     }
   }
+  else if(e.button === 1)
+  {
+    if (!rightClickReturn.checked) {
+      e.preventDefault(); // 右クリックメニューを出さない
+      goBack();
+    }
+  }
 });
 
 // ▼ 修正：右クリック戻りが ON のときだけ右クリックメニューを無効化
