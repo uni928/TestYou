@@ -2,11 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>数を大きくしていくゲーム</title>
 <style>
     body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #f5f5f5;
+        font-family: sans-serif;
+        background: #f3f3f3;
         margin: 0;
         padding: 0;
         display: flex;
@@ -14,114 +15,118 @@
         align-items: center;
         justify-content: center;
     }
+
+    /* ★ スマホ画面いっぱいにするため width:100% */
     .game-container {
         background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        padding: 24px 28px 28px;
-        max-width: 520px;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 20px;
         width: 100%;
+        max-width: 900px; /* PCでは広く */
     }
+
     h1 {
-        margin: 0 0 12px;
-        font-size: 1.3rem;
+        margin: 0 0 16px;
+        font-size: 2rem;
         text-align: center;
     }
+
     .description {
-        font-size: 0.9rem;
-        color: #555;
-        margin-bottom: 16px;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        line-height: 1.5;
     }
+
     .label-row {
         display: flex;
         justify-content: space-between;
-        font-size: 0.85rem;
-        color: #666;
-        margin-bottom: 4px;
+        font-size: 1.1rem;
+        margin-bottom: 6px;
     }
+
+    /* ★ 数値部分大きく */
     .number-display {
         background: #111;
         color: #0ff;
-        padding: 10px 12px;
-        border-radius: 8px;
-        font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 0.95rem;
+        padding: 18px;
+        border-radius: 12px;
+        font-family: monospace;
+        font-size: 1.6rem;
         word-break: break-all;
-        margin-bottom: 14px;
+        margin-bottom: 20px;
     }
+
     .status-row {
         display: flex;
         justify-content: space-between;
-        font-size: 0.85rem;
-        color: #444;
-        margin-bottom: 10px;
+        font-size: 1.2rem;
+        margin-bottom: 12px;
     }
+
     .options-title {
-        font-size: 0.9rem;
-        margin: 8px 0 6px;
+        font-size: 1.4rem;
+        margin: 12px 0;
     }
+
+    /* ★ ボタンを大きく、スマホで2列+余白 */
     .options {
         display: grid;
-        grid-template-columns: repeat(1, minmax(0, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(45%, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
     }
+
     .option-btn {
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
+        padding: 18px 14px;
+        border-radius: 12px;
+        border: 2px solid #ddd;
         background: #fafafa;
         cursor: pointer;
-        text-align: left;
-        font-size: 0.85rem;
-        transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-        font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 1.4rem;
+        font-family: monospace;
+        transition: background 0.1s;
     }
     .option-btn:hover {
-        background: #f0f8ff;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        transform: translateY(-1px);
+        background: #e9f6ff;
     }
-    .option-btn:active {
-        transform: translateY(0);
-        box-shadow: none;
-    }
+
+    /* ★ 下ボタン大きく */
     .controls {
-        margin-top: 14px;
         display: flex;
-        justify-content: space-between;
-        gap: 8px;
+        gap: 12px;
+        margin-top: 10px;
         flex-wrap: wrap;
     }
+
     .controls button {
         flex: 1 1 48%;
-        padding: 8px 10px;
-        border-radius: 999px;
+        padding: 18px;
+        border-radius: 50px;
         border: none;
         cursor: pointer;
-        font-size: 0.85rem;
+        font-size: 1.3rem;
     }
+
     .btn-reset {
         background: #eee;
     }
     .btn-reset:hover {
-        background: #e0e0e0;
+        background: #ddd;
     }
+
     .btn-hard {
-        background: #ffebee;
+        background: #ffe0e0;
     }
     .btn-hard:hover {
-        background: #ffcdd2;
+        background: #ffcccc;
     }
+
     .note {
-        margin-top: 8px;
-        font-size: 0.8rem;
+        margin-top: 16px;
+        font-size: 1.1rem;
         color: #777;
-        line-height: 1.4;
-    }
-    @media (min-width: 640px) {
-        .options {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+        line-height: 1.6;
     }
 </style>
 </head>
@@ -129,17 +134,18 @@
 
 <div class="game-container">
     <h1>数を大きくしていくゲーム</h1>
+
     <p class="description">
-        最初は 100 からスタートします。  
-        毎ターン、現在の数値の <strong>0.95倍〜1.05倍</strong> の中から
-        ランダムに5個の候補が現れます。  
-        好きな数を選んで、どんどん巨大な数に育ててください。
+        最初は <strong>100</strong> からスタート。  
+        毎ターン、現在の数値の <strong>0.95倍〜1.05倍</strong> のランダムな候補が5つ表示されます。  
+        好きな数を選んで巨大な数に育てよう！
     </p>
 
     <div class="label-row">
         <span>現在の数値</span>
         <span>10桁以内は通常表示</span>
     </div>
+
     <div id="currentValue" class="number-display">-</div>
 
     <div class="status-row">
@@ -152,18 +158,18 @@
 
     <div class="controls">
         <button class="btn-reset" id="resetBtn">リセット（100に戻す）</button>
-        <button class="btn-hard" id="hardBtn">ハードモード開始</button>
+        <button class="btn-hard" id="hardBtn">ハードモード</button>
     </div>
 
     <p class="note">
-        ※巨大数は「1.2345678901 × 10の123乗」形式になります。<br>
-        ※ハードモードでは0.90〜1.10倍になります。
+        ※巨大数は「1.2345678901 × 10の123乗」で表示されます。  
+        ※ハードモードは0.90〜1.10倍になります。
     </p>
 </div>
 
 <script>
 (function() {
-    let current = { mantissa: 1, exponent: 2 }; // 100
+    let current = { mantissa: 1, exponent: 2 };
     let maxValue = { mantissa: 1, exponent: 2 };
     let turnCount = 0;
     let hardMode = false;
@@ -177,18 +183,12 @@
 
     function normalize(mantissa, exponent) {
         if (mantissa === 0) return { mantissa: 0, exponent: 0 };
-        while (Math.abs(mantissa) >= 10) {
-            mantissa /= 10;
-            exponent += 1;
-        }
-        while (Math.abs(mantissa) < 1) {
-            mantissa *= 10;
-            exponent -= 1;
-        }
+        while (Math.abs(mantissa) >= 10) { mantissa /= 10; exponent++; }
+        while (Math.abs(mantissa) < 1)  { mantissa *= 10; exponent--; }
         return { mantissa, exponent };
     }
 
-    // ★ 10桁以内ならそのまま表示
+    /* ★ 10桁以内なら通常表示 */
     function formatScientific(val) {
         const m = val.mantissa;
         const e = val.exponent;
@@ -196,17 +196,14 @@
         if (e >= 0 && e <= 9) {
             let normal = m * Math.pow(10, e);
             let str = Math.round(normal).toString();
-            if (str.length <= 10) {
-                return str;
-            }
+            if (str.length <= 10) return str;
         }
         return m.toFixed(10) + " × 10の" + e + "乗";
     }
 
     function compareValue(a, b) {
         if (a.exponent !== b.exponent) return a.exponent > b.exponent ? 1 : -1;
-        if (a.mantissa > b.mantissa) return 1;
-        if (a.mantissa < b.mantissa) return -1;
+        if (a.mantissa !== b.mantissa) return a.mantissa > b.mantissa ? 1 : -1;
         return 0;
     }
 
@@ -234,29 +231,20 @@
             let e = current.exponent;
             const normalized = normalize(m, e);
 
-            options.push({
-                value: normalized
-            });
+            options.push({ value: normalized });
         }
 
         if (!hasGreater) {
-            const factor = 1.0 + (maxFactor - 1.0) * Math.random();
-            let m = current.mantissa * factor;
-            let e = current.exponent;
-            const normalized = normalize(m, e);
-            options[options.length - 1] = { value: normalized };
+            const factor = 1 + (maxFactor - 1) * Math.random();
+            const normalized = normalize(current.mantissa * factor, current.exponent);
+            options[4] = { value: normalized };
         }
 
-        for (let i = options.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [options[i], options[j]] = [options[j], options[i]];
-        }
-
-        options.forEach((opt) => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerHTML = `${formatScientific(opt.value)}`;
-            btn.addEventListener('click', () => chooseOption(opt.value));
+        options.forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "option-btn";
+            btn.innerHTML = formatScientific(opt.value);
+            btn.onclick = () => chooseOption(opt.value);
             optionsEl.appendChild(btn);
         });
     }
@@ -266,7 +254,7 @@
         turnCount++;
 
         if (compareValue(current, maxValue) > 0) {
-            maxValue = { mantissa: current.mantissa, exponent: current.exponent };
+            maxValue = { ...current };
         }
         updateDisplay();
     }
@@ -276,18 +264,18 @@
         maxValue = { mantissa: 1, exponent: 2 };
         turnCount = 0;
         hardMode = false;
-        hardBtn.textContent = "ハードモード開始";
+        hardBtn.textContent = "ハードモード";
         updateDisplay();
     }
 
     function toggleHardMode() {
         hardMode = !hardMode;
-        hardBtn.textContent = hardMode ? "ハードモード中（0.90〜1.10）" : "ハードモード開始";
+        hardBtn.textContent = hardMode ? "ハードモード中" : "ハードモード";
         generateOptions();
     }
 
-    resetBtn.addEventListener('click', resetGame);
-    hardBtn.addEventListener('click', toggleHardMode);
+    resetBtn.onclick = resetGame;
+    hardBtn.onclick = toggleHardMode;
 
     updateDisplay();
 })();
