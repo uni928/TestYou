@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>100時間チャレンジタイマー</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --accent: #007aff;
+      --accent-soft: #cce4ff;
+      --danger: #ff3b30;
+      --text-main: #222222;
+      --text-sub: #666666;
+      --border: #dddddd;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-sub);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .timer-main {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .timer-display {
+      font-size: 2.4rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-align: center;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eee;
+      font-size: 0.8rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #999;
+    }
+
+    .status-dot.running {
+      background: #00c853;
+      box-shadow: 0 0 0 4px rgba(0,200,83,0.15);
+    }
+
+    .progress-wrap {
+      margin-top: 4px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #e6e6ea;
+      overflow: hidden;
+    }
+
+    .progress-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #34c759);
+      transition: width 0.3s ease-out;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    button {
+      border-radius: 999px;
+      padding: 8px 18px;
+      border: none;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.05s ease-out, box-shadow 0.1s ease-out, opacity 0.2s;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,122,255,0.4);
+    }
+
+    .btn-secondary {
+      background: #efefef;
+      color: #333;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(255,59,48,0.4);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .history-header h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .history-note {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      background: #f1f3f7;
+    }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e5e5ea;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      font-weight: 600;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    tbody tr:hover {
+      background: #f0f8ff;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .badge-small {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      background: #efefef;
+      color: #555;
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 12px 12px;
+      }
+      .timer-display {
+        font-size: 2rem;
+      }
+      table {
+        font-size: 0.8rem;
+      }
+      th:nth-child(2),
+      td:nth-child(2),
+      th:nth-child(3),
+      td:nth-child(3) {
+        display: none; /* hide start/end on very small screens */
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>100時間チャレンジタイマー</h1>
+    <p class="subtitle">
+      日々の作業時間を積み上げて、まずは <strong>100時間（100:00:00）</strong> 達成を目指すシンプルなタイマーです。<br>
+      開始/終了を押すだけで記録され、履歴はブラウザ内（IndexedDB）に保存されます。
+    </p>
+
+    <div class="card">
+      <div class="timer-main">
+        <div class="timer-display" id="totalTimeDisplay">00:00:00</div>
+
+        <div class="status-row">
+          <div>
+            <span class="status-badge">
+              <span id="statusDot" class="status-dot"></span>
+              <span id="statusText">停止中</span>
+            </span>
+          </div>
+          <div>
+            目標まで残り：<span id="remainingLabel">100:00:00</span>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar">
+            <div id="progressInner" class="progress-inner"></div>
+          </div>
+          <div class="progress-label">
+            <span>0時間</span>
+            <span id="progressPercent">0%</span>
+            <span>100時間</span>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="startButton" class="btn-primary">
+            ▶ 開始 / 再開
+          </button>
+          <button id="stopButton" class="btn-secondary">
+            ■ 終了（一時停止）
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="history-header">
+        <div>
+          <h2>履歴</h2>
+          <div class="history-note">
+            1回の「開始 → 終了」で1件として記録されます。履歴の編集・削除は合計時間に反映されます。
+          </div>
+        </div>
+        <button id="clearAllButton" class="btn-ghost">
+          履歴をすべて削除
+        </button>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>開始</th>
+              <th>終了</th>
+              <th>時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">履歴はまだありません</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0; font-size:1rem;">使い方メモ</h2>
+      <ul style="margin:0 0 0.3rem 1.1rem; padding:0; font-size:0.85rem; color:var(--text-sub);">
+        <li>作業を始めるときに「開始 / 再開」を押し、終わったら「終了（一時停止）」を押してください。</li>
+        <li>ページを閉じてもデータはブラウザ内に保存され、次回開いたときに自動で読み込まれます。</li>
+        <li>履歴の「編集」で時間を修正できます（hh:mm:ss形式）。修正した分は合計時間にも反映されます。</li>
+        <li>「履歴をすべて削除」は元に戻せませんのでご注意ください。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // === グローバル状態 ===
+    let db = null;
+    let sessions = [];
+    let isRunning = false;
+    let currentStart = null; // ms since epoch
+    let timerId = null;
+    const TARGET_MS = 100 * 60 * 60 * 1000; // 100時間
+    let baseTotalMs = 0; // 履歴のみの合計（現在進行中は含まない）
+
+    // === IndexedDB 初期化 ===
+    function openDatabase() {
+      return new Promise(function(resolve, reject) {
+        const request = indexedDB.open('hundredHoursDB', 1);
+
+        request.onerror = function() {
+          console.error('IndexedDB を開けませんでした:', request.error);
+          reject(request.error);
+        };
+
+        request.onupgradeneeded = function(event) {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('sessions')) {
+            db.createObjectStore('sessions', { keyPath: 'id', autoIncrement: true });
+          }
+          if (!db.objectStoreNames.contains('meta')) {
+            db.createObjectStore('meta', { keyPath: 'key' });
+          }
+        };
+
+        request.onsuccess = function(event) {
+          resolve(event.target.result);
+        };
+      });
+    }
+
+    function loadStateAndSessions() {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(['sessions', 'meta'], 'readonly');
+        const sessionsStore = tx.objectStore('sessions');
+        const metaStore = tx.objectStore('meta');
+
+        const sessionsReq = sessionsStore.getAll();
+        const metaReq = metaStore.get('state');
+
+        tx.oncomplete = function() {
+          sessions = sessionsReq.result || [];
+          recalcBaseTotal();
+
+          const meta = metaReq.result;
+          if (meta) {
+            isRunning = !!meta.isRunning;
+            currentStart = meta.currentStart || null;
+          } else {
+            isRunning = false;
+            currentStart = null;
+          }
+
+          if (isRunning && !currentStart) {
+            // 不整合対策
+            isRunning = false;
+          }
+
+          if (isRunning) {
+            startTimerLoop();
+          } else {
+            stopTimerLoop();
+          }
+
+          renderHistory();
+          updateDisplay();
+
+          resolve();
+        };
+
+        tx.onerror = function() {
+          console.error('状態読み込みに失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    function saveMeta() {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction('meta', 'readwrite');
+        const store = tx.objectStore('meta');
+        const data = { key: 'state', isRunning: isRunning, currentStart: currentStart };
+        store.put(data);
+        tx.oncomplete = function() {
+          resolve();
+        };
+        tx.onerror = function() {
+          console.error('メタ情報の保存に失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    function addSession(start, end, durationMs) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction('sessions', 'readwrite');
+        const store = tx.objectStore('sessions');
+        const session = { start: start, end: end, durationMs: durationMs };
+        const req = store.add(session);
+
+        req.onsuccess = function(e) {
+          session.id = e.target.result;
+          sessions.push(session);
+        };
+
+        tx.oncomplete = function() {
+          recalcBaseTotal();
+          renderHistory();
+          updateDisplay();
+          resolve();
+        };
+
+        tx.onerror = function() {
+          console.error('セッション追加に失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    function updateSession(session) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction('sessions', 'readwrite');
+        const store = tx.objectStore('sessions');
+        store.put(session);
+
+        tx.oncomplete = function() {
+          recalcBaseTotal();
+          renderHistory();
+          updateDisplay();
+          resolve();
+        };
+
+        tx.onerror = function() {
+          console.error('セッション更新に失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    function deleteSession(id) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction('sessions', 'readwrite');
+        const store = tx.objectStore('sessions');
+        store.delete(id);
+
+        tx.oncomplete = function() {
+          sessions = sessions.filter(function(s) { return s.id !== id; });
+          recalcBaseTotal();
+          renderHistory();
+          updateDisplay();
+          resolve();
+        };
+
+        tx.onerror = function() {
+          console.error('セッション削除に失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    function clearAllSessions() {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(['sessions', 'meta'], 'readwrite');
+        tx.objectStore('sessions').clear();
+        tx.objectStore('meta').put({ key: 'state', isRunning: false, currentStart: null });
+
+        tx.oncomplete = function() {
+          sessions = [];
+          baseTotalMs = 0;
+          isRunning = false;
+          currentStart = null;
+          stopTimerLoop();
+          renderHistory();
+          updateDisplay();
+          resolve();
+        };
+
+        tx.onerror = function() {
+          console.error('全クリアに失敗しました:', tx.error);
+          reject(tx.error);
+        };
+      });
+    }
+
+    // === UI & ロジック ===
+
+    function recalcBaseTotal() {
+      baseTotalMs = sessions.reduce(function(sum, s) {
+        return sum + (s.durationMs || 0);
+      }, 0);
+    }
+
+    function startTimerLoop() {
+      if (timerId != null) return;
+      timerId = setInterval(updateDisplay, 1000);
+    }
+
+    function stopTimerLoop() {
+      if (timerId != null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function getTotalMs() {
+      let total = baseTotalMs;
+      if (isRunning && currentStart) {
+        total += Date.now() - currentStart;
+      }
+      return total;
+    }
+
+    function formatDuration(ms) {
+      if (ms < 0) ms = 0;
+      const totalSeconds = Math.floor(ms / 1000);
+      const seconds = totalSeconds % 60;
+      const minutes = Math.floor(totalSeconds / 60) % 60;
+      const hours = Math.floor(totalSeconds / 3600);
+
+      const secStr = String(seconds).padStart(2, '0');
+      const minStr = String(minutes).padStart(2, '0');
+      // 100時間以上は3桁、それ未満は2桁表示
+      const hourStr = hours >= 100 ? String(hours).padStart(3, '0') : String(hours).padStart(2, '0');
+      return hourStr + ':' + minStr + ':' + secStr;
+    }
+
+    function formatDateTime(ts) {
+      if (!ts) return '-';
+      try {
+        return new Date(ts).toLocaleString();
+      } catch (e) {
+        return '-';
+      }
+    }
+
+    function updateDisplay() {
+      const totalMs = getTotalMs();
+      const totalText = formatDuration(totalMs);
+      const totalElem = document.getElementById('totalTimeDisplay');
+      if (totalElem) totalElem.textContent = totalText;
+
+      // ステータス
+      const statusTextElem = document.getElementById('statusText');
+      const statusDotElem = document.getElementById('statusDot');
+      if (statusTextElem) {
+        statusTextElem.textContent = isRunning ? '計測中' : '停止中';
+      }
+      if (statusDotElem) {
+        if (isRunning) {
+          statusDotElem.classList.add('running');
+        } else {
+          statusDotElem.classList.remove('running');
+        }
+      }
+
+      // 目標まで残り
+      const remainingMs = Math.max(TARGET_MS - totalMs, 0);
+      const remainingElem = document.getElementById('remainingLabel');
+      if (remainingElem) {
+        remainingElem.textContent = formatDuration(remainingMs);
+      }
+
+      // 進捗バー
+      const inner = document.getElementById('progressInner');
+      const percentLabel = document.getElementById('progressPercent');
+      if (inner && percentLabel) {
+        const ratioRaw = totalMs / TARGET_MS;
+        const ratio = Math.min(ratioRaw, 1);
+        inner.style.width = (ratio * 100).toFixed(1) + '%';
+
+        const percentDisplay = Math.min(ratioRaw * 100, 999).toFixed(1);
+        percentLabel.textContent = percentDisplay + '%';
+      }
+
+      // ボタンの有効/無効
+      const startButton = document.getElementById('startButton');
+      const stopButton = document.getElementById('stopButton');
+      if (startButton) startButton.disabled = isRunning;
+      if (stopButton) stopButton.disabled = !isRunning;
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById('historyBody');
+      if (!tbody) return;
+
+      while (tbody.firstChild) {
+        tbody.removeChild(tbody.firstChild);
+      }
+
+      if (!sessions || sessions.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.style.color = '#999';
+        td.style.padding = '12px';
+        td.textContent = '履歴はまだありません';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      const sorted = sessions.slice().sort(function(a, b) {
+        return (a.start || 0) - (b.start || 0);
+      });
+
+      sorted.forEach(function(session, index) {
+        const tr = document.createElement('tr');
+
+        const noTd = document.createElement('td');
+        noTd.textContent = String(index + 1);
+        tr.appendChild(noTd);
+
+        const startTd = document.createElement('td');
+        startTd.textContent = formatDateTime(session.start);
+        tr.appendChild(startTd);
+
+        const endTd = document.createElement('td');
+        endTd.textContent = formatDateTime(session.end);
+        tr.appendChild(endTd);
+
+        const durTd = document.createElement('td');
+        durTd.textContent = formatDuration(session.durationMs || 0);
+        tr.appendChild(durTd);
+
+        const actTd = document.createElement('td');
+        const actWrap = document.createElement('div');
+        actWrap.className = 'history-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-ghost';
+        editBtn.textContent = '編集';
+        editBtn.style.padding = '4px 10px';
+        editBtn.style.fontSize = '0.8rem';
+        editBtn.addEventListener('click', function() {
+          handleEditSession(session.id);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-danger';
+        delBtn.textContent = '削除';
+        delBtn.style.padding = '4px 10px';
+        delBtn.style.fontSize = '0.8rem';
+        delBtn.addEventListener('click', function() {
+          handleDeleteSession(session.id);
+        });
+
+        actWrap.appendChild(editBtn);
+        actWrap.appendChild(delBtn);
+        actTd.appendChild(actWrap);
+        tr.appendChild(actTd);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // === イベントハンドラ ===
+
+    async function handleStart() {
+      if (!db) {
+        alert('データベースの初期化に失敗しました。ブラウザの設定をご確認ください。');
+        return;
+      }
+      if (isRunning) return;
+
+      isRunning = true;
+      currentStart = Date.now();
+      try {
+        await saveMeta();
+      } catch (e) {
+        console.error(e);
+      }
+      startTimerLoop();
+      updateDisplay();
+    }
+
+    async function handleStop() {
+      if (!db) {
+        alert('データベースの初期化に失敗しました。ブラウザの設定をご確認ください。');
+        return;
+      }
+      if (!isRunning || !currentStart) return;
+
+      const end = Date.now();
+      const start = currentStart;
+      const durationMs = end - start;
+
+      isRunning = false;
+      currentStart = null;
+      stopTimerLoop();
+
+      try {
+        await addSession(start, end, durationMs);
+        await saveMeta();
+      } catch (e) {
+        console.error(e);
+      }
+      updateDisplay();
+    }
+
+    async function handleEditSession(id) {
+      const session = sessions.find(function(s) { return s.id === id; });
+      if (!session) return;
+
+      const currentStr = formatDuration(session.durationMs || 0);
+      const input = prompt('新しい時間を「hh:mm:ss」形式で入力してください', currentStr);
+      if (input === null) {
+        return; // キャンセル
+      }
+
+      const trimmed = input.trim();
+      const parts = trimmed.split(':');
+      if (parts.length !== 3) {
+        alert('形式が正しくありません。例: 01:30:00');
+        return;
+      }
+
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const s = parseInt(parts[2], 10);
+
+      if (
+        isNaN(h) || isNaN(m) || isNaN(s) ||
+        h < 0 || m < 0 || m >= 60 || s < 0 || s >= 60
+      ) {
+        alert('時間の値が不正です。0以上、かつ分・秒は0〜59にしてください。');
+        return;
+      }
+
+      const newDurationMs = ((h * 60 + m) * 60 + s) * 1000;
+      session.durationMs = newDurationMs;
+      if (session.start) {
+        session.end = session.start + newDurationMs;
+      }
+
+      try {
+        await updateSession(session);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function handleDeleteSession(id) {
+      const session = sessions.find(function(s) { return s.id === id; });
+      if (!session) return;
+
+      const ok = confirm('この履歴を削除しますか？（元に戻せません）');
+      if (!ok) return;
+
+      try {
+        await deleteSession(id);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function handleClearAll() {
+      if (!db) return;
+      const ok = confirm('すべての履歴と状態を削除しますか？\n※ 合計時間もリセットされます。');
+      if (!ok) return;
+
+      try {
+        await clearAllSessions();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // === 初期化 ===
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('startButton').addEventListener('click', function() {
+        handleStart();
+      });
+      document.getElementById('stopButton').addEventListener('click', function() {
+        handleStop();
+      });
+      document.getElementById('clearAllButton').addEventListener('click', function() {
+        handleClearAll();
+      });
+
+      openDatabase()
+        .then(function(database) {
+          db = database;
+          return loadStateAndSessions();
+        })
+        .catch(function(error) {
+          console.error('DB初期化エラー:', error);
+          alert('IndexedDBの初期化に失敗しました。このブラウザではデータ保存ができない可能性があります。');
+        });
+    });
+  </script>
+</body>
+  </html>
