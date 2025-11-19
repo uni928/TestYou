@@ -198,10 +198,25 @@
     }
 
     function formatScientific(val) {
-        const m = val.mantissa;
-        const e = val.exponent;
-        return m.toFixed(10) + " × 10の" + e + "乗";
+    const m = val.mantissa;
+    const e = val.exponent;
+
+    // 10桁以内なら通常表記
+    // ＝整数部分の桁数が10以下 && exponent >= 0 のとき
+    if (e >= 0 && e <= 9) {
+        // 通常表記 → mantissa × 10^exponent を計算して整数化
+        let normal = m * Math.pow(10, e);
+
+        // 桁が10桁以内か判定（丸め誤差対策で少し余裕を見て固定小数化）
+        let str = Math.round(normal).toString();
+        if (str.length <= 10) {
+            return str;
+        }
     }
+
+    // 11桁以上 → 科学表記（小数10桁）
+    return m.toFixed(10) + " × 10の" + e + "乗";
+}
 
     function compareValue(a, b) {
         // a > b -> 1, a == b -> 0, a < b -> -1
