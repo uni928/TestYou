@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ChatGPT よく使う質問ランチャー</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f4f5f7;
+    margin: 0;
+    padding: 16px;
+  }
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 16px 16px 24px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  .desc {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 12px;
+  }
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .toolbar-left {
+    font-size: 0.85rem;
+    color: #666;
+  }
+  button {
+    cursor: pointer;
+    border-radius: 999px;
+    border: none;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .btn-add {
+    background: #2563eb;
+    color: white;
+  }
+  .btn-add:hover {
+    background: #1d4ed8;
+  }
+  .btn-ask {
+    background: #16a34a;
+    color: white;
+  }
+  .btn-ask:hover {
+    background: #15803d;
+  }
+  .btn-delete {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  .btn-delete:hover {
+    background: #d1d5db;
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px;
+    background: #fafafa;
+  }
+  .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    color: #555;
+  }
+  .item-index {
+    font-weight: 600;
+  }
+  textarea {
+    width: 100%;
+    min-height: 70px;
+    resize: vertical;
+    font-size: 0.9rem;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-family: inherit;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37,99,235,0.15);
+  }
+  .item-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .small-text {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin-top: 2px;
+  }
+  @media (max-width: 600px) {
+    .app {
+      padding: 12px;
+    }
+    textarea {
+      min-height: 80px;
+    }
+    .toolbar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>ChatGPT よく使う質問ランチャー</h1>
+  <div class="desc">
+    よく使うプロンプトを登録しておき、<b>聞く</b> ボタンから ChatGPT を
+    <code>?q=</code> パラメータ付きで開きます。<br>
+    右上の <b>＋ 追加</b> で項目を一番上に追加します（IndexedDB に自動保存）。
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      ・テキストを書き換えると自動で保存されます。<br>
+      ・「聞く」で新しいタブ（またはウィンドウ）が開きます。
+    </div>
+    <button class="btn-add" id="addBtn">＋ 追加</button>
+  </div>
+
+  <div id="list" class="list"></div>
+     <!-- 置換テキスト欄（IndexedDB 保存なし） -->
+   <div style="margin: 8px 0 16px;">
+     <label style="font-size:0.85rem; color:#555;">「ここに文章を貼って下さい」を以下の内容に置き換えてから送信：</label>
+     <textarea id="replaceInput" placeholder="ここに差し替えたい文章を入力（空欄なら置換しません）" 
+       style="width:100%; min-height:60px; margin-top:4px; padding:6px; font-size:0.9rem;">
+     </textarea>
+   </div>
+</div>
+
+<script>
+  // ===== 設定 =====
+  const DB_NAME = 'chatgptQueryLauncherDB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'queries';
+  const SINGLE_KEY = 'items';
+
+  // 初期登録する定型文
+  const DEFAULT_ITEMS = [
+    '以下の文章を、日本語として自然で読みやすい形に添削してください。\n\n--- ここに文章を貼ってください ---',
+    '以下の文章を、重要なポイントがわかるように「3つの箇条書き」で要約してください。\n\n--- ここに文章を貼ってください ---',
+    '以下の文章を、ビジネスメールとして丁寧で失礼のない表現に書き直してください。\n件名案も3つ提案してください。\n\n--- ここに文章を貼ってください ---',
+    '以下のコードにバグや改善点があれば指摘し、修正案のコードを提示してください。\nパフォーマンスや可読性も考慮してください。\n\n```言語名\n// ここにコードを貼ってください\n```',
+    '以下の仕様に基づいて、ユーザーにわかりやすいシステム要件の説明文を作成してください。\n\n--- ここに仕様を書いてください ---',
+    '以下の会話ログを読み、今後の方針と次に送るべきメッセージ案を3つ提案してください。\n\n--- ここに会話ログを貼ってください ---'
+  ];
+
+  let items = []; // {id:number, text:string} の配列
+  let nextId = 1;
+  let db = null;
+
+  // ===== IndexedDB 基本処理 =====
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = (event) => {
+        resolve(event.target.result);
+      };
+      request.onerror = (event) => {
+        console.error('IndexedDB open error', event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+
+  function loadItemsFromDB() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(SINGLE_KEY);
+      getReq.onsuccess = () => {
+        if (getReq.result && Array.isArray(getReq.result.list)) {
+          resolve(getReq.result.list);
+        } else {
+          // 初回起動時: デフォルトを登録
+          const initialList = DEFAULT_ITEMS.map((text, idx) => ({
+            id: idx + 1,
+            text
+          }));
+          resolve(initialList);
+        }
+      };
+      getReq.onerror = (e) => {
+        console.error('IndexedDB get error', e.target.error);
+        reject(e.target.error);
+      };
+    });
+  }
+
+  function saveItemsToDB(list) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const putReq = store.put({ id: SINGLE_KEY, list });
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = (e) => {
+        console.error('IndexedDB put error', e.target.error);
+        reject(e.target.error);
+      };
+    });
+  }
+
+  // ===== ユーティリティ =====
+  function computeNextId() {
+    if (!items.length) return 1;
+    return Math.max(...items.map(i => i.id)) + 1;
+  }
+
+  function debounce(fn, delay) {
+    let timer = null;
+    return function(...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  const saveItemsDebounced = debounce(() => {
+    saveItemsToDB(items).catch(err => console.error(err));
+  }, 300);
+
+  // ===== UI 描画 =====
+  function renderList() {
+    const listEl = document.getElementById('list');
+    listEl.innerHTML = '';
+
+    items.forEach((item, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'item';
+
+      const header = document.createElement('div');
+      header.className = 'item-header';
+
+      const indexLabel = document.createElement('div');
+      indexLabel.className = 'item-index';
+      indexLabel.textContent = `#${index + 1}`;
+
+      const smallNote = document.createElement('div');
+      smallNote.className = 'small-text';
+      smallNote.textContent = 'テキストを編集すると自動保存';
+
+      header.appendChild(indexLabel);
+      header.appendChild(smallNote);
+
+      const textarea = document.createElement('textarea');
+      textarea.value = item.text;
+
+      textarea.addEventListener('input', () => {
+        item.text = textarea.value;
+        saveItemsDebounced();
+      });
+
+      const footer = document.createElement('div');
+      footer.className = 'item-footer';
+
+      const askBtn = document.createElement('button');
+      askBtn.className = 'btn-ask';
+      askBtn.textContent = '聞く';
+
+      askBtn.addEventListener('click', () => {
+  let query = textarea.value.trim();
+  if (!query) {
+    alert('質問内容が空です。テキストを入力してください。');
+    return;
+  }
+
+  // 置換欄のテキスト（IndexedDB保存対象外）
+  const rep = document.getElementById('replaceInput').value.trim();
+
+  if (rep) {
+    // 全バリエーション置換
+    query = query
+      .replace(/ここに文章を貼ってください/g, rep)
+      .replace(/ここに文章を貼って下さい/g, rep);
+  }
+
+  const url = 'https://chatgpt.com/?q=' + encodeURIComponent(query);
+  window.open(url, '_blank');
+});
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn-delete';
+      deleteBtn.textContent = '削除';
+
+      deleteBtn.addEventListener('click', () => {
+        if (!confirm('この項目を削除しますか？')) return;
+        items = items.filter(i => i.id !== item.id);
+        saveItemsToDB(items).then(() => {
+          renderList();
+        }).catch(err => console.error(err));
+      });
+
+      footer.appendChild(askBtn);
+      footer.appendChild(deleteBtn);
+
+      wrapper.appendChild(header);
+      wrapper.appendChild(textarea);
+      wrapper.appendChild(footer);
+
+      listEl.appendChild(wrapper);
+    });
+  }
+
+  // ===== 追加ボタン =====
+  function setupAddButton() {
+    const addBtn = document.getElementById('addBtn');
+    addBtn.addEventListener('click', () => {
+      const newItem = {
+        id: nextId++,
+        text: 'ここに新しい質問テンプレートを書いてください。'
+      };
+      // 先頭に追加
+      items.unshift(newItem);
+      saveItemsToDB(items).then(() => {
+        renderList();
+      }).catch(err => console.error(err));
+    });
+  }
+
+  // ===== 初期化 =====
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      db = await openDB();
+      items = await loadItemsFromDB();
+      nextId = computeNextId();
+      renderList();
+      setupAddButton();
+    } catch (e) {
+      console.error('初期化エラー', e);
+      alert('データベースの初期化に失敗しました。ブラウザの設定を確認してください。');
+    }
+  });
+</script>
+</body>
+</html>
