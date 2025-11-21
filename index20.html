@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>HTML エラー・プレビューコンソール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0b1020;
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.25);
+      --accent-strong: #6366f1;
+      --error: #f97373;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-subtle: rgba(148, 163, 184, 0.35);
+      --radius-xl: 18px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.75);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #1e293b 0, #020617 45%, #020617 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 14px 10px 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 960px;
+      margin: auto;
+      background: linear-gradient(145deg, rgba(15,23,42,0.95), rgba(15,23,42,0.98));
+      border-radius: 24px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 14px 12px 16px;
+    }
+
+    @media (min-width: 720px) {
+      .app {
+        padding: 18px 20px 22px;
+      }
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .app-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .app-title-main {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-pill {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.2), rgba(129,140,248,0.45));
+      border: 1px solid rgba(129, 140, 248, 0.7);
+      color: #e0f2fe;
+      text-transform: uppercase;
+    }
+
+    .app-title-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .app-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #e5ecff;
+      box-shadow: 0 7px 18px rgba(79, 70, 229, 0.6);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.65;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .btn-ghost {
+      background: rgba(15,23,42,0.85);
+      color: var(--text-muted);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(30, 64, 175, 0.4);
+      color: #e5e7eb;
+    }
+
+    .btn-icon {
+      font-size: 1rem;
+    }
+
+    .layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    @media (min-width: 780px) {
+      .layout {
+        flex-direction: row;
+        gap: 12px;
+      }
+    }
+
+    .panel {
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.1), #020617 65%);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-subtle);
+      padding: 10px;
+      min-height: 210px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .panel-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3);
+    }
+
+    .panel-hint {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .panel-body {
+      border-radius: 14px;
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
+      border: 1px solid rgba(30, 64, 175, 0.6);
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* コードエディタ */
+    .editor-wrapper {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #020617;
+      border: 1px solid rgba(15, 23, 42, 0.95);
+      box-shadow: inset 0 0 0 1px rgba(15,23,42,0.9);
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 9px;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      background: linear-gradient(90deg, #020617, #020617, #020617);
+    }
+
+    .editor-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .editor-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      opacity: 0.85;
+    }
+
+    .editor-dot.red {
+      background: #fb7185;
+    }
+
+    .editor-dot.yellow {
+      background: #facc15;
+    }
+
+    .editor-dot.green {
+      background: #4ade80;
+    }
+
+    .editor-filename {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .editor-status {
+      font-size: 0.68rem;
+      color: var(--accent-strong);
+    }
+
+    .editor-main {
+      position: relative;
+      display: flex;
+      max-height: 360px;
+    }
+
+    .editor-lines {
+      flex: 0 0 36px;
+      padding: 6px 4px 8px;
+      text-align: right;
+      font-size: 0.7rem;
+      line-height: 1.4;
+      color: rgba(148, 163, 184, 0.8);
+      background: radial-gradient(circle at top left, #020617, #020617);
+      border-right: 1px solid rgba(31, 41, 55, 0.9);
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .editor-textarea {
+      flex: 1;
+      background: #020617;
+      border: none;
+      outline: none;
+      resize: none;
+      color: #e5e7eb;
+      font-size: 0.76rem;
+      line-height: 1.4;
+      padding: 6px 8px 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(75,85,99,0.8) transparent;
+      min-height: 140px;
+    }
+
+    .editor-textarea::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    .editor-main::-webkit-scrollbar,
+    .editor-textarea::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .editor-main::-webkit-scrollbar-thumb,
+    .editor-textarea::-webkit-scrollbar-thumb {
+      background: rgba(75,85,99,0.9);
+      border-radius: 999px;
+    }
+
+    .editor-main::-webkit-scrollbar-track,
+    .editor-textarea::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    /* プレビュー & エラー */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .preview-box {
+      border-radius: 12px;
+      border: 1px solid rgba(30, 64, 175, 0.8);
+      background: radial-gradient(circle at top, #020617, #020617 60%, #020617 100%);
+      overflow: hidden;
+      position: relative;
+      min-height: 160px;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 8px;
+      border-bottom: 1px solid rgba(30, 64, 175, 0.8);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .preview-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.35);
+      margin-right: 4px;
+    }
+
+    .preview-body {
+      position: relative;
+      height: 220px;
+      background: #020617;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+    }
+
+    .preview-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(148, 163, 184, 0.95);
+      font-size: 0.78rem;
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+    }
+
+    .badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: #f97316;
+    }
+
+    .errors-box {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: radial-gradient(circle at top right, rgba(148, 163, 184, 0.15), #020617 62%);
+      padding: 6px 8px 6px;
+      min-height: 90px;
+      max-height: 150px;
+      overflow: auto;
+      scrollbar-width: thin;
+    }
+
+    .errors-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 0.72rem;
+    }
+
+    .errors-title {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .errors-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--error);
+      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.35);
+    }
+
+    .errors-count {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .error-item {
+      border-radius: 8px;
+      border: 1px solid rgba(248, 113, 113, 0.6);
+      background: rgba(127, 29, 29, 0.32);
+      padding: 5px 7px;
+      margin-bottom: 5px;
+      font-size: 0.7rem;
+      color: #fee2e2;
+    }
+
+    .error-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .error-header-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+      gap: 8px;
+    }
+
+    .error-label {
+      font-weight: 600;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fecaca;
+    }
+
+    .error-location {
+      font-size: 0.68rem;
+      color: #fee2e2;
+      opacity: 0.9;
+    }
+
+    .error-message {
+      margin-bottom: 2px;
+      word-break: break-word;
+    }
+
+    .error-stack {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      font-size: 0.66rem;
+      color: #fecaca;
+      opacity: 0.85;
+      max-height: 48px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .log-item {
+      border-radius: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.7);
+      background: rgba(8, 47, 73, 0.55);
+      padding: 4px 7px;
+      margin-bottom: 4px;
+      font-size: 0.7rem;
+      color: #e0f2fe;
+    }
+
+    .log-prefix {
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bae6fd;
+    }
+
+    .log-content {
+      margin-top: 1px;
+      word-break: break-word;
+    }
+
+    .hint-row {
+      margin-top: 6px;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hint-row span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hint-key {
+      padding: 1px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 0.65rem;
+      color: #e5e7eb;
+      background: rgba(15, 23, 42, 0.9);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="app-header">
+      <div class="app-title">
+        <div class="app-title-main">
+          HTML Error Lab
+          <span class="app-pill">Mobile ready</span>
+        </div>
+        <div class="app-title-sub">
+          テキストボックスの HTML を iframe で実行し、JavaScript エラーと console.log を表示します。
+        </div>
+      </div>
+      <div class="app-actions">
+        <button id="sampleBtn" class="btn btn-ghost" type="button">
+          <span class="btn-icon">📄</span> サンプル
+        </button>
+        <button id="runBtn" class="btn btn-primary" type="button">
+          <span class="btn-icon">▶</span> 実行
+        </button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- 左：エディタ -->
+      <div class="panel" style="flex: 1.1;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-dot"></span>
+            Source Editor
+          </div>
+          <div class="panel-hint">
+            HTML と &lt;script&gt; を自由に記述できます
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="editor-wrapper">
+            <div class="editor-header">
+              <div class="editor-dots">
+                <span class="editor-dot red"></span>
+                <span class="editor-dot yellow"></span>
+                <span class="editor-dot green"></span>
+              </div>
+              <div class="editor-filename">preview.html</div>
+              <div id="editorStatus" class="editor-status">待機中</div>
+            </div>
+            <div class="editor-main">
+              <pre id="lineNumbers" class="editor-lines">1</pre>
+              <textarea
+                id="htmlInput"
+                class="editor-textarea"
+                spellcheck="false"
+                placeholder="ここに HTML / JavaScript コードを書いてください。&#10;&#10;例:&#10;&lt;h1&gt;こんにちは&lt;/h1&gt;&#10;&lt;button onclick=&quot;hello()&quot;&gt;クリック&lt;/button&gt;&#10;&lt;script&gt;&#10;  function hello() {&#10;    console.log('Hello from iframe');&#10;    notDefinedFunc(); // わざとエラー&#10;  }&#10;&lt;/script&gt;"
+              ></textarea>
+            </div>
+          </div>
+          <div class="hint-row">
+            <span><span class="hint-key">▶ 実行</span> で右側のプレビューを更新</span>
+            <span><span class="hint-key">console.log</span> も下のログに表示されます</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：プレビュー＆エラー -->
+      <div class="right-col" style="flex: 1;">
+        <!-- プレビュー -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-dot"></span>
+              Live Preview
+            </div>
+            <div class="panel-hint">
+              iframe 内で実行されます
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="preview-box">
+              <div class="preview-header">
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <span class="preview-status-dot" id="previewDot"></span>
+                  <span>iframe preview</span>
+                </div>
+                <div class="badge">
+                  <span class="badge-dot"></span>
+                  same-origin / postMessage
+                </div>
+              </div>
+              <div class="preview-body">
+                <iframe id="previewFrame"></iframe>
+                <div id="previewHint" class="preview-overlay">
+                  左のエディタにコードを書いて 「実行」 を押すとここに表示されます
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- エラー & ログ -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-dot"></span>
+              Errors &amp; Console
+            </div>
+            <div class="panel-hint">
+              JavaScript の例外と console.log を一覧表示
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="errors-box" id="errorsBox">
+              <div class="errors-header">
+                <div class="errors-title">
+                  <span class="errors-dot" id="errorsDot"></span>
+                  <span>Runtime Messages</span>
+                </div>
+                <div class="errors-count" id="errorsCount">まだメッセージはありません</div>
+              </div>
+              <div id="messagesContainer"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const htmlInput = document.getElementById("htmlInput");
+      const lineNumbers = document.getElementById("lineNumbers");
+      const runBtn = document.getElementById("runBtn");
+      const sampleBtn = document.getElementById("sampleBtn");
+      const frame = document.getElementById("previewFrame");
+      const previewHint = document.getElementById("previewHint");
+      const previewDot = document.getElementById("previewDot");
+      const editorStatus = document.getElementById("editorStatus");
+      const errorsBox = document.getElementById("errorsBox");
+      const errorsDot = document.getElementById("errorsDot");
+      const errorsCount = document.getElementById("errorsCount");
+      const messagesContainer = document.getElementById("messagesContainer");
+
+      let runId = 0;
+
+      function updateLineNumbers() {
+        const lines = htmlInput.value.split("\n").length;
+        let out = "";
+        for (let i = 1; i <= lines; i++) {
+          out += i + (i === lines ? "" : "\n");
+        }
+        lineNumbers.textContent = out || "1";
+      }
+
+      htmlInput.addEventListener("input", updateLineNumbers);
+      htmlInput.addEventListener("scroll", () => {
+        lineNumbers.scrollTop = htmlInput.scrollTop;
+      });
+
+      function clearMessages() {
+        messagesContainer.innerHTML = "";
+        errorsDot.style.background = "#22c55e";
+        errorsDot.style.boxShadow = "0 0 0 4px rgba(34, 197, 94, 0.35)";
+        errorsCount.textContent = "まだメッセージはありません";
+      }
+
+      function addErrorMessage(payload) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "error-item";
+
+        const header = document.createElement("div");
+        header.className = "error-header-line";
+
+        const label = document.createElement("div");
+        label.className = "error-label";
+        label.textContent = "ERROR";
+
+        const location = document.createElement("div");
+        location.className = "error-location";
+        const ln = payload.lineno || "?";
+        const cn = payload.colno || "?";
+        const src = payload.source ? String(payload.source) : "inline script";
+        location.textContent = "line " + ln + ", col " + cn + " @ " + src;
+
+        header.appendChild(label);
+        header.appendChild(location);
+        wrapper.appendChild(header);
+
+        const msg = document.createElement("div");
+        msg.className = "error-message";
+        msg.textContent = payload.message || "(no message)";
+        wrapper.appendChild(msg);
+
+        if (payload.stack) {
+          const pre = document.createElement("pre");
+          pre.className = "error-stack";
+          pre.textContent = payload.stack;
+          wrapper.appendChild(pre);
+        }
+
+        messagesContainer.appendChild(wrapper);
+
+        errorsDot.style.background = "#f97373";
+        errorsDot.style.boxShadow = "0 0 0 4px rgba(248, 113, 113, 0.35)";
+      }
+
+      function addLogMessage(args) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "log-item";
+
+        const prefix = document.createElement("div");
+        prefix.className = "log-prefix";
+        prefix.textContent = "CONSOLE.LOG";
+        wrapper.appendChild(prefix);
+
+        const body = document.createElement("div");
+        body.className = "log-content";
+        body.textContent = args.join(" ");
+        wrapper.appendChild(body);
+
+        messagesContainer.appendChild(wrapper);
+      }
+
+      function updateCount() {
+        const total = messagesContainer.children.length;
+        if (total === 0) {
+          errorsCount.textContent = "まだメッセージはありません";
+        } else {
+          errorsCount.textContent = total + " 件のメッセージ";
+        }
+      }
+
+      function setPreviewState(state) {
+        if (state === "idle") {
+          previewDot.style.background = "#22c55e";
+          previewDot.style.boxShadow = "0 0 0 4px rgba(34, 197, 94, 0.35)";
+          editorStatus.textContent = "待機中";
+        } else if (state === "running") {
+          previewDot.style.background = "#facc15";
+          previewDot.style.boxShadow = "0 0 0 4px rgba(250, 204, 21, 0.35)";
+          editorStatus.textContent = "実行中…";
+        } else if (state === "done") {
+          previewDot.style.background = "#22c55e";
+          previewDot.style.boxShadow = "0 0 0 4px rgba(34, 197, 94, 0.35)";
+          editorStatus.textContent = "完了";
+        }
+      }
+
+      function buildHtmlDocument(userHtml) {
+        return (
+          "<!DOCTYPE html>" +
+          "<html><head><meta charset='UTF-8'><title>Preview</title>" +
+          "<script>" +
+          "window.onerror=function(message,source,lineno,colno,error){" +
+          "try{parent.postMessage({type:'iframe-error',message:String(message),source:String(source||''),lineno:lineno,colno:colno,stack:error&&error.stack?String(error.stack):''},'*');}catch(e){}" +
+          "};" +
+          "window.addEventListener('error',function(e){" +
+          "try{parent.postMessage({type:'iframe-error',message:String(e.message),source:String(e.filename||''),lineno:e.lineno,colno:e.colno,stack:e.error&&e.error.stack?String(e.error.stack):''},'*');}catch(err){}" +
+          "});" +
+          "console.log=(function(orig){return function(){var args=[];for(var i=0;i<arguments.length;i++){try{args.push(String(arguments[i]));}catch(e){args.push('[object]');}};" +
+          "try{parent.postMessage({type:'iframe-log',args:args},'*');}catch(e){}" +
+          "orig.apply(console,arguments);};})(console.log);" +
+          "</[[script]]script></head><body>".replace("/[[script]]", "/") +
+          userHtml +
+          "</body></html>"
+        );
+      }
+
+      function runPreview() {
+        const code = htmlInput.value || "";
+        const id = ++runId;
+        clearMessages();
+        updateCount();
+        setPreviewState("running");
+        previewHint.style.display = "none";
+        runBtn.disabled = true;
+
+        const doc = buildHtmlDocument(code);
+
+        // srcdoc を使って same-origin iframe を生成
+        frame.removeAttribute("src");
+        frame.srcdoc = doc;
+
+        // 簡易的にロード完了扱いにする（エラーは postMessage で随時届く）
+        setTimeout(() => {
+          if (id === runId) {
+            setPreviewState("done");
+            runBtn.disabled = false;
+          }
+        }, 500);
+      }
+
+      function insertSample() {
+        const sample =
+          "<h1>HTML Error Lab</h1>\n" +
+          "<p>ボタンを押すと console.log と わざとエラーを発生させます。</p>\n" +
+          "<button onclick=\"runSample()\">実行</button>\n\n" +
+          "<script>\n" +
+          "  function runSample() {\n" +
+          "    console.log('サンプルからのログです', new Date());\n" +
+          "    // notDefinedFunction は存在しないのでエラーになります\n" +
+          "    notDefinedFunction();\n" +
+          "  }\n" +
+          "</[[script]]script>\n".replace("/[[script]]", "/");
+        htmlInput.value = sample;
+        updateLineNumbers();
+      }
+
+      runBtn.addEventListener("click", runPreview);
+      sampleBtn.addEventListener("click", () => {
+        insertSample();
+        runPreview();
+      });
+
+      // postMessage で iframe からのメッセージを受信
+      window.addEventListener("message", (event) => {
+        if (!event.data || typeof event.data !== "object") return;
+        if (event.source !== frame.contentWindow) return;
+
+        if (event.data.type === "iframe-error") {
+          addErrorMessage(event.data);
+          updateCount();
+        } else if (event.data.type === "iframe-log") {
+          addLogMessage(event.data.args || []);
+          updateCount();
+        }
+      });
+
+      // 初期状態
+      updateLineNumbers();
+      setPreviewState("idle");
+      clearMessages();
+    })();
+  </script>
+</body>
+</html>
