@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>足元の変化お知らせカメラ（連続差分・デモ）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #111;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    padding: 1rem;
+    text-align: center;
+    background: #222;
+    font-size: 1.1rem;
+  }
+  main {
+    flex: 1;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .video-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 3px solid #444;
+  }
+  video {
+    width: 100%;
+    height: auto;
+    background: #000;
+  }
+  .overlay-label {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    background: rgba(0,0,0,0.6);
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .controls {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  button {
+    font-size: 1.1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    background: #0a84ff;
+    color: #fff;
+    font-weight: bold;
+  }
+  button.secondary {
+    background: #444;
+  }
+  button.danger {
+    background: #ff3b30;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .status {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: #222;
+    border: 1px solid #333;
+  }
+  .status strong {
+    display: inline-block;
+    min-width: 5em;
+  }
+  .status-ok {
+    color: #4cd964;
+  }
+  .status-warn {
+    color: #ffcc00;
+  }
+  .status-err {
+    color: #ff3b30;
+  }
+  details {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #181818;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #333;
+    font-size: 0.9rem;
+  }
+  details summary {
+    cursor: pointer;
+    outline: none;
+  }
+  small {
+    font-size: 0.8rem;
+    color: #aaa;
+  }
+</style>
+</head>
+<body>
+<header>
+  足元の変化お知らせカメラ（連続差分・デモ）
+</header>
+
+<main>
+  <div class="video-wrapper" aria-label="カメラ映像のプレビュー">
+    <span class="overlay-label">足元の少し先を斜めに映してください</span>
+    <video id="video" autoplay playsinline muted></video>
+  </div>
+
+  <div class="controls">
+    <button id="startCameraBtn">① カメラを起動する</button>
+    <button id="startDetectBtn" disabled>
+      ② 足元の景色が変わったら音声で知らせる（開始）
+    </button>
+    <button id="stopDetectBtn" class="danger" disabled>
+      停止
+    </button>
+
+    <div class="status" id="status">
+      <div><strong>状態:</strong> <span id="stateText">待機中</span></div>
+      <div><strong>解析:</strong> <span id="analyzeText">-</span></div>
+      <div><strong>しきい値:</strong> <span id="thresholdText">明るさ差 ≧ 12 / 白っぽさ差 ≧ 5%</span></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>このページについて（注意事項と使い方）</summary>
+    <p>
+      このページは、スマートフォンなどのカメラを使って、<br>
+      <strong>足元の地面を斜め前に映しながら歩いたときに、数フレーム前と比べて「地面の色が変わる」「白線が見え始める」などの変化があったら、音声でお知らせする実験的なデモ</strong>です。
+    </p>
+    <p>
+      カメラ画像の
+      <ul>
+        <li>明るさの平均（地面の色のトーン）</li>
+        <li>白っぽい部分の割合（白線・横断歩道などの可能性）</li>
+      </ul>
+      を計算し、<strong>約 8 フレーム前の映像と差分</strong>を取り、<br>
+      その差が大きいときに「足元の景色が変わった」とみなします。
+    </p>
+    <p><strong>重要：</strong></p>
+    <ul>
+      <li>実際の歩行時の安全確認には絶対に頼らないでください。</li>
+      <li>段差・穴・人・車・ガラスなど、すべての危険を検出できるわけではありません。</li>
+      <li>必ず白杖・ガイド・点字ブロックなど、正式な移動手段と併用してください。</li>
+    </ul>
+    <p><strong>使い方（想定）</strong></p>
+    <ol>
+      <li>「① カメラを起動する」をタップし、カメラ使用を許可します。</li>
+      <li>カメラを<strong>足元の少し先の地面</strong>に向けた状態にします。</li>
+      <li>「② 足元の景色が変わったら音声で知らせる（開始）」を押します。</li>
+      <li>地面の色が変わったり、白線に近づくと、<br>
+          「足元の景色が変わりました。段差や白線に注意してください。」と音声でお知らせします。</li>
+    </ol>
+    <p>
+      iPhone / Android のブラウザでは、<strong>https で公開されたページ</strong>でないとカメラが動かない場合があります。
+    </p>
+    <p><small>※処理はすべてブラウザ内で完結し、画像は外部サーバーに送信されません。</small></p>
+  </details>
+
+  <!-- 解析用の小さいキャンバス（画面には表示しない） -->
+  <canvas id="analyzeCanvas" width="160" height="120" style="display:none;"></canvas>
+</main>
+
+<script>
+  const video          = document.getElementById('video');
+  const startCameraBtn = document.getElementById('startCameraBtn');
+  const startDetectBtn = document.getElementById('startDetectBtn');
+  const stopDetectBtn  = document.getElementById('stopDetectBtn');
+
+  const statusEl       = document.getElementById('status');
+  const stateText      = document.getElementById('stateText');
+  const analyzeText    = document.getElementById('analyzeText');
+  const thresholdText  = document.getElementById('thresholdText');
+
+  const canvas = document.getElementById('analyzeCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  let stream = null;
+
+  // 「何フレーム前」と比較するか
+  const frameLag = 8; // 8フレーム前（約 5〜6fps なら 1〜1.5秒くらい前）
+  const featureBuffer = [];
+
+  // どれくらい変化したら「景色が変わった」とみなすか
+  const colorDiffThreshold = 12;   // 明るさの変化量（0〜255）
+  const whiteDiffThreshold = 0.05; // 白っぽい部分の割合差（0〜1）= 5%
+
+  let detectTimer = null;
+  let lastWarningTime = 0;
+  const warningIntervalMs = 4000; // 4秒おきに最大1回だけ警告
+
+  function setState(text, type = 'normal') {
+    stateText.textContent = text;
+    statusEl.classList.remove('status-ok', 'status-warn', 'status-err');
+    if (type === 'ok')   statusEl.classList.add('status-ok');
+    if (type === 'warn') statusEl.classList.add('status-warn');
+    if (type === 'err')  statusEl.classList.add('status-err');
+  }
+
+  function speak(text) {
+    try {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ja-JP';
+      speechSynthesis.cancel(); // 連続再生を防止
+      speechSynthesis.speak(utter);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function startCamera() {
+    if (stream) return;
+    try {
+      setState('カメラ起動中…');
+      startCameraBtn.disabled = true;
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      video.srcObject = stream;
+
+      setState('カメラ起動済み', 'ok');
+      startDetectBtn.disabled = false;
+      speak('カメラを起動しました。足元の少し先の地面を映してから、検出を開始してください。');
+
+    } catch (err) {
+      console.error(err);
+      setState('カメラを起動できませんでした。権限を確認してください。', 'err');
+      analyzeText.textContent = 'カメラ権限が拒否されている可能性があります。';
+      startCameraBtn.disabled = false;
+      speak('カメラを起動できませんでした。設定からカメラの許可を確認してください。');
+    }
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+  }
+
+  /**
+   * 足元の特徴量を計算
+   * - 画像を縮小し、下側 60% を「地面」とみなして解析
+   * - 明るさの平均・標準偏差・白っぽいピクセルの割合を返す
+   */
+  function computeGroundFeatures() {
+    if (!video.videoWidth || !video.videoHeight) return null;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
+    const imageData = ctx.getImageData(0, 0, w, h).data;
+
+    const xStart = 0;
+    const xEnd   = w;
+    const yStart = Math.floor(h * 0.4);
+    const yEnd   = h;
+
+    let sum = 0;
+    let sumSq = 0;
+    let count = 0;
+    let whiteCount = 0;
+
+    for (let y = yStart; y < yEnd; y++) {
+      for (let x = xStart; x < xEnd; x++) {
+        const idx = (y * w + x) * 4;
+        const r = imageData[idx];
+        const g = imageData[idx + 1];
+        const b = imageData[idx + 2];
+
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        sum += brightness;
+        sumSq += brightness * brightness;
+        count++;
+
+        const maxRGB = Math.max(r, g, b);
+        const minRGB = Math.min(r, g, b);
+        const diff = maxRGB - minRGB;
+        const saturation = maxRGB === 0 ? 0 : diff / maxRGB;
+
+        const isBright = brightness > 220;   // 明るい
+        const isLowSat = saturation < 0.25;  // 彩度が低い（白〜グレー）
+        if (isBright && isLowSat) {
+          whiteCount++;
+        }
+      }
+    }
+
+    if (count === 0) return null;
+
+    const mean = sum / count;
+    const variance = sumSq / count - mean * mean;
+    const stdDev = Math.sqrt(Math.max(variance, 0));
+    const whiteRatio = whiteCount / count;
+
+    return { meanBrightness: mean, stdBrightness: stdDev, whiteRatio };
+  }
+
+  function startDetect() {
+    if (!stream) {
+      setState('カメラが起動していません', 'err');
+      speak('まずカメラを起動してください。');
+      return;
+    }
+    if (detectTimer) return;
+
+    featureBuffer.length = 0; // バッファ初期化
+
+    detectTimer = setInterval(() => {
+      const feat = computeGroundFeatures();
+      if (!feat) return;
+
+      // バッファに今の特徴量を追加
+      featureBuffer.push(feat);
+      // バッファが大きくなりすぎないように制限
+      const maxBufferSize = frameLag + 10;
+      if (featureBuffer.length > maxBufferSize) {
+        featureBuffer.shift();
+      }
+
+      if (featureBuffer.length <= frameLag) {
+        analyzeText.textContent = '特徴量取得中…（比較用データを溜めています）';
+        setState('準備中', 'ok');
+        return;
+      }
+
+      // frameLag フレーム前との比較
+      const pastFeat = featureBuffer[featureBuffer.length - 1 - frameLag];
+      if (!pastFeat) return;
+
+      const meanDiff  = Math.abs(feat.meanBrightness - pastFeat.meanBrightness);
+      const whiteDiff = feat.whiteRatio - pastFeat.whiteRatio;
+
+      analyzeText.textContent =
+        `明るさ: ${feat.meanBrightness.toFixed(1)} (差: ${meanDiff.toFixed(1)}), ` +
+        `白っぽさ: ${(feat.whiteRatio * 100).toFixed(1)}% (差: ${(whiteDiff * 100).toFixed(1)}%)`;
+
+      const isColorChanged   = meanDiff > colorDiffThreshold;
+      const isWhiteIncreased = whiteDiff > whiteDiffThreshold;
+
+      if (isColorChanged || isWhiteIncreased) {
+        const now = Date.now();
+        setState('足元の景色が変わった可能性があります', 'warn');
+
+        if (now - lastWarningTime > warningIntervalMs) {
+          lastWarningTime = now;
+          speak('足元の景色が変わりました。段差や白線に注意してください。');
+          if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+          }
+        }
+      } else {
+        setState('特に大きな変化なし', 'ok');
+      }
+    }, 700); // 0.7秒ごとにチェック
+
+    startDetectBtn.disabled = true;
+    stopDetectBtn.disabled  = false;
+    setState('足元の変化を検出中…', 'ok');
+    speak('足元の変化を検出しています。安全に注意して歩いてください。');
+  }
+
+  function stopDetect() {
+    if (detectTimer) {
+      clearInterval(detectTimer);
+      detectTimer = null;
+    }
+    setState('検出停止中');
+    startDetectBtn.disabled = false;
+    stopDetectBtn.disabled  = true;
+  }
+
+  // ボタンイベント
+  startCameraBtn.addEventListener('click', startCamera);
+  startDetectBtn.addEventListener('click', startDetect);
+  stopDetectBtn.addEventListener('click', stopDetect);
+
+  // ページを離れるときにカメラを停止
+  window.addEventListener('beforeunload', () => {
+    stopDetect();
+    stopCamera();
+  });
+</script>
+</body>
+</html>
