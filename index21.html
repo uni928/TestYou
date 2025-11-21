@@ -735,4 +735,222 @@
         ? window.location.origin + window.location.pathname
         : window.location.pathname;
 
-      const url = basePath + '?
+      const url = basePath + '?img=' + encodeURIComponent(dataUrl);
+      shareInput.value = url;
+      copyBtn.disabled = false;
+      copyBtn.onclick = function () {
+        shareInput.select();
+        shareInput.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        copyBtn.textContent = 'コピー完了';
+        setTimeout(() => {
+          copyBtn.textContent = 'URLコピー';
+        }, 1200);
+      };
+    } catch (e) {
+      // file://などでoriginが扱えない場合
+      shareInput.value = '(ローカルファイルのためURL生成を省略しました)';
+      copyBtn.disabled = true;
+    }
+  }
+
+  // --- 画像 → 文章 ---
+  function decodeImageElement(img) {
+    const canvas = document.getElementById('decodeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    let imageData;
+    try {
+      imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (e) {
+      // CORS等でキャンバスが汚染された場合
+      setDecodeStatus('外部ドメインの画像はブラウザの制限により解析できません（CORS）', true);
+      return;
+    }
+
+    const data = imageData.data;
+    if (data.length < 4) {
+      setDecodeStatus('画像データが不正です。', true);
+      return;
+    }
+
+    const length = (data[0] << 16) | (data[1] << 8) | data[2];
+    if (!Number.isFinite(length) || length <= 0) {
+      setDecodeStatus('埋め込まれたデータ長が不正です。', true);
+      return;
+    }
+
+    const chars = [];
+    let charCount = 0;
+    const totalPixels = data.length / 4;
+
+    for (let p = 1; p < totalPixels && charCount < length; p++) {
+      const offset = p * 4;
+      const r = data[offset];
+      const g = data[offset + 1];
+      const b = data[offset + 2];
+
+      if (charCount < length) {
+        chars.push(String.fromCharCode(r));
+        charCount++;
+      }
+      if (charCount < length) {
+        chars.push(String.fromCharCode(g));
+        charCount++;
+      }
+      if (charCount < length) {
+        chars.push(String.fromCharCode(b));
+        charCount++;
+      }
+    }
+
+    if (charCount < length) {
+      setDecodeStatus('埋め込まれたデータが途中で途切れています。', true);
+      return;
+    }
+
+    const b64 = chars.join('');
+    let text;
+    try {
+      text = base64Utf8ToText(b64);
+    } catch (e) {
+      setDecodeStatus('Base64から文章への復号に失敗しました。', true);
+      return;
+    }
+
+    document.getElementById('decodedText').value = text;
+    document.getElementById('copyDecodedBtn').disabled = !text;
+    setDecodeStatus('画像から文章を復元しました。', false);
+  }
+
+  function setDecodeStatus(message, isError) {
+    const statusEl = document.getElementById('decodeStatus');
+    statusEl.textContent = message || '';
+    statusEl.className = 'status ' + (isError ? 'error' : 'success');
+  }
+
+  // 画像URLから読み込み
+  let autoDecodeOnLoad = false;
+
+  function loadImageFromUrl(url, autoDecode) {
+    const imgEl = document.getElementById('loadedImage');
+    const placeholder = document.getElementById('loadedPlaceholder');
+    const decodeBtn = document.getElementById('decodeBtn');
+
+    if (!url) {
+      alert('画像URLを入力してください。');
+      return;
+    }
+
+    autoDecodeOnLoad = !!autoDecode;
+    setDecodeStatus('画像を読み込み中...', false);
+
+    imgEl.style.display = 'none';
+    placeholder.style.display = 'block';
+    decodeBtn.disabled = true;
+
+    imgEl.onload = function () {
+      placeholder.style.display = 'none';
+      imgEl.style.display = 'block';
+      decodeBtn.disabled = false;
+      setDecodeStatus('画像を読み込みました。', false);
+      if (autoDecodeOnLoad) {
+        decodeImageElement(imgEl);
+      }
+    };
+
+    imgEl.onerror = function () {
+      imgEl.style.display = 'none';
+      placeholder.style.display = 'block';
+      decodeBtn.disabled = true;
+      setDecodeStatus('画像の読み込みに失敗しました。URLを確認してください。', true);
+    };
+
+    // CORS回避用に crossOrigin を設定（同一オリジンの場合だけ有効）
+    try {
+      if (!url.startsWith('data:')) {
+        imgEl.crossOrigin = 'anonymous';
+      }
+    } catch (e) {
+      // 何もしない（古いブラウザなど）
+    }
+
+    imgEl.src = url;
+  }
+
+  // --- 初期化 ---
+  document.addEventListener('DOMContentLoaded', function () {
+    const encodeBtn = document.getElementById('encodeBtn');
+    const clearTextBtn = document.getElementById('clearTextBtn');
+    const loadUrlBtn = document.getElementById('loadUrlBtn');
+    const decodeBtn = document.getElementById('decodeBtn');
+    const fileInput = document.getElementById('fileInput');
+    const copyDecodedBtn = document.getElementById('copyDecodedBtn');
+
+    encodeBtn.addEventListener('click', encodeTextToImage);
+
+    clearTextBtn.addEventListener('click', function () {
+      document.getElementById('textInput').value = '';
+    });
+
+    loadUrlBtn.addEventListener('click', function () {
+      const url = document.getElementById('imageUrlInput').value.trim();
+      autoDecodeOnLoad = false;
+      document.getElementById('autoBadge').style.display = 'none';
+      loadImageFromUrl(url, false);
+    });
+
+    decodeBtn.addEventListener('click', function () {
+      const imgEl = document.getElementById('loadedImage');
+      if (!imgEl.src) {
+        alert('先に画像を読み込んでください。');
+        return;
+      }
+      decodeImageElement(imgEl);
+    });
+
+    fileInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        autoDecodeOnLoad = false;
+        document.getElementById('autoBadge').style.display = 'none';
+        loadImageFromUrl(e.target.result, false);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    copyDecodedBtn.addEventListener('click', function () {
+      const text = document.getElementById('decodedText').value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyDecodedBtn.textContent = 'コピー完了';
+        setTimeout(() => {
+          copyDecodedBtn.textContent = '文章をコピー';
+        }, 1200);
+      }).catch(() => {
+        alert('クリップボードへのコピーに失敗しました。');
+      });
+    });
+
+    // クエリパラメータ ?img= があれば、自動で画像読み込み＆復号
+    const params = new URLSearchParams(window.location.search);
+    const imgParam = params.get('img');
+    if (imgParam) {
+      const autoBadge = document.getElementById('autoBadge');
+      autoBadge.style.display = 'inline-flex';
+      const decodedUrl = imgParam; // SearchParams が既に decode 済み
+      document.getElementById('imageUrlInput').value = decodedUrl;
+      autoDecodeOnLoad = true;
+      loadImageFromUrl(decodedUrl, true);
+    }
+  });
+</script>
+</body>
+</html>
