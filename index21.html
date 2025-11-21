@@ -1,1 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>文章 ⇄ 画像 エンコーダ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #1f2933, #111827);
+      --card-bg: rgba(17, 24, 39, 0.9);
+      --accent: #60a5fa;
+      --accent-soft: rgba(96, 165, 250, 0.15);
+      --border-subtle: rgba(148, 163, 184, 0.35);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f87171;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.75);
+      --shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.6);
+    }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      font-size: clamp(1.6rem, 2.4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-pill {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-soft);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--accent);
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 55%) no-repeat,
+                  radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.18), transparent 55%) no-repeat,
+                  var(--card-bg);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(75, 85, 99, 0.6);
+      padding: 18px 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.07), transparent 50%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    @media (max-width: 860px) {
+      .card-inner {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .panel {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.75);
+      padding: 14px 14px 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .panel-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: var(--text-muted);
+    }
+
+    .pill-primary {
+      border-color: rgba(96, 165, 250, 0.7);
+      background: var(--accent-soft);
+      color: #bfdbfe;
+    }
+
+    .panel-description {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 150px;
+      max-height: 280px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    textarea::placeholder {
+      color: #6b7280;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+      align-items: center;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: radial-gradient(circle at top left, rgba(96, 165, 250, 0.7), rgba(56, 189, 248, 0.8));
+      color: #0b1120;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+      white-space: nowrap;
+    }
+
+    button.small {
+      padding: 5px 12px;
+      font-size: 0.72rem;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.7);
+      background: rgba(31, 41, 55, 0.95);
+      color: #e5e7eb;
+    }
+
+    button.outline {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      box-shadow: none;
+      color: var(--text-muted);
+    }
+
+    button.secondary {
+      background: radial-gradient(circle at top left, rgba(251, 191, 36, 0.85), rgba(249, 115, 22, 0.85));
+      box-shadow: 0 10px 22px rgba(245, 158, 11, 0.55);
+      color: #111827;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.5);
+      filter: brightness(1.03);
+    }
+
+    button.small:hover {
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.9);
+    }
+
+    button.secondary:hover {
+      box-shadow: 0 14px 26px rgba(245, 158, 11, 0.7);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.9);
+      filter: brightness(0.97);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+      filter: none;
+    }
+
+    .icon {
+      font-size: 0.9em;
+    }
+
+    .preview-card {
+      border-radius: 12px;
+      border: 1px dashed rgba(75, 85, 99, 0.9);
+      background: rgba(15, 23, 42, 0.8);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .preview-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .preview-label-row span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .preview-frame {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: radial-gradient(circle at 20% 0, rgba(55, 65, 81, 0.7), rgba(15, 23, 42, 1));
+      min-height: 140px;
+      max-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .preview-frame img {
+      width: 100%;
+      height: auto;
+      max-height: 260px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .preview-placeholder {
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+      padding: 18px 18px;
+    }
+
+    .preview-tag {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      font-size: 0.7rem;
+      color: #9ca3af;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .info-list {
+      margin: 3px 0 0;
+      padding-left: 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .info-list li + li {
+      margin-top: 2px;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .field-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .field-label span:last-child {
+      opacity: 0.7;
+    }
+
+    .input-line {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .input-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-main);
+      padding: 6px 11px;
+      font-size: 0.78rem;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .input-text::placeholder {
+      color: #6b7280;
+    }
+
+    .input-text:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.45);
+      background: rgba(15, 23, 42, 0.98);
+    }
+
+    .helper {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .helper strong {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+
+    .badge-auto {
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.55);
+      color: #6ee7b7;
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      background: rgba(6, 95, 70, 0.35);
+    }
+
+    .status {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 2px;
+      min-height: 1em;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.success {
+      color: #6ee7b7;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .footer-note code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.72rem;
+      background: rgba(15, 23, 42, 0.95);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <header class="header">
+    <div class="title">
+      <span>文章 ⇄ 画像 エンコーダ</span>
+      <span class="title-pill">Base64 × Canvas</span>
+    </div>
+    <p class="subtitle">
+      文章をBase64で符号化し、RGBピクセルに埋め込んだPNG画像として保存／共有できます。<br>
+      クエリパラメータ <code>?img=画像URL</code> がある場合は、その画像から文章を自動復元します。
+    </p>
+  </header>
+
+  <main class="card">
+    <div class="card-inner">
+      <!-- Text → Image -->
+      <section class="panel" aria-label="文章から画像を生成">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="pill pill-primary">Text → Image</span>
+            <span>文章を画像に埋め込む</span>
+          </div>
+        </div>
+        <p class="panel-description">
+          入力した文章をUTF-8 → Base64に変換し、Base64文字列をRGBピクセルに割り当ててPNG画像を生成します。
+          1ピクセルに最大3文字分の情報が入ります。
+        </p>
+
+        <label class="field-row">
+          <div class="field-label">
+            <span>エンコードする文章</span>
+            <span>日本語・絵文字もOK</span>
+          </div>
+          <textarea id="textInput"
+                    placeholder="例：この文章を画像に変換し、画像からまた文章に戻せるようにします。"></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="encodeBtn" type="button">
+            <span class="icon">🎨</span>
+            <span>画像を生成</span>
+          </button>
+          <button id="clearTextBtn" type="button" class="small outline">
+            文章をクリア
+          </button>
+        </div>
+
+        <div class="preview-card">
+          <div class="preview-label-row">
+            <span><span class="icon">🖼️</span>生成された画像プレビュー</span>
+            <span style="display:flex; gap:6px; align-items:center;">
+              <button id="downloadBtn" type="button" class="small secondary" disabled>PNGを保存</button>
+              <span style="font-size:0.7rem; color:#6b7280;">右クリックで保存もOK</span>
+            </span>
+          </div>
+          <div class="preview-frame" id="encodePreview">
+            <div class="preview-placeholder">
+              ここに生成した画像が表示されます。<br>
+              画像には、Base64に変換された文章がピクセルとして埋め込まれています。
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">
+              <span>この画像を復号用URLとして共有</span>
+            </div>
+            <div class="input-line">
+              <input id="shareUrl" class="input-text" type="text" readonly
+                     placeholder="画像生成後に、ここに ?img= 付きのURLを表示します">
+              <button id="copyShareUrlBtn" type="button" class="small outline" disabled>URLコピー</button>
+            </div>
+            <div class="helper">
+              <span>・パラメータ無しアクセス → 通常モード</span><br>
+              <span>・<strong>?img=</strong>付きURLでアクセス → 画像から自動復号</span>
+            </div>
+          </div>
+        </div>
+        <ul class="info-list">
+          <li>画像はPNG形式で生成されます。</li>
+          <li>1ピクセル目のRGBには「Base64文字列の長さ」が埋め込まれ、残りのピクセルで本文を表現します。</li>
+          <li>Base64の文字（A〜Z, a〜z, 0〜9, +, /）をそのままRGBの値として割り当てていきます。</li>
+        </ul>
+        <canvas id="encodeCanvas" style="display:none;"></canvas>
+      </section>
+
+      <!-- Image → Text -->
+      <section class="panel" aria-label="画像から文章を復号">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="pill">Image → Text</span>
+            <span>画像から文章に戻す</span>
+          </div>
+          <span id="autoBadge" class="badge-auto" style="display:none;">URLから自動読み込み中</span>
+        </div>
+        <p class="panel-description">
+          このツールで生成した画像を読み込むと、Base64 → UTF-8の逆変換を行い、文章を復元します。
+          クエリパラメータ <code>?img=...</code> 経由の画像URLがある場合は、自動で読み込み＆復号を行います。
+        </p>
+
+        <div class="field-row">
+          <div class="field-label">
+            <span>画像URLを指定</span>
+            <span>data URL / 同一オリジン推奨</span>
+          </div>
+          <div class="input-line">
+            <input id="imageUrlInput" class="input-text"
+                   placeholder="例：https://example.com/encoded-text.png または data:image/png;base64,...">
+            <button id="loadUrlBtn" type="button" class="small">URLから読み込み</button>
+          </div>
+          <div class="helper">
+            <span class="icon">ℹ️</span>
+            <span>外部ドメインの画像はブラウザのセキュリティ（CORS）により読み込めない場合があります。</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-label">
+            <span>ローカルファイルから読み込み</span>
+            <span>PNGファイル</span>
+          </div>
+          <div class="input-line">
+            <input id="fileInput" type="file" accept="image/png"
+                   style="font-size:0.75rem; color:#9ca3af;">
+            <button id="decodeBtn" type="button" class="small secondary" disabled>
+              <span class="icon">🔍</span>画像から文章に変換
+            </button>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <div class="preview-label-row">
+            <span><span class="icon">👁️</span>解析対象画像</span>
+          </div>
+          <div class="preview-frame">
+            <img id="loadedImage" alt="解析対象画像" style="display:none;">
+            <div id="loadedPlaceholder" class="preview-placeholder">
+              URLもしくはファイルを指定すると、ここに画像が表示されます。<br>
+              クエリパラメータ <code>?img=...</code> を付けてページを開いた場合は、自動的にここに画像が読み込まれます。
+            </div>
+            <div class="preview-tag">
+              <span class="icon">🎯</span>
+              <span>この画像のRGB値から文章を復号</span>
+            </div>
+          </div>
+        </div>
+
+        <label class="field-row">
+          <div class="field-label">
+            <span>復号された文章</span>
+            <span>読み取り専用</span>
+          </div>
+          <textarea id="decodedText" readonly
+                    placeholder="ここに復元された文章が表示されます。"></textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="copyDecodedBtn" type="button" class="small outline" disabled>
+            文章をコピー
+          </button>
+          <span id="decodeStatus" class="status"></span>
+        </div>
+
+        <canvas id="decodeCanvas" style="display:none;"></canvas>
+      </section>
+    </div>
+
+    <p class="footer-note">
+      ※ 画像からの復号は、このページで生成された画像（同じエンコード方式）にのみ対応しています。<br>
+      ※ ブラウザの制限により、クロスオリジン画像（別ドメイン）は解析できない場合があります。
+    </p>
+  </main>
+</div>
+
+<script>
+  // --- ユーティリティ: Base64との相互変換（UTF-8対応） ---
+  function textToBase64Utf8(text) {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(text);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary); // Base64文字列
+  }
+
+  function base64Utf8ToText(b64) {
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  }
+
+  // --- 文章 → 画像 ---
+  function encodeTextToImage() {
+    const textArea = document.getElementById('textInput');
+    const text = textArea.value;
+    const statusEl = document.getElementById('decodeStatus'); // 再利用しないが念のため
+    if (!text) {
+      alert('エンコードする文章を入力してください。');
+      return;
+    }
+
+    let b64;
+    try {
+      b64 = textToBase64Utf8(text);
+    } catch (e) {
+      alert('文章のエンコードに失敗しました。');
+      return;
+    }
+
+    const length = b64.length;
+    // 1ピクセル目は長さ情報用。残りのピクセルで Base64文字列を3文字ずつ格納。
+    const pixelsNeeded = Math.ceil(length / 3) + 1;
+    const width = 64;
+    const height = Math.ceil(pixelsNeeded / width);
+
+    const canvas = document.getElementById('encodeCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    // 1ピクセル目に長さ情報を埋め込む（R=上位8bit, G=中位8bit, B=下位8bit）
+    data[0] = (length >> 16) & 255;
+    data[1] = (length >> 8) & 255;
+    data[2] = length & 255;
+    data[3] = 255;
+
+    let charIndex = 0;
+    // 残りのピクセルに Base64 文字を 3 文字ずつ格納
+    for (let p = 1; p < pixelsNeeded; p++) {
+      const offset = p * 4;
+      const c1 = charIndex < length ? b64.charCodeAt(charIndex++) : 0;
+      const c2 = charIndex < length ? b64.charCodeAt(charIndex++) : 0;
+      const c3 = charIndex < length ? b64.charCodeAt(charIndex++) : 0;
+
+      data[offset]     = c1;
+      data[offset + 1] = c2;
+      data[offset + 2] = c3;
+      data[offset + 3] = 255;
+    }
+
+    // 余ったピクセルもアルファだけ255にしておく
+    const totalPixels = width * height;
+    for (let p = pixelsNeeded; p < totalPixels; p++) {
+      const offset = p * 4;
+      data[offset]     = 0;
+      data[offset + 1] = 0;
+      data[offset + 2] = 0;
+      data[offset + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // プレビューに反映
+    const previewContainer = document.getElementById('encodePreview');
+    previewContainer.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.alt = '文章を埋め込んだ画像';
+    previewContainer.appendChild(img);
+
+    // ダウンロードボタン有効化
+    const downloadBtn = document.getElementById('downloadBtn');
+    downloadBtn.disabled = false;
+    downloadBtn.onclick = function () {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'encoded-text.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    // ?img=用URLを生成
+    const shareInput = document.getElementById('shareUrl');
+    const copyBtn = document.getElementById('copyShareUrlBtn');
+    try {
+      const basePath = (window.location.origin && window.location.origin !== 'null')
+        ? window.location.origin + window.location.pathname
+        : window.location.pathname;
+
+      const url = basePath + '?
