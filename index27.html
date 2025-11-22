@@ -210,11 +210,13 @@
     showMessage("貼り付けできませんでした");
   }
 });
-    // ★ 入力が空でない場合はキーボードを出さないようにする
-textBox.addEventListener('focus', (e) => {
+
+    // ★ 入力が空でない場合、キーボードを強制的に出さない
+textBox.addEventListener('touchstart', (e) => {
   if (textBox.value.trim() !== "") {
-    // 即座にフォーカスを外してキーボードを出さない
-    setTimeout(() => textBox.blur(), 50);
+    // フォーカスさせない（キーボードを出さない）
+    e.preventDefault();   // ← 最重要：iOS Safari でキーボードを完全阻止
+    textBox.blur();
   }
 });
   </script>
