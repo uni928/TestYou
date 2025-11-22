@@ -492,7 +492,7 @@
       d: desc,
       q: createQuestions.map(q => {
         const base = { k: q.k, t: q.t };
-        if (q.k === "r" || q.k === "c" || q.k === "s") {
+        if (q.k === "r" || q.k === "c") {
           base.o = q.o.map(x => x.trim());
         }
         return base;
