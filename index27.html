@@ -212,7 +212,7 @@
 });
 
 // ★ 0.1秒ごとに selectionStart を監視して変化したら blur
-let lastSelectionStart = null;
+let lastSelectionStart = 0;
 
 // 0.1秒ごとにチェックするポーリングスレッド
 setInterval(() => {
