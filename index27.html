@@ -214,7 +214,7 @@
 textBox.addEventListener('focus', (e) => {
   if (textBox.value.trim() !== "") {
     // 即座にフォーカスを外してキーボードを出さない
-    setTimeout(() => textBox.blur(), 0);
+    setTimeout(() => textBox.blur(), 50);
   }
 });
   </script>
