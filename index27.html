@@ -136,7 +136,7 @@
       const newValue = value.slice(pos);
       textBox.value = newValue;
       // 先頭にキャレットを移動
-      textBox.focus();
+      //textBox.focus();
       textBox.selectionStart = textBox.selectionEnd = 0;
       showMessage("前を削りました");
     });
@@ -148,7 +148,7 @@
       const newValue = value.slice(0, pos);
       textBox.value = newValue;
       // 末尾にキャレットを移動
-      textBox.focus();
+      //textBox.focus();
       const len = newValue.length;
       textBox.selectionStart = textBox.selectionEnd = len;
       showMessage("後ろを削りました");
