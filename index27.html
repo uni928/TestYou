@@ -211,12 +211,37 @@
   }
 });
 
-    // ★ 入力が空でない場合、キーボードを強制的に出さない
-textBox.addEventListener('touchstart', (e) => {
+ // ★ 追加：キャレット位置の変化を監視して blur する
+let lastSelectionStart = null;
+
+// フォーカス時に「最初のキャレット位置」を保存
+textBox.addEventListener('focus', () => {
   if (textBox.value.trim() !== "") {
-    // フォーカスさせない（キーボードを出さない）
-    e.preventDefault();   // ← 最重要：iOS Safari でキーボードを完全阻止
+    // 入力があるときだけ、「変化前」の位置として保存
+    lastSelectionStart = textBox.selectionStart;
+  } else {
+    // 空のときは通常の入力を許可
+    lastSelectionStart = null;
+  }
+});
+
+// selectionchange でキャレット位置の変化を検知
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement !== textBox) return;
+  if (textBox.value.trim() === "") return;
+
+  const current = textBox.selectionStart;
+
+  // 初回は基準値をセットして終わり
+  if (lastSelectionStart === null) {
+    lastSelectionStart = current;
+    return;
+  }
+
+  // キャレット位置が変わったら blur してキーボードを閉じる
+  if (current !== lastSelectionStart) {
     textBox.blur();
+    lastSelectionStart = null; // 次のフォーカス時まで無効化
   }
 });
   </script>
