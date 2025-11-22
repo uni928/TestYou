@@ -293,7 +293,7 @@
   function createEmptyQuestion(type) {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     const base = { id, k: type, t: "" };
-    if (type === "r" || type === "c" || type === "s") {
+    if (type === "r" || type === "c") {
       base.o = ["選択肢1", "選択肢2"];
     }
     return base;
@@ -401,7 +401,7 @@
       hint.textContent = "タイプ: " + questionTypeLabel(q.k);
       card.appendChild(hint);
 
-      if (q.k === "r" || q.k === "c" || q.k === "s") {
+      if (q.k === "r" || q.k === "c") {
         const optsDiv = document.createElement("div");
         optsDiv.className = "options-list";
 
@@ -479,7 +479,7 @@
         errorEl.style.display = "block";
         return null;
       }
-      if ((q.k === "r" || q.k === "c" || q.k === "s") && (!q.o || q.o.length === 0)) {
+      if ((q.k === "r" || q.k === "c") && (!q.o || q.o.length === 0)) {
         errorEl.textContent = "選択式の質問には少なくとも1つの選択肢が必要です。";
         errorEl.style.display = "block";
         return null;
