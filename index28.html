@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>URLだけでやり取りするアンケート</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- LZ-String -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<style>
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f5f5f7;
+  }
+  header {
+    background: #4a6df0;
+    color: #fff;
+    padding: 12px 16px;
+    text-align: center;
+  }
+  main {
+    max-width: 960px;
+    margin: 16px auto 32px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+  h1 {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  h2 {
+    font-size: 1.0rem;
+    margin-top: 0;
+  }
+  .mode-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    background: #eef2ff;
+    color: #334;
+    margin-left: 8px;
+  }
+  .section {
+    margin-bottom: 24px;
+  }
+  label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  textarea {
+    min-height: 4em;
+    resize: vertical;
+  }
+  .question-card {
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #fafafa;
+  }
+  .question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .question-type {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+  }
+  .question-actions button {
+    font-size: 0.75rem;
+    margin-left: 4px;
+  }
+  .options-list {
+    margin-top: 6px;
+  }
+  .option-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .option-row input[type="text"] {
+    flex: 1;
+  }
+  .small {
+    font-size: 0.8rem;
+    color: #666;
+  }
+  button {
+    cursor: pointer;
+    border-radius: 999px;
+    border: none;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    background: #4a6df0;
+    color: #fff;
+    margin: 2px;
+  }
+  button.secondary {
+    background: #e5e7eb;
+    color: #111827;
+  }
+  button.danger {
+    background: #ef4444;
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .url-output {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+  .url-box {
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    padding: 8px;
+  }
+  .answers-view {
+    border-top: 1px dashed #ddd;
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+  .answer-item {
+    margin-bottom: 10px;
+  }
+  .pill {
+    display: inline-block;
+    margin-right: 4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    font-size: 0.75rem;
+  }
+  .radio-answer {
+    font-weight: bold;
+  }
+  .muted {
+    color: #888;
+    font-size: 0.8rem;
+  }
+  .error {
+    color: #b91c1c;
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>URLだけでやり取りするアンケート
+    <span id="modeBadge" class="mode-badge"></span>
+  </h1>
+</header>
+
+<main>
+  <!-- 共通: 情報エリア -->
+  <div id="infoArea" class="section small"></div>
+
+  <!-- モード1: アンケート作成 -->
+  <div id="modeCreate" class="section" style="display:none;">
+    <h2>1. アンケートを作成する</h2>
+    <p class="small">
+      アンケートの内容を入力し、「回答用URLを作成」ボタンを押してください。<br>
+      作成されたURLを相手に送れば、サーバー不要で回答してもらえます。
+    </p>
+    <div class="section">
+      <label>アンケートタイトル</label>
+      <input type="text" id="surveyTitle" placeholder="例）イベント満足度アンケート">
+    </div>
+    <div class="section">
+      <label>概要・説明（任意）</label>
+      <textarea id="surveyDescription" placeholder="アンケートの目的や所要時間などを記入してください。"></textarea>
+    </div>
+
+    <div class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <label>質問一覧</label>
+        <div>
+          <select id="newQuestionType" style="width:auto;">
+            <option value="r">単一選択（ラジオボタン）</option>
+            <option value="c">複数選択（チェックボックス）</option>
+            <option value="t">自由記述</option>
+            <option value="n">数値入力</option>
+            <option value="s">5段階評価</option>
+          </select>
+          <button type="button" id="addQuestionBtn">質問を追加</button>
+        </div>
+      </div>
+      <div class="small">※URLを短く保つため、必要な質問のみ追加してください。</div>
+      <div id="questionsContainer"></div>
+    </div>
+
+    <div class="section">
+      <button type="button" id="generateAnswerUrlBtn">回答用URLを作成</button>
+      <div id="createError" class="error" style="display:none;"></div>
+    </div>
+
+    <div class="section url-box" id="answerUrlSection" style="display:none;">
+      <label>回答用URL</label>
+      <textarea class="url-output" id="answerUrlOutput" readonly></textarea>
+      <div style="margin-top:4px;">
+        <button type="button" id="copyAnswerUrlBtn" class="secondary">URLをコピー</button>
+        <button type="button" id="openAnswerUrlBtn" class="secondary">新しいタブで開く</button>
+      </div>
+      <div class="small muted" style="margin-top:4px;">
+        このURLをアンケートの対象者に送ってください。
+      </div>
+    </div>
+  </div>
+
+  <!-- モード2: 回答 -->
+  <div id="modeAnswer" class="section" style="display:none;">
+    <h2>2. アンケートに回答する</h2>
+    <div id="answerSurveyContainer"></div>
+    <div id="answerActions" class="section" style="display:none;">
+      <button type="button" id="submitAnswerBtn">回答から閲覧用URLを作成</button>
+      <div id="answerError" class="error" style="display:none;"></div>
+    </div>
+
+    <div class="section url-box" id="resultUrlSection" style="display:none;">
+      <label>閲覧用URL</label>
+      <textarea class="url-output" id="resultUrlOutput" readonly></textarea>
+      <div style="margin-top:4px;">
+        <button type="button" id="copyResultUrlBtn" class="secondary">URLをコピー</button>
+        <button type="button" id="openResultUrlBtn" class="secondary">新しいタブで開く</button>
+      </div>
+      <div class="small muted" style="margin-top:4px;">
+        このURLを共有することで、回答内容を確認できます。
+      </div>
+    </div>
+  </div>
+
+  <!-- モード3: 閲覧 -->
+  <div id="modeView" class="section" style="display:none;">
+    <h2>3. アンケート結果を閲覧する</h2>
+    <div id="viewContainer"></div>
+  </div>
+</main>
+
+<script>
+  // --- 圧縮ユーティリティ ---
+  function compressToBase64String(text) {
+    return LZString.compressToEncodedURIComponent(text);
+  }
+  function decompressFromBase64String(base64) {
+    return LZString.decompressFromEncodedURIComponent(base64);
+  }
+
+  // --- URLヘルパー ---
+  function buildUrl(mode, dataStr) {
+    const base = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+    params.set("m", String(mode));
+    if (dataStr != null) {
+      // compressToEncodedURIComponentはURLセーフなので、そのまま付与
+      params.set("d", dataStr);
+    }
+    return base + "?" + params.toString();
+  }
+
+  function copyToClipboard(text) {
+    navigator.clipboard?.writeText(text).catch(() => {});
+  }
+
+  // --- アンケートデータ構造 ---
+  // survey = { v:1, t:"title", d:"desc", q:[ {id, k, t, o?} ] }
+  // k: 'r'=単一選択, 'c'=複数選択, 't'=自由記述, 'n'=数値, 's'=5段階
+  let createQuestions = [];
+
+  function createEmptyQuestion(type) {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const base = { id, k: type, t: "" };
+    if (type === "r" || type === "c" || type === "s") {
+      base.o = ["選択肢1", "選択肢2"];
+    }
+    return base;
+  }
+
+  function questionTypeLabel(k) {
+    switch (k) {
+      case "r": return "単一選択（ラジオ）";
+      case "c": return "複数選択（チェック）";
+      case "t": return "自由記述";
+      case "n": return "数値";
+      case "s": return "5段階評価";
+      default: return k;
+    }
+  }
+
+  // --- モード1: 作成 UI構築 ---
+  function renderCreateQuestions() {
+    const container = document.getElementById("questionsContainer");
+    container.innerHTML = "";
+    if (createQuestions.length === 0) {
+      const p = document.createElement("p");
+      p.className = "small muted";
+      p.textContent = "まだ質問がありません。「質問を追加」で追加してください。";
+      container.appendChild(p);
+      return;
+    }
+
+    createQuestions.forEach((q, idx) => {
+      const card = document.createElement("div");
+      card.className = "question-card";
+      card.dataset.qid = q.id;
+
+      const header = document.createElement("div");
+      header.className = "question-header";
+
+      const left = document.createElement("div");
+      left.innerHTML = '<span class="small">Q' + (idx+1) + "</span> ";
+
+      const typeBadge = document.createElement("span");
+      typeBadge.className = "question-type";
+      typeBadge.textContent = questionTypeLabel(q.k);
+      left.appendChild(typeBadge);
+
+      const actions = document.createElement("div");
+      actions.className = "question-actions";
+
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "secondary";
+      upBtn.textContent = "↑";
+      upBtn.onclick = () => {
+        if (idx > 0) {
+          const tmp = createQuestions[idx-1];
+          createQuestions[idx-1] = createQuestions[idx];
+          createQuestions[idx] = tmp;
+          renderCreateQuestions();
+        }
+      };
+      actions.appendChild(upBtn);
+
+      const downBtn = document.createElement("button");
+      downBtn.type = "button";
+      downBtn.className = "secondary";
+      downBtn.textContent = "↓";
+      downBtn.onclick = () => {
+        if (idx < createQuestions.length - 1) {
+          const tmp = createQuestions[idx+1];
+          createQuestions[idx+1] = createQuestions[idx];
+          createQuestions[idx] = tmp;
+          renderCreateQuestions();
+        }
+      };
+      actions.appendChild(downBtn);
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "secondary danger";
+      delBtn.textContent = "削除";
+      delBtn.onclick = () => {
+        createQuestions.splice(idx, 1);
+        renderCreateQuestions();
+      };
+      actions.appendChild(delBtn);
+
+      header.appendChild(left);
+      header.appendChild(actions);
+      card.appendChild(header);
+
+      const titleLabel = document.createElement("label");
+      titleLabel.textContent = "質問文";
+      card.appendChild(titleLabel);
+
+      const titleInput = document.createElement("input");
+      titleInput.type = "text";
+      titleInput.value = q.t;
+      titleInput.placeholder = "例）本日のイベントの満足度を教えてください。";
+      titleInput.oninput = (e) => {
+        q.t = e.target.value;
+      };
+      card.appendChild(titleInput);
+
+      const hint = document.createElement("div");
+      hint.className = "small muted";
+      hint.textContent = "タイプ: " + questionTypeLabel(q.k);
+      card.appendChild(hint);
+
+      if (q.k === "r" || q.k === "c" || q.k === "s") {
+        const optsDiv = document.createElement("div");
+        optsDiv.className = "options-list";
+
+        const optsLabel = document.createElement("label");
+        optsLabel.textContent = "選択肢";
+        optsDiv.appendChild(optsLabel);
+
+        (q.o || []).forEach((optText, oidx) => {
+          const row = document.createElement("div");
+          row.className = "option-row";
+
+          const optInput = document.createElement("input");
+          optInput.type = "text";
+          optInput.value = optText;
+          optInput.placeholder = "選択肢 " + (oidx+1);
+          optInput.oninput = (e) => {
+            q.o[oidx] = e.target.value;
+          };
+          row.appendChild(optInput);
+
+          const delOptBtn = document.createElement("button");
+          delOptBtn.type = "button";
+          delOptBtn.className = "secondary";
+          delOptBtn.textContent = "×";
+          delOptBtn.onclick = () => {
+            q.o.splice(oidx, 1);
+            if (q.o.length === 0) {
+              q.o.push("");
+            }
+            renderCreateQuestions();
+          };
+          row.appendChild(delOptBtn);
+
+          optsDiv.appendChild(row);
+        });
+
+        const addOptBtn = document.createElement("button");
+        addOptBtn.type = "button";
+        addOptBtn.className = "secondary";
+        addOptBtn.textContent = "選択肢を追加";
+        addOptBtn.onclick = () => {
+          if (!q.o) q.o = [];
+          q.o.push("新しい選択肢");
+          renderCreateQuestions();
+        };
+        optsDiv.appendChild(addOptBtn);
+
+        card.appendChild(optsDiv);
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  function collectSurveyFromCreate() {
+    const title = document.getElementById("surveyTitle").value.trim();
+    const desc = document.getElementById("surveyDescription").value.trim();
+    const errorEl = document.getElementById("createError");
+    errorEl.style.display = "none";
+    errorEl.textContent = "";
+
+    if (!title) {
+      errorEl.textContent = "アンケートタイトルを入力してください。";
+      errorEl.style.display = "block";
+      return null;
+    }
+    if (createQuestions.length === 0) {
+      errorEl.textContent = "少なくとも1つの質問を追加してください。";
+      errorEl.style.display = "block";
+      return null;
+    }
+    for (const q of createQuestions) {
+      if (!q.t.trim()) {
+        errorEl.textContent = "すべての質問に質問文を入力してください。";
+        errorEl.style.display = "block";
+        return null;
+      }
+      if ((q.k === "r" || q.k === "c" || q.k === "s") && (!q.o || q.o.length === 0)) {
+        errorEl.textContent = "選択式の質問には少なくとも1つの選択肢が必要です。";
+        errorEl.style.display = "block";
+        return null;
+      }
+    }
+
+    const minSurvey = {
+      v: 1,
+      t: title,
+      d: desc,
+      q: createQuestions.map(q => {
+        const base = { k: q.k, t: q.t };
+        if (q.k === "r" || q.k === "c" || q.k === "s") {
+          base.o = q.o.map(x => x.trim());
+        }
+        return base;
+      })
+    };
+    return minSurvey;
+  }
+
+  // --- モード2: 回答 UI ---
+  function renderAnswerSurvey(survey) {
+    const container = document.getElementById("answerSurveyContainer");
+    container.innerHTML = "";
+
+    if (!survey || !survey.q || !Array.isArray(survey.q)) {
+      const p = document.createElement("p");
+      p.className = "error";
+      p.textContent = "アンケートデータが正しく読み込めませんでした。URLが壊れている可能性があります。";
+      container.appendChild(p);
+      document.getElementById("answerActions").style.display = "none";
+      return;
+    }
+
+    const titleEl = document.createElement("h3");
+    titleEl.textContent = survey.t || "無題のアンケート";
+    container.appendChild(titleEl);
+
+    if (survey.d) {
+      const descEl = document.createElement("p");
+      descEl.textContent = survey.d;
+      container.appendChild(descEl);
+    }
+
+    const form = document.createElement("div");
+    form.id = "answerForm";
+    survey.q.forEach((q, idx) => {
+      const qWrap = document.createElement("div");
+      qWrap.className = "question-card";
+      qWrap.dataset.qindex = idx;
+
+      const label = document.createElement("div");
+      label.innerHTML = '<span class="small">Q' + (idx+1) + '</span> ' + (q.t || "");
+      qWrap.appendChild(label);
+
+      const typeHint = document.createElement("div");
+      typeHint.className = "small muted";
+      typeHint.textContent = "タイプ: " + questionTypeLabel(q.k);
+      qWrap.appendChild(typeHint);
+
+      const inputArea = document.createElement("div");
+      inputArea.style.marginTop = "6px";
+
+      if (q.k === "r" && Array.isArray(q.o)) {
+        q.o.forEach((opt, oidx) => {
+          const row = document.createElement("div");
+          const id = "q" + idx + "_r" + oidx;
+          row.innerHTML = '<label><input type="radio" name="q' + idx +
+            '" value="' + oidx + '" id="' + id + '"> ' +
+            (opt || ("選択肢" + (oidx+1))) + '</label>';
+          inputArea.appendChild(row);
+        });
+      } else if (q.k === "c" && Array.isArray(q.o)) {
+        q.o.forEach((opt, oidx) => {
+          const row = document.createElement("div");
+          const id = "q" + idx + "_c" + oidx;
+          row.innerHTML = '<label><input type="checkbox" name="q' + idx +
+            '" value="' + oidx + '" id="' + id + '"> ' +
+            (opt || ("選択肢" + (oidx+1))) + '</label>';
+          inputArea.appendChild(row);
+        });
+      } else if (q.k === "t") {
+        const ta = document.createElement("textarea");
+        ta.placeholder = "自由にご記入ください。";
+        ta.dataset.qindex = idx;
+        inputArea.appendChild(ta);
+      } else if (q.k === "n") {
+        const input = document.createElement("input");
+        input.type = "number";
+        input.placeholder = "数値を入力";
+        input.dataset.qindex = idx;
+        inputArea.appendChild(input);
+      } else if (q.k === "s") {
+        const scaleWrap = document.createElement("div");
+        scaleWrap.className = "small";
+        scaleWrap.textContent = "1（低い）〜5（高い）";
+        inputArea.appendChild(scaleWrap);
+        for (let i = 1; i <= 5; i++) {
+          const row = document.createElement("label");
+          row.style.marginRight = "8px";
+          row.innerHTML = '<input type="radio" name="q' + idx +
+            '" value="' + i + '"> ' + i;
+          inputArea.appendChild(row);
+        }
+      } else {
+        const fallback = document.createElement("input");
+        fallback.type = "text";
+        fallback.placeholder = "回答を入力してください。";
+        fallback.dataset.qindex = idx;
+        inputArea.appendChild(fallback);
+      }
+
+      qWrap.appendChild(inputArea);
+      form.appendChild(qWrap);
+    });
+
+    container.appendChild(form);
+    document.getElementById("answerActions").style.display = "block";
+  }
+
+  function collectAnswersFromForm(survey) {
+    const errorEl = document.getElementById("answerError");
+    errorEl.style.display = "none";
+    errorEl.textContent = "";
+
+    const answers = [];
+    survey.q.forEach((q, idx) => {
+      let value = null;
+      if (q.k === "r") {
+        const selected = document.querySelector('input[name="q' + idx + '"]:checked');
+        value = selected ? parseInt(selected.value, 10) : null;
+      } else if (q.k === "c") {
+        const selected = document.querySelectorAll('input[name="q' + idx + '"]:checked');
+        value = Array.from(selected).map(el => parseInt(el.value, 10));
+      } else if (q.k === "t") {
+        const ta = document.querySelector('#answerForm textarea[data-qindex="' + idx + '"]');
+        value = ta ? ta.value : "";
+      } else if (q.k === "n") {
+        const input = document.querySelector('#answerForm input[type="number"][data-qindex="' + idx + '"]');
+        value = input && input.value !== "" ? Number(input.value) : null;
+      } else if (q.k === "s") {
+        const selected = document.querySelector('input[name="q' + idx + '"]:checked');
+        value = selected ? parseInt(selected.value, 10) : null;
+      } else {
+        const input = document.querySelector('#answerForm input[data-qindex="' + idx + '"]');
+        value = input ? input.value : "";
+      }
+      answers.push({ v: value });
+    });
+
+    return {
+      v: 1,
+      s: survey,
+      a: answers
+    };
+  }
+
+  // --- モード3: 閲覧 UI ---
+  function renderView(resultObj) {
+    const container = document.getElementById("viewContainer");
+    container.innerHTML = "";
+
+    if (!resultObj) {
+      const p = document.createElement("p");
+      p.className = "error";
+      p.textContent = "データが読み込めませんでした。URLが壊れている可能性があります。";
+      container.appendChild(p);
+      return;
+    }
+
+    // result形式かsurvey形式かを判定
+    let survey = null;
+    let answers = null;
+
+    if (resultObj.s && Array.isArray(resultObj.a)) {
+      survey = resultObj.s;
+      answers = resultObj.a;
+    } else if (resultObj.q) {
+      survey = resultObj;
+    } else {
+      const p = document.createElement("p");
+      p.className = "error";
+      p.textContent = "不明なデータ形式です。";
+      container.appendChild(p);
+      return;
+    }
+
+    const titleEl = document.createElement("h3");
+    titleEl.textContent = survey.t || "無題のアンケート";
+    container.appendChild(titleEl);
+
+    if (survey.d) {
+      const descEl = document.createElement("p");
+      descEl.textContent = survey.d;
+      container.appendChild(descEl);
+    }
+
+    const info = document.createElement("div");
+    info.className = "small muted";
+    if (answers) {
+      info.textContent = "このURLにはアンケート内容と回答内容がすべて含まれています。";
+    } else {
+      info.textContent = "このURLにはアンケート内容のみが含まれています。";
+    }
+    container.appendChild(info);
+
+    const block = document.createElement("div");
+    block.className = "answers-view";
+
+    (survey.q || []).forEach((q, idx) => {
+      const item = document.createElement("div");
+      item.className = "answer-item";
+
+      const qTitle = document.createElement("div");
+      qTitle.innerHTML = "<strong>Q" + (idx+1) + ".</strong> " + (q.t || "");
+      item.appendChild(qTitle);
+
+      const typeHint = document.createElement("div");
+      typeHint.className = "small muted";
+      typeHint.textContent = "タイプ: " + questionTypeLabel(q.k);
+      item.appendChild(typeHint);
+
+      if (answers && answers[idx]) {
+        const ans = answers[idx].v;
+        const ansDisplay = document.createElement("div");
+        ansDisplay.style.marginTop = "4px";
+
+        if (q.k === "r" && Array.isArray(q.o)) {
+          const idxNum = typeof ans === "number" ? ans : null;
+          const text = (idxNum != null && q.o[idxNum] != null) ? q.o[idxNum] : "（未回答）";
+          ansDisplay.innerHTML = '<span class="radio-answer">' + text + "</span>";
+        } else if (q.k === "c" && Array.isArray(q.o)) {
+          if (Array.isArray(ans) && ans.length > 0) {
+            ans.forEach(v => {
+              if (q.o[v] != null) {
+                const pill = document.createElement("span");
+                pill.className = "pill";
+                pill.textContent = q.o[v];
+                ansDisplay.appendChild(pill);
+              }
+            });
+          } else {
+            ansDisplay.textContent = "（未回答）";
+          }
+        } else if (q.k === "t") {
+          const text = (ans && String(ans).trim()) ? String(ans) : "（未回答）";
+          const pre = document.createElement("pre");
+          pre.textContent = text;
+          pre.style.whiteSpace = "pre-wrap";
+          pre.style.fontSize = "0.85rem";
+          ansDisplay.appendChild(pre);
+        } else if (q.k === "n") {
+          ansDisplay.textContent = (ans != null && ans !== "") ? String(ans) : "（未回答）";
+        } else if (q.k === "s") {
+          if (ans != null) {
+            const stars = "★".repeat(ans) + "☆".repeat(5 - ans);
+            ansDisplay.textContent = ans + " / 5 " + stars;
+          } else {
+            ansDisplay.textContent = "（未回答）";
+          }
+        } else {
+          const text = (ans && String(ans).trim()) ? String(ans) : "（未回答）";
+          ansDisplay.textContent = text;
+        }
+
+        item.appendChild(ansDisplay);
+      } else {
+        const noAns = document.createElement("div");
+        noAns.className = "small muted";
+        noAns.textContent = "回答データは含まれていません（アンケート定義のみ）。";
+        item.appendChild(noAns);
+      }
+
+      block.appendChild(item);
+    });
+
+    container.appendChild(block);
+  }
+
+  // --- 初期化 ---
+  function init() {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("m") || "1";
+    const dataParam = params.get("d") || null;
+
+    const modeBadge = document.getElementById("modeBadge");
+    const infoArea = document.getElementById("infoArea");
+
+    document.getElementById("modeCreate").style.display = "none";
+    document.getElementById("modeAnswer").style.display = "none";
+    document.getElementById("modeView").style.display = "none";
+
+    if (mode === "1") {
+      modeBadge.textContent = "作成モード (m=1)";
+      document.getElementById("modeCreate").style.display = "block";
+      infoArea.textContent = "このページでアンケートを設計し、回答用URLを生成します。";
+
+      // 質問が空なら、雛形として1問だけ用意
+      if (createQuestions.length === 0) {
+        createQuestions.push(createEmptyQuestion("r"));
+        createQuestions[0].t = "本イベントの総合的な満足度を教えてください。";
+        createQuestions[0].o = ["とても満足", "満足", "ふつう", "やや不満", "不満"];
+        createQuestions.push(createEmptyQuestion("t"));
+        createQuestions[1].t = "ご意見・ご要望があれば自由にご記入ください。";
+      }
+      renderCreateQuestions();
+
+    } else if (mode === "2") {
+      modeBadge.textContent = "回答モード (m=2)";
+      document.getElementById("modeAnswer").style.display = "block";
+      infoArea.textContent = "送られてきたURLからアンケート内容を読み込み、回答します。";
+
+      if (!dataParam) {
+        document.getElementById("answerSurveyContainer").innerHTML =
+          '<p class="error">アンケートデータがURLに含まれていません（dパラメータがありません）。</p>';
+        return;
+      }
+      try {
+        const jsonStr = decompressFromBase64String(dataParam);
+        const survey = JSON.parse(jsonStr);
+        renderAnswerSurvey(survey);
+      } catch (e) {
+        console.error(e);
+        document.getElementById("answerSurveyContainer").innerHTML =
+          '<p class="error">アンケートデータの読み込みに失敗しました。URLが壊れている可能性があります。</p>';
+      }
+
+    } else if (mode === "3") {
+      modeBadge.textContent = "閲覧モード (m=3)";
+      document.getElementById("modeView").style.display = "block";
+      infoArea.textContent = "URLに含まれているアンケート内容と回答内容を表示します。";
+
+      if (!dataParam) {
+        document.getElementById("viewContainer").innerHTML =
+          '<p class="error">閲覧データがURLに含まれていません（dパラメータがありません）。</p>';
+        return;
+      }
+      try {
+        const jsonStr = decompressFromBase64String(dataParam);
+        const obj = JSON.parse(jsonStr);
+        renderView(obj);
+      } catch (e) {
+        console.error(e);
+        document.getElementById("viewContainer").innerHTML =
+          '<p class="error">閲覧データの読み込みに失敗しました。URLが壊れている可能性があります。</p>';
+      }
+
+    } else {
+      modeBadge.textContent = "不明なモード";
+      infoArea.textContent = "m=1（作成）, m=2（回答）, m=3（閲覧）のいずれかを指定してください。";
+    }
+  }
+
+  // --- イベント登録 ---
+  window.addEventListener("DOMContentLoaded", () => {
+    init();
+
+    // 作成モード: 質問追加
+    const addQuestionBtn = document.getElementById("addQuestionBtn");
+    if (addQuestionBtn) {
+      addQuestionBtn.addEventListener("click", () => {
+        const type = document.getElementById("newQuestionType").value;
+        createQuestions.push(createEmptyQuestion(type));
+        renderCreateQuestions();
+      });
+    }
+
+    // 作成モード: 回答用URL作成
+    const generateAnswerUrlBtn = document.getElementById("generateAnswerUrlBtn");
+    if (generateAnswerUrlBtn) {
+      generateAnswerUrlBtn.addEventListener("click", () => {
+        const survey = collectSurveyFromCreate();
+        if (!survey) return;
+
+        const json = JSON.stringify(survey);
+        const compressed = compressToBase64String(json);
+        const url = buildUrl(2, compressed);
+
+        const area = document.getElementById("answerUrlOutput");
+        area.value = url;
+        document.getElementById("answerUrlSection").style.display = "block";
+      });
+    }
+
+    const copyAnswerUrlBtn = document.getElementById("copyAnswerUrlBtn");
+    if (copyAnswerUrlBtn) {
+      copyAnswerUrlBtn.addEventListener("click", () => {
+        const txt = document.getElementById("answerUrlOutput").value;
+        copyToClipboard(txt);
+      });
+    }
+
+    const openAnswerUrlBtn = document.getElementById("openAnswerUrlBtn");
+    if (openAnswerUrlBtn) {
+      openAnswerUrlBtn.addEventListener("click", () => {
+        const txt = document.getElementById("answerUrlOutput").value;
+        if (txt) window.open(txt, "_blank");
+      });
+    }
+
+    // 回答モード: 閲覧用URL作成
+    const submitAnswerBtn = document.getElementById("submitAnswerBtn");
+    if (submitAnswerBtn) {
+      submitAnswerBtn.addEventListener("click", () => {
+        const params = new URLSearchParams(window.location.search);
+        const dataParam = params.get("d");
+        if (!dataParam) return;
+
+        try {
+          const surveyStr = decompressFromBase64String(dataParam);
+          const survey = JSON.parse(surveyStr);
+          const result = collectAnswersFromForm(survey);
+          const json = JSON.stringify(result);
+          const compressed = compressToBase64String(json);
+          const url = buildUrl(3, compressed);
+
+          const area = document.getElementById("resultUrlOutput");
+          area.value = url;
+          document.getElementById("resultUrlSection").style.display = "block";
+        } catch (e) {
+          console.error(e);
+          const err = document.getElementById("answerError");
+          err.textContent = "結果URLの生成中にエラーが発生しました。";
+          err.style.display = "block";
+        }
+      });
+    }
+
+    const copyResultUrlBtn = document.getElementById("copyResultUrlBtn");
+    if (copyResultUrlBtn) {
+      copyResultUrlBtn.addEventListener("click", () => {
+        const txt = document.getElementById("resultUrlOutput").value;
+        copyToClipboard(txt);
+      });
+    }
+
+    const openResultUrlBtn = document.getElementById("openResultUrlBtn");
+    if (openResultUrlBtn) {
+      openResultUrlBtn.addEventListener("click", () => {
+        const txt = document.getElementById("resultUrlOutput").value;
+        if (txt) window.open(txt, "_blank");
+      });
+    }
+  });
+</script>
+</body>
+</html>
