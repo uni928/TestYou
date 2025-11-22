@@ -183,21 +183,34 @@
 
     // 貼り付け：クリップボードの内容で全体を置き換え
     pasteBtn.addEventListener('click', async () => {
-      try {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          const text = await navigator.clipboard.readText();
-          textBox.value = text;
-          textBox.focus();
-          const len = text.length;
-          textBox.selectionStart = textBox.selectionEnd = len;
-          showMessage("貼り付けました");
-        } else {
-          showMessage("クリップボードから読み取れません（ブラウザ未対応）");
-        }
-      } catch (e) {
-        showMessage("貼り付けに失敗しました（HTTPSやブラウザ設定を確認してください）");
+  // まず clipboard.readText() を試みる
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      const text = await navigator.clipboard.readText();
+      if (text !== undefined) {
+        textBox.value = text;
+        textBox.focus();
+        const len = text.length;
+        textBox.selectionStart = textBox.selectionEnd = len;
+        showMessage("貼り付けました");
+        return;
       }
-    });
+    }
+  } catch (e) {
+    // 失敗した場合はフォールバックへ進む
+  }
+
+  // --- フォールバック方式（最も成功しやすい） ---
+  try {
+    textBox.focus();
+    // モバイル向け：テキストエリアを選択状態にして、ユーザーの「ペースト」を誘発
+    textBox.value = "";
+    textBox.select();
+    showMessage("手動で貼り付けてください（長押し→ペースト）");
+  } catch (e) {
+    showMessage("貼り付けできませんでした");
+  }
+});
   </script>
 </body>
         </html>
