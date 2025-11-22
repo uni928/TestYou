@@ -211,26 +211,7 @@
   }
 });
 
-    // ★ 追加：入力内容に応じて readonly を切り替える
-function updateReadonly() {
-  if (textBox.value.trim() === "") {
-    // 空のときは入力可能（キーボードOK）
-    textBox.readOnly = false;
-  } else {
-    // 何か入っているときは閲覧・選択専用（キーボードNG）
-    textBox.readOnly = true;
-  }
-}
-
-// 入力されたときに状態を更新
-textBox.addEventListener('input', updateReadonly);
-
-// ペーストボタンなどで内容を書き換えたあとにも呼んでください
-// 例：pasteBtn の処理の最後に
-// updateReadonly();
-
-// 初期化
-updateReadonly();
+    
   </script>
 </body>
         </html>
