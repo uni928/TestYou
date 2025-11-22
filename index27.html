@@ -211,39 +211,26 @@
   }
 });
 
-    // ★ 0.1秒ごとに selectionStart を監視して変化したら blur
-let lastSelectionStart = null;
-
-// 0.1秒ごとにチェックするポーリングスレッド
-setInterval(() => {
-
-  // アクティブ要素が textarea でない場合は何もしない
-  if (document.activeElement !== textBox) {
-    lastSelectionStart = null;
-    return;
-  }
-
-  // 入力が空ならフォーカスしてもキーボードを出すため監視しない
+    // ★ 追加：入力内容に応じて readonly を切り替える
+function updateReadonly() {
   if (textBox.value.trim() === "") {
-    lastSelectionStart = null;
-    return;
+    // 空のときは入力可能（キーボードOK）
+    textBox.readOnly = false;
+  } else {
+    // 何か入っているときは閲覧・選択専用（キーボードNG）
+    textBox.readOnly = true;
   }
+}
 
-  const currentPos = textBox.selectionStart;
+// 入力されたときに状態を更新
+textBox.addEventListener('input', updateReadonly);
 
-  // 初回（フォーカス直後）は基準値として保存するだけ
-  if (lastSelectionStart === null) {
-    lastSelectionStart = currentPos;
-    return;
-  }
+// ペーストボタンなどで内容を書き換えたあとにも呼んでください
+// 例：pasteBtn の処理の最後に
+// updateReadonly();
 
-  // キャレット位置が変わったら blur（キーボード閉じる）
-  if (currentPos !== lastSelectionStart) {
-    textBox.blur();
-    lastSelectionStart = null;
-  }
-
-}, 100); // ← 100ms（0.1秒）
+// 初期化
+updateReadonly();
   </script>
 </body>
         </html>
