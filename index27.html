@@ -211,39 +211,39 @@
   }
 });
 
- // ★ 追加：キャレット位置の変化を監視して blur する
+// ★ 0.1秒ごとに selectionStart を監視して変化したら blur
 let lastSelectionStart = null;
 
-// フォーカス時に「最初のキャレット位置」を保存
-textBox.addEventListener('focus', () => {
-  if (textBox.value.trim() !== "") {
-    // 入力があるときだけ、「変化前」の位置として保存
-    lastSelectionStart = textBox.selectionStart;
-  } else {
-    // 空のときは通常の入力を許可
+// 0.1秒ごとにチェックするポーリングスレッド
+setInterval(() => {
+
+  // アクティブ要素が textarea でない場合は何もしない
+  if (document.activeElement !== textBox) {
     lastSelectionStart = null;
-  }
-});
-
-// selectionchange でキャレット位置の変化を検知
-document.addEventListener('selectionchange', () => {
-  if (document.activeElement !== textBox) return;
-  if (textBox.value.trim() === "") return;
-
-  const current = textBox.selectionStart;
-
-  // 初回は基準値をセットして終わり
-  if (lastSelectionStart === null) {
-    lastSelectionStart = current;
     return;
   }
 
-  // キャレット位置が変わったら blur してキーボードを閉じる
-  if (current !== lastSelectionStart) {
-    textBox.blur();
-    lastSelectionStart = null; // 次のフォーカス時まで無効化
+  // 入力が空ならフォーカスしてもキーボードを出すため監視しない
+  if (textBox.value.trim() === "") {
+    lastSelectionStart = null;
+    return;
   }
-});
+
+  const currentPos = textBox.selectionStart;
+
+  // 初回（フォーカス直後）は基準値として保存するだけ
+  if (lastSelectionStart === null) {
+    lastSelectionStart = currentPos;
+    return;
+  }
+
+  // キャレット位置が変わったら blur（キーボード閉じる）
+  if (currentPos !== lastSelectionStart) {
+    textBox.blur();
+    lastSelectionStart = null;
+  }
+
+}, 100); // ← 100ms（0.1秒）
   </script>
 </body>
         </html>
