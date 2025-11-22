@@ -219,28 +219,22 @@ setInterval(() => {
 
   // アクティブ要素が textarea でない場合は何もしない
   if (document.activeElement !== textBox) {
-    lastSelectionStart = null;
+    lastSelectionStart = 0;
     return;
   }
 
   // 入力が空ならフォーカスしてもキーボードを出すため監視しない
   if (textBox.value.trim() === "") {
-    lastSelectionStart = null;
+    lastSelectionStart = 0;
     return;
   }
 
   const currentPos = textBox.selectionStart;
 
-  // 初回（フォーカス直後）は基準値として保存するだけ
-  if (lastSelectionStart === null) {
-    lastSelectionStart = currentPos;
-    return;
-  }
-
   // キャレット位置が変わったら blur（キーボード閉じる）
   if (currentPos !== lastSelectionStart) {
     textBox.blur();
-    lastSelectionStart = null;
+    lastSelectionStart = currentPos;
   }
 
 }, 100); // ← 100ms（0.1秒）
