@@ -210,6 +210,13 @@
     showMessage("貼り付けできませんでした");
   }
 });
+    // ★ 入力が空でない場合はキーボードを出さないようにする
+textBox.addEventListener('focus', (e) => {
+  if (textBox.value.trim() !== "") {
+    // 即座にフォーカスを外してキーボードを出さない
+    setTimeout(() => textBox.blur(), 0);
+  }
+});
   </script>
 </body>
         </html>
