@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スマホ範囲コピー効率化ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* 画面全体でスクロールなし */
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+    }
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      height: 25%;
+      padding: 8px 12px 4px;
+      font-size: 14px;
+      color: #555;
+    }
+    .main {
+      height: 75%;
+      flex: 1;
+      padding: 4px 12px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    .textarea-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    textarea {
+      width: 100%;
+      height: 100%;
+      resize: none;
+      font-size: 16px;
+      line-height: 1.4;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      outline: none;
+      background: #fff;
+    }
+    textarea:focus {
+      border-color: #007aff;
+      box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+    }
+    .footer {
+      height: 20%;
+      padding: 8px 12px 12px;
+      border-top: 1px solid #ddd;
+      background: #ffffff;
+      display: flex;
+      gap: 6px;
+    }
+    .footer button {
+      flex: 1;
+      padding: 10px 4px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      background: #007aff;
+      color: #fff;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+    .footer button.secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+    .footer button:active {
+      opacity: 0.8;
+      transform: translateY(1px);
+    }
+    .message {
+      font-size: 12px;
+      color: #666;
+      padding: 0 12px 4px;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <button id="trimBeforeBtn" class="secondary">前を削る</button>
+      <button id="trimAfterBtn" class="secondary">後ろを削る</button>
+      <button id="copyBtn">コピー</button>
+    </div>
+    <div class="main">
+      <div class="textarea-wrapper">
+        <textarea id="textBox" placeholder="ここにテキストを貼り付けて、カーソル位置より前/後ろを削ってからコピーします。"></textarea>
+      </div>
+    </div>
+    <div class="message" id="messageArea"></div>
+  </div>
+
+  <script>
+    const textBox = document.getElementById('textBox');
+    const trimBeforeBtn = document.getElementById('trimBeforeBtn');
+    const trimAfterBtn = document.getElementById('trimAfterBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const messageArea = document.getElementById('messageArea');
+
+    function showMessage(text) {
+      messageArea.textContent = text || "";
+      if (text) {
+        setTimeout(() => {
+          if (messageArea.textContent === text) {
+            messageArea.textContent = "";
+          }
+        }, 2000);
+      }
+    }
+
+    // 前を削る：カーソル位置より前を全部削除
+    trimBeforeBtn.addEventListener('click', () => {
+      const value = textBox.value;
+      const pos = textBox.selectionStart;
+      const newValue = value.slice(pos);
+      textBox.value = newValue;
+      // 先頭にキャレットを移動
+      //textBox.focus();
+      textBox.selectionStart = textBox.selectionEnd = 0;
+      showMessage("前を削りました");
+    });
+
+    // 後ろを削る：カーソル位置より後ろを全部削除
+    trimAfterBtn.addEventListener('click', () => {
+      const value = textBox.value;
+      const pos = textBox.selectionStart;
+      const newValue = value.slice(0, pos);
+      textBox.value = newValue;
+      // 末尾にキャレットを移動
+      //textBox.focus();
+      const len = newValue.length;
+      textBox.selectionStart = textBox.selectionEnd = len;
+      showMessage("後ろを削りました");
+    });
+
+    // コピー：テキストボックス全体をコピー
+    copyBtn.addEventListener('click', async () => {
+      const text = textBox.value;
+      if (!text) {
+        showMessage("コピーするテキストがありません");
+        return;
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // 旧方式のフォールバック
+          textBox.focus();
+          textBox.select();
+          document.execCommand('copy');
+        }
+        showMessage("コピーしました");
+      } catch (e) {
+        // 失敗した場合は手動コピー促し
+        textBox.focus();
+        textBox.select();
+        showMessage("コピーに失敗しました。手動でコピーしてください。");
+      }
+    });
+
+    // 貼り付け：クリップボードの内容で全体を置き換え
+    pasteBtn.addEventListener('click', async () => {
+  // まず clipboard.readText() を試みる
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      const text = await navigator.clipboard.readText();
+      if (text !== undefined) {
+        textBox.value = text;
+        textBox.focus();
+        const len = text.length;
+        textBox.selectionStart = textBox.selectionEnd = len;
+        showMessage("貼り付けました");
+        return;
+      }
+    }
+  } catch (e) {
+    // 失敗した場合はフォールバックへ進む
+  }
+
+  // --- フォールバック方式（最も成功しやすい） ---
+  try {
+    textBox.focus();
+    // モバイル向け：テキストエリアを選択状態にして、ユーザーの「ペースト」を誘発
+    textBox.value = "";
+    textBox.select();
+    showMessage("手動で貼り付けてください（長押し→ペースト）");
+  } catch (e) {
+    showMessage("貼り付けできませんでした");
+  }
+});
+
+    
+  </script>
+</body>
+        </html>
