@@ -18,6 +18,10 @@
 
 [# TestYou16](https://uni928.github.io/TestYou/index16.html)
 
+[# 目の悪い人向け、風景について教えてくれる(要 ChatGPT API Key)](https://uni928.github.io/TestYou/index30.html)
+
+[# 目の悪い人向け、比較的安全な方向を言う特化(要 ChatGPT API Key)](https://uni928.github.io/TestYou/index31.html)
+
 テスト用
 
 ようです。
