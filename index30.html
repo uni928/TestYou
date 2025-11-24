@@ -240,6 +240,7 @@ function speak(text) {
   speech.cancel();
   const ut = new SpeechSynthesisUtterance(text);
   ut.lang = 'ja-JP';
+  ut.rate = 2.0;   // ★ 追加：読み上げ速度を2倍にする
   speech.speak(ut);
 }
 
