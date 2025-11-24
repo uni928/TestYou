@@ -83,11 +83,19 @@ let speech = window.speechSynthesis;
 
 async function loadKey() {
   const db = await openDB();
-  const key = await db.get('kv','apiKey');
+  const tx = db.transaction('kv', 'readonly');
+  const store = tx.objectStore('kv');
+  const req = store.get('apiKey');
+  const key = await new Promise(resolve => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
   if (key) {
     apiKey = key;
     document.getElementById('keyModal').style.display = 'none';
     startCamera();
+  }
+}();
   }
 }
 
@@ -95,10 +103,17 @@ async function saveKey() {
   const v = document.getElementById('apiKeyInput').value.trim();
   if (!v) return;
   const db = await openDB();
-  await db.put('kv', v, 'apiKey');
+  const tx = db.transaction('kv', 'readwrite');
+  const store = tx.objectStore('kv');
+  await new Promise(resolve => {
+    const req = store.put(v, 'apiKey');
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+  });
   apiKey = v;
   document.getElementById('keyModal').style.display = 'none';
   startCamera();
+}();
 }
 
 function openDB() {
