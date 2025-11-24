@@ -125,6 +125,24 @@ function openDB() {
   });
 }
 
+async function startCamera() {
+  try {
+    // 背面カメラ（environment）を優先して取得
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" }
+      }
+    });
+  } catch (e) {
+    console.warn("背面カメラ取得に失敗したため、デフォルトカメラを使用します:", e);
+    // 失敗した場合は従来通り（フォールバック）
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  }
+
+  const video = document.getElementById('camera');
+  video.srcObject = stream;
+}
+
 async function captureAndDescribe() {
   if (!apiKey) {
     speak("まず ChatGPT の API キーを設定してください。");
