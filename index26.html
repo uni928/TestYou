@@ -271,14 +271,17 @@
     if (!video.videoWidth || !video.videoHeight) return null;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const w = canvas.width;
-    const h = canvas.height;
-    const imageData = ctx.getImageData(0, 0, w, h).data;
+     const w = canvas.width;
+  const h = canvas.height;
+  const imageData = ctx.getImageData(0, 0, w, h).data;
 
-    const xStart = 0;
-    const xEnd   = w;
-    const yStart = Math.floor(h * 0.4);
-    const yEnd   = h;
+  // 横方向：中央 9/13 だけを使う（両端 2/13 を除外）
+  const xStart = Math.floor(w * 2 / 13);
+  const xEnd   = Math.floor(w * 11 / 13);
+
+  // 縦方向：下側 60%（足元側）はそのまま
+  const yStart = Math.floor(h * 0.4);
+  const yEnd   = h;
 
     let sum = 0;
     let sumSq = 0;
