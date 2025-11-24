@@ -144,42 +144,96 @@ async function startCamera() {
 }
 
 async function captureAndDescribe() {
-  if (!apiKey) return;
-  const video = document.getElementById('camera');
-  const canvas = document.createElement('canvas');
+  if (!apiKey) {
+    speak("まず ChatGPT の API キーを設定してください。");
+    return;
+  }
+
+  const video = document.getElementById("camera");
+  const overlay = document.getElementById("overlay");
+
+  // まだビデオが初期化されてない場合のガード
+  if (!video.videoWidth || !video.videoHeight) {
+    overlay.textContent = "カメラの準備中です…もう一度タップしてください。";
+    speak("カメラの準備中です。少し待ってからもう一度タップしてください。");
+    return;
+  }
+
+  // 画像キャプチャ
+  const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video,0,0);
-  const dataUrl = canvas.toDataURL('image/jpeg');
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
 
-  const overlay = document.getElementById('overlay');
-  overlay.textContent = '解析中…';
-  speak('解析します');
+  // data:image/jpeg;base64,... 形式の Data URL
+  const dataUrl = canvas.toDataURL("image/jpeg");
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "あなたは視覚障害者向けに、周囲の状況を丁寧で優しい日本語で説明するアシスタントです。"},
-        { role: "user", content: [
-          { type: "text", text: "この画像に写っている光景を、視覚障害者向けに分かりやすく説明してください。"},
-          { type: "image_url", image_url: dataUrl }
-        ] }
-      ]
-    })
-  });
+  overlay.textContent = "解析中です。少しお待ちください…";
+  speak("周りの様子を解析します。少しお待ちください。");
 
-  const json = await response.json();
-  let text = json.choices?.[0]?.message?.content || "情報を取得できませんでした";
-  overlay.textContent = text;
-  speak(text);
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは視覚障害者向けに、周囲の状況を丁寧で優しい日本語で説明するアシスタントです。難しい言葉はできるだけ避けて、距離感や位置関係もわかりやすく伝えてください。"
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "この画像に写っている光景を、視覚障害者向けにわかりやすく説明してください。"
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  // ★ここが重要：オブジェクト形式で url を渡す
+                  url: dataUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 400
+      })
+    });
+
+    if (!response.ok) {
+      // ここで 400 の詳細をコンソールに出しておくと原因調査しやすい
+      const errorText = await response.text();
+      console.error("OpenAI API error:", response.status, errorText);
+
+      overlay.textContent = "情報を取得できませんでした。（エラー " + response.status + "）";
+      speak("情報を取得できませんでした。あとでもう一度試してください。");
+      return;
+    }
+
+    const json = await response.json();
+    const text =
+      (json.choices &&
+        json.choices[0] &&
+        json.choices[0].message &&
+        json.choices[0].message.content) ||
+      "情報を取得できませんでした。";
+
+    overlay.textContent = text;
+    speak(text);
+  } catch (e) {
+    console.error(e);
+    overlay.textContent = "通信エラーが発生しました。ネットワークを確認してください。";
+    speak("通信エラーが発生しました。ネットワーク環境を確認してください。");
+  }
 }
+
 
 function speak(text) {
   if (!speech) return;
