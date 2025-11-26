@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ZIP ⇄ 画像 コンバータ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --accent: #ffb347;
+    --accent-strong: #ff8c42;
+    --bg-gradient: radial-gradient(circle at top, #2a2a72, #000);
+    --card-bg: rgba(20, 20, 35, 0.85);
+    --border-color: rgba(255, 255, 255, 0.06);
+    --text-main: #fdfdfd;
+    --text-muted: #9ea5c7;
+    --danger: #ff4b6e;
+    --success: #53e88b;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .title-block h1 {
+    font-size: 1.7rem;
+    margin: 0;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .title-pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: linear-gradient(120deg, rgba(255,255,255,0.08), transparent);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .mode-toggle {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: rgba(5, 8, 25, 0.85);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+    backdrop-filter: blur(18px);
+  }
+
+  .mode-button {
+    position: relative;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 8px 14px 8px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: color 140ms ease-out, transform 120ms ease-out;
+  }
+
+  .mode-button span.icon {
+    font-size: 1rem;
+  }
+
+  .mode-button.active {
+    color: var(--text-main);
+  }
+
+  .mode-button.active::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.3), transparent 60%),
+                linear-gradient(135deg, var(--accent), var(--accent-strong));
+    z-index: -1;
+  }
+
+  .mode-button:not(.active):hover {
+    color: #e5e7ff;
+    transform: translateY(-1px);
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .content {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow:
+      0 24px 60px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(255,255,255,0.02) inset;
+    padding: 18px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-header-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.14);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .card-description {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .dropzone {
+    position: relative;
+    margin-top: 4px;
+    border-radius: 16px;
+    border: 1px dashed rgba(255,255,255,0.18);
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 60%),
+                rgba(10,15,35,0.9);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 140ms ease-out, background 140ms ease-out, transform 120ms ease-out;
+  }
+
+  .dropzone:hover {
+    border-color: rgba(255,255,255,0.36);
+    transform: translateY(-1px);
+  }
+
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: radial-gradient(circle at top left, rgba(255,180,71,0.28), transparent 60%),
+                rgba(10,15,35,0.95);
+  }
+
+  .dropzone-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: radial-gradient(circle at top, rgba(255,255,255,0.2), transparent 60%),
+                linear-gradient(135deg, #303858, #171b33);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+  }
+
+  .dropzone-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .dropzone-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .file-pill {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--accent);
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+
+  .card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn-main {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #19151a;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(0,0,0,0.6) inset;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 120ms ease-out;
+  }
+
+  .btn-main:disabled {
+    opacity: 0.5;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+    filter: grayscale(0.3);
+  }
+
+  .btn-main:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 18px 40px rgba(0,0,0,0.9),
+      0 0 0 1px rgba(0,0,0,0.5) inset;
+    filter: brightness(1.02);
+  }
+
+  .btn-secondary {
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-main);
+    border-color: rgba(255,255,255,0.24);
+  }
+
+  .status-row {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.18);
+  }
+
+  .status-dot.ok {
+    background: var(--success);
+  }
+
+  .status-dot.error {
+    background: var(--danger);
+  }
+
+  .status-text {
+    white-space: nowrap;
+  }
+
+  .preview-card {
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 60%),
+                rgba(10,15,30,0.9);
+    padding: 12px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .preview-header {
+    font-size: 0.82rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-muted);
+  }
+
+  .preview-img-wrapper {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #050713;
+    max-height: 320px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .preview-img-wrapper img {
+    max-width: 100%;
+    max-height: 320px;
+    display: block;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .meta-badge {
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .link-like {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  code.inline {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.35);
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <div class="title-block">
+      <div class="title-pill">EXPERIMENTAL TOOL</div>
+      <h1>ZIP ⇄ 画像 コンバータ</h1>
+      <p class="subtitle">
+        ZIPファイルを「=無しBase64 → ピクセル」にエンコードしてPNG画像化し、後から完全に元に戻すためのデモです。
+      </p>
+    </div>
+    <div class="mode-toggle" aria-label="Mode toggle">
+      <button class="mode-button active" data-mode="zip-to-img">
+        <span class="icon">📦</span>
+        ZIP → 画像
+      </button>
+      <button class="mode-button" data-mode="img-to-zip">
+        <span class="icon">🖼️</span>
+        画像 → ZIP
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- LEFT: Encoder / Decoder main panel -->
+    <section class="card" id="left-card">
+      <div class="card-header">
+        <div class="dropzone-icon" id="mode-icon">📦</div>
+        <div class="card-header-main">
+          <h2 class="card-title" id="mode-title">
+            ZIP → 画像への変換
+            <span class="chip"><span>1px = 4文字</span></span>
+          </h2>
+          <p class="card-description" id="mode-desc">
+            ZIPファイルを読み込み、Base64文字列をピクセルに格納したPNG画像を生成します。
+            最初の2ピクセルに「Base64長」と「=の数」を埋め込んでいます。
+          </p>
+        </div>
+      </div>
+
+      <label class="dropzone" id="dropzone-zip" for="zip-input">
+        <div class="dropzone-icon">⬆️</div>
+        <div class="dropzone-title" id="dropzone-title-zip">ZIPファイルをここにドラッグ＆ドロップ</div>
+        <div class="dropzone-sub">またはクリックしてファイルを選択</div>
+        <div class="file-pill" id="zip-file-name">選択されていません</div>
+        <input type="file" id="zip-input" accept=".zip,application/zip">
+      </label>
+
+      <label class="dropzone" id="dropzone-img" for="img-input" style="display:none;">
+        <div class="dropzone-icon">⬆️</div>
+        <div class="dropzone-title" id="dropzone-title-img">エンコード済み画像(PNG)をここにドラッグ＆ドロップ</div>
+        <div class="dropzone-sub">またはクリックして画像ファイルを選択</div>
+        <div class="file-pill" id="img-file-name">選択されていません</div>
+        <input type="file" id="img-input" accept="image/*">
+      </label>
+
+      <div class="card-footer">
+        <button class="btn-main" id="action-button">
+          <span id="action-icon">✨</span>
+          <span id="action-label">画像に変換してダウンロード</span>
+        </button>
+        <div class="status-row">
+          <div class="status-dot" id="status-dot"></div>
+          <span class="status-text" id="status-text">待機中</span>
+        </div>
+      </div>
+
+      <div class="preview-card">
+        <div class="preview-header">
+          <span id="preview-title">エンコード情報</span>
+          <button class="btn-secondary" id="toggle-info">
+            <span>仕様メモ</span> <span>📘</span>
+          </button>
+        </div>
+        <div id="info-block" style="font-size:0.78rem; color:var(--text-muted); line-height:1.6;">
+          <div>・Base64アルファベット: <code class="inline">A–Z a–z 0–9 + /</code></div>
+          <div>・<code class="inline">=</code> は末尾から削除 → 個数(0〜2)のみ別に保存</div>
+          <div>・1ピクセル目(R,G,B): Base64文字列長(24bit)</div>
+          <div>・2ピクセル目(R): <code class="inline">=</code> の個数</div>
+          <div>・3ピクセル目以降は、1pxあたり4文字を次のルールで格納:</div>
+          <div style="margin-left:10px;">
+            R%64 → 1文字目, G%64 → 2文字目, B%64 → 3文字目<br>
+            ⌊R/64⌋・4・4 + ⌊G/64⌋・4 + ⌊B/64⌋ → 4文字目
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Preview / Result -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-header-main">
+          <h2 class="card-title">
+            プレビュー / ダウンロード
+            <span class="chip">結果表示</span>
+          </h2>
+          <p class="card-description">
+            エンコード時は生成されたPNGのプレビュー、デコード時は復元されたZIPのダウンロードリンクを表示します。
+          </p>
+        </div>
+      </div>
+
+      <div class="preview-card" id="preview-encoder">
+        <div class="preview-header">
+          <span>画像プレビュー</span>
+          <span id="preview-meta-label" style="font-size:0.75rem; color:var(--text-muted);">まだ画像がありません</span>
+        </div>
+        <div class="preview-img-wrapper" id="preview-img-wrapper">
+          <span style="font-size:0.8rem; color:var(--text-muted);">
+            ここに生成された画像が表示されます
+          </span>
+        </div>
+        <div class="meta-row" id="encoder-meta-row" style="display:none;">
+          <span class="meta-badge" id="meta-size"></span>
+          <span class="meta-badge" id="meta-dim"></span>
+          <span class="meta-badge" id="meta-b64len"></span>
+        </div>
+      </div>
+
+      <div class="preview-card" id="preview-decoder" style="display:none;">
+        <div class="preview-header">
+          <span>ZIPダウンロード</span>
+          <span id="preview-zip-label" style="font-size:0.75rem; color:var(--text-muted);">まだ復元されていません</span>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.6;">
+          <div id="zip-download-area">
+            エンコード済み画像からZIPを復元すると、ここにダウンロードリンクが表示されます。
+          </div>
+          <div class="meta-row" id="decoder-meta-row" style="margin-top:8px; display:none;">
+            <span class="meta-badge" id="meta-zip-size"></span>
+            <span class="meta-badge" id="meta-b64len-dec"></span>
+            <span class="meta-badge" id="meta-padding"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<canvas id="work-canvas" style="display:none;"></canvas>
+
+<script>
+  // ===== Base64 ユーティリティ =====
+  const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  function bytesToBase64(bytes) {
+    let binary = "";
+    const len = bytes.length;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  function base64ToBytes(b64) {
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  // ===== DOM 参照 =====
+  const modeButtons = document.querySelectorAll(".mode-button");
+  const modeTitle = document.getElementById("mode-title");
+  const modeDesc = document.getElementById("mode-desc");
+  const modeIcon = document.getElementById("mode-icon");
+
+  const dropzoneZip = document.getElementById("dropzone-zip");
+  const dropzoneImg = document.getElementById("dropzone-img");
+  const zipInput = document.getElementById("zip-input");
+  const imgInput = document.getElementById("img-input");
+  const zipFileName = document.getElementById("zip-file-name");
+  const imgFileName = document.getElementById("img-file-name");
+
+  const actionButton = document.getElementById("action-button");
+  const actionIcon = document.getElementById("action-icon");
+  const actionLabel = document.getElementById("action-label");
+
+  const statusDot = document.getElementById("status-dot");
+  const statusText = document.getElementById("status-text");
+
+  const previewEncoder = document.getElementById("preview-encoder");
+  const previewDecoder = document.getElementById("preview-decoder");
+  const previewImgWrapper = document.getElementById("preview-img-wrapper");
+  const previewMetaLabel = document.getElementById("preview-meta-label");
+  const metaSize = document.getElementById("meta-size");
+  const metaDim = document.getElementById("meta-dim");
+  const metaB64Len = document.getElementById("meta-b64len");
+  const encoderMetaRow = document.getElementById("encoder-meta-row");
+
+  const zipDownloadArea = document.getElementById("zip-download-area");
+  const previewZipLabel = document.getElementById("preview-zip-label");
+  const metaZipSize = document.getElementById("meta-zip-size");
+  const metaB64LenDec = document.getElementById("meta-b64len-dec");
+  const metaPadding = document.getElementById("meta-padding");
+  const decoderMetaRow = document.getElementById("decoder-meta-row");
+
+  const infoBlock = document.getElementById("info-block");
+  const toggleInfo = document.getElementById("toggle-info");
+
+  const workCanvas = document.getElementById("work-canvas");
+  const ctx = workCanvas.getContext("2d");
+
+  let currentMode = "zip-to-img";
+  let selectedZipFile = null;
+  let selectedImgFile = null;
+
+  // ===== UI ヘルパ =====
+  function setStatus(text, type = "idle") {
+    statusText.textContent = text;
+    statusDot.classList.remove("ok", "error");
+    if (type === "ok") statusDot.classList.add("ok");
+    if (type === "error") statusDot.classList.add("error");
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const value = bytes / Math.pow(k, i);
+    return value.toFixed(value >= 10 ? 1 : 2) + " " + sizes[i];
+  }
+
+  // ===== モード切り替え =====
+  function updateModeUI() {
+    if (currentMode === "zip-to-img") {
+      modeIcon.textContent = "📦";
+      modeTitle.innerHTML = `
+        ZIP → 画像への変換
+        <span class="chip"><span>1px = 4文字</span></span>
+      `;
+      modeDesc.textContent =
+        "ZIPファイルを読み込み、Base64文字列をピクセルに格納したPNG画像を生成します。最初の2ピクセルに「Base64長」と「=の数」を埋め込んでいます。";
+
+      dropzoneZip.style.display = "";
+      dropzoneImg.style.display = "none";
+      previewEncoder.style.display = "";
+      previewDecoder.style.display = "none";
+
+      actionIcon.textContent = "✨";
+      actionLabel.textContent = "画像に変換してダウンロード";
+      setStatus("ZIPファイルを選択してください");
+    } else {
+      modeIcon.textContent = "🖼️";
+      modeTitle.innerHTML = `
+        画像 → ZIPへの復元
+        <span class="chip"><span>デコード</span></span>
+      `;
+      modeDesc.textContent =
+        "エンコード済みPNG画像からBase64文字列を復元し、ZIPファイルとしてダウンロードできるようにします。";
+
+      dropzoneZip.style.display = "none";
+      dropzoneImg.style.display = "";
+      previewEncoder.style.display = "none";
+      previewDecoder.style.display = "";
+
+      actionIcon.textContent = "🔁";
+      actionLabel.textContent = "ZIPに復元してダウンロード";
+      setStatus("エンコード済み画像を選択してください");
+    }
+  }
+
+  modeButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mode = btn.getAttribute("data-mode");
+      if (mode === currentMode) return;
+      currentMode = mode;
+      modeButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateModeUI();
+    });
+  });
+
+  updateModeUI();
+
+  // ===== dropzone 共通のドラッグイベント =====
+  function setupDropzone(dropzone, inputEl, onFileSelected) {
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropzone.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach(eventName => {
+      dropzone.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("dragover");
+      });
+    });
+    dropzone.addEventListener("drop", e => {
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        onFileSelected(files[0]);
+      }
+    });
+    inputEl.addEventListener("change", () => {
+      if (inputEl.files && inputEl.files[0]) {
+        onFileSelected(inputEl.files[0]);
+      }
+    });
+  }
+
+  // ===== ZIP → IMG ファイル選択 =====
+  setupDropzone(dropzoneZip, zipInput, file => {
+    selectedZipFile = file;
+    zipFileName.textContent = file.name + " (" + formatBytes(file.size) + ")";
+    setStatus("ZIPファイルを読み込み準備OK", "ok");
+  });
+
+  // ===== IMG → ZIP ファイル選択 =====
+  setupDropzone(dropzoneImg, imgInput, file => {
+    selectedImgFile = file;
+    imgFileName.textContent = file.name + " (" + formatBytes(file.size) + ")";
+    setStatus("画像ファイルを読み込み準備OK", "ok");
+  });
+
+  // ===== エンコード: ZIP → PNG =====
+  async function encodeZipToImage() {
+    if (!selectedZipFile) {
+      alert("先にZIPファイルを選択してください。");
+      return;
+    }
+    actionButton.disabled = true;
+    setStatus("ZIPを読み込み中…");
+
+    try {
+      const arrayBuffer = await selectedZipFile.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+
+      setStatus("Base64に変換中…");
+      let b64 = bytesToBase64(bytes);
+
+      // '=' を削除して個数を数える
+      let paddingCount = 0;
+      while (b64.endsWith("=")) {
+        b64 = b64.slice(0, -1);
+        paddingCount++;
+      }
+
+      const b64Length = b64.length;
+      if (b64Length > 0xFFFFFF) {
+        throw new Error("Base64長が 16,777,215 文字を超えています。このサンプルでは対応していません。");
+      }
+
+      // 必要なピクセル数の算出 (最初の2ピクセル + データピクセル)
+      const dataPixels = Math.ceil(b64Length / 4);
+      const totalPixels = 2 + dataPixels;
+
+      const width = Math.ceil(Math.sqrt(totalPixels));
+      const height = Math.ceil(totalPixels / width);
+
+      workCanvas.width = width;
+      workCanvas.height = height;
+
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+
+      // 1ピクセル目に Base64長 (24bit) を保存
+      // len = R<<16 | G<<8 | B
+      const len = b64Length;
+      data[0] = (len >> 16) & 0xFF; // R
+      data[1] = (len >> 8) & 0xFF;  // G
+      data[2] = len & 0xFF;         // B
+      data[3] = 255;                // A
+
+      // 2ピクセル目に paddingCount を保存 (R)、他は0
+      data[4] = paddingCount; // R
+      data[5] = 0;            // G
+      data[6] = 0;            // B
+      data[7] = 255;          // A
+
+      // 3ピクセル目以降: Base64文字列を4文字ずつピクセルに詰める
+      // インデックス: 2〜totalPixels-1
+      let charIndex = 0;
+      for (let p = 2; p < totalPixels; p++) {
+        const offset = p * 4;
+
+        const c1 = charIndex < b64Length ? B64_CHARS.indexOf(b64[charIndex++]) : 0;
+        const c2 = charIndex < b64Length ? B64_CHARS.indexOf(b64[charIndex++]) : 0;
+        const c3 = charIndex < b64Length ? B64_CHARS.indexOf(b64[charIndex++]) : 0;
+        const c4 = charIndex < b64Length ? B64_CHARS.indexOf(b64[charIndex++]) : 0;
+
+        if (c1 < 0 || c2 < 0 || c3 < 0 || c4 < 0) {
+          throw new Error("Base64文字の解析に失敗しました。");
+        }
+
+        // 逆変換:
+        // c4 = rL*16 + gL*4 + bL  (rL,gL,bL: 0〜3)
+        const rL = Math.floor(c4 / 16);
+        const gL = Math.floor((c4 % 16) / 4);
+        const bL = c4 % 4;
+
+        const R = rL * 64 + c1;
+        const G = gL * 64 + c2;
+        const B = bL * 64 + c3;
+
+        data[offset + 0] = R;
+        data[offset + 1] = G;
+        data[offset + 2] = B;
+        data[offset + 3] = 255;
+      }
+
+      // 残りの未使用ピクセルがあれば 0 で埋める
+      for (let p = totalPixels; p < width * height; p++) {
+        const offset = p * 4;
+        data[offset + 0] = 0;
+        data[offset + 1] = 0;
+        data[offset + 2] = 0;
+        data[offset + 3] = 255;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      setStatus("PNG画像を生成中…");
+      const dataURL = workCanvas.toDataURL("image/png");
+
+      // プレビュー更新
+      previewImgWrapper.innerHTML = "";
+      const img = new Image();
+      img.src = dataURL;
+      previewImgWrapper.appendChild(img);
+      previewMetaLabel.textContent = "生成された画像をプレビューしています";
+      encoderMetaRow.style.display = "flex";
+      metaSize.textContent = "ZIP: " + formatBytes(bytes.length);
+      metaDim.textContent = `画像サイズ: ${width}×${height}px`;
+      metaB64Len.textContent = `Base64長: ${b64Length}文字 (padding=${paddingCount})`;
+
+      // ダウンロードリンク生成
+      const link = document.createElement("a");
+      link.href = dataURL;
+      const baseName = selectedZipFile.name.replace(/\.zip$/i, "");
+      link.download = baseName + "_encoded.png";
+      link.click();
+
+      setStatus("画像の生成とダウンロードが完了しました。", "ok");
+    } catch (err) {
+      console.error(err);
+      alert("エンコード中にエラーが発生しました: " + err.message);
+      setStatus("エラー: " + err.message, "error");
+    } finally {
+      actionButton.disabled = false;
+    }
+  }
+
+  // ===== デコード: PNG → ZIP =====
+  async function decodeImageToZip() {
+    if (!selectedImgFile) {
+      alert("先にエンコード済み画像を選択してください。");
+      return;
+    }
+    actionButton.disabled = true;
+    setStatus("画像を読み込み中…");
+
+    try {
+      const img = new Image();
+      const objectURL = URL.createObjectURL(selectedImgFile);
+
+      const imgLoaded = new Promise((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = e => reject(new Error("画像の読み込みに失敗しました。"));
+      });
+      img.src = objectURL;
+      await imgLoaded;
+
+      workCanvas.width = img.width;
+      workCanvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+
+      // 1ピクセル目から Base64長 を復元
+      const R0 = data[0];
+      const G0 = data[1];
+      const B0 = data[2];
+      const len = (R0 << 16) | (G0 << 8) | B0;
+
+      // 2ピクセル目から paddingCount を復元
+      const paddingCount = data[4];
+
+      setStatus("Base64文字列を復元中…");
+      let charIndices = [];
+      const totalPixels = img.width * img.height;
+
+      for (let p = 2; p < totalPixels; p++) {
+        if (charIndices.length >= len) break;
+        const offset = p * 4;
+        const R = data[offset + 0];
+        const G = data[offset + 1];
+        const B = data[offset + 2];
+
+        const c1 = R % 64;
+        const c2 = G % 64;
+        const c3 = B % 64;
+
+        const rL = Math.floor(R / 64);
+        const gL = Math.floor(G / 64);
+        const bL = Math.floor(B / 64);
+        const c4 = rL * 16 + gL * 4 + bL;
+
+        charIndices.push(c1, c2, c3, c4);
+      }
+
+      // 必要な長さ分だけ Base64 文字列を組み立てる
+      if (charIndices.length < len) {
+        throw new Error("画像のピクセル数が不足しており、Base64長と矛盾しています。");
+      }
+
+      let b64 = "";
+      for (let i = 0; i < len; i++) {
+        const idx = charIndices[i];
+        if (idx < 0 || idx >= 64) {
+          throw new Error("Base64インデックスが範囲外です。");
+        }
+        b64 += B64_CHARS[idx];
+      }
+
+      // '=' を復元
+      b64 += "=".repeat(paddingCount);
+
+      setStatus("ZIPバイト列に復元中…");
+      const zipBytes = base64ToBytes(b64);
+
+      // ZIP Blob を生成してダウンロード
+      const zipBlob = new Blob([zipBytes], { type: "application/zip" });
+      const zipURL = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      const baseName = selectedImgFile.name.replace(/\.(png|jpg|jpeg|webp|bmp)$/i, "");
+      link.href = zipURL;
+      link.download = baseName + "_decoded.zip";
+      link.textContent = "復元されたZIPをダウンロード";
+
+      zipDownloadArea.innerHTML = "";
+      zipDownloadArea.appendChild(link);
+      previewZipLabel.textContent = "ZIPの復元に成功しました！";
+
+      decoderMetaRow.style.display = "flex";
+      metaZipSize.textContent = "ZIPサイズ: " + formatBytes(zipBytes.length);
+      metaB64LenDec.textContent = "Base64長: " + len + "文字";
+      metaPadding.textContent = "padding '=' の数: " + paddingCount;
+
+      setStatus("ZIPの復元とダウンロードリンクの作成が完了しました。", "ok");
+    } catch (err) {
+      console.error(err);
+      alert("デコード中にエラーが発生しました: " + err.message);
+      setStatus("エラー: " + err.message, "error");
+    } finally {
+      actionButton.disabled = false;
+    }
+  }
+
+  // ===== メインボタン =====
+  actionButton.addEventListener("click", () => {
+    if (currentMode === "zip-to-img") {
+      encodeZipToImage();
+    } else {
+      decodeImageToZip();
+    }
+  });
+
+  // ===== 仕様メモの開閉 =====
+  let infoOpen = true;
+  toggleInfo.addEventListener("click", () => {
+    infoOpen = !infoOpen;
+    infoBlock.style.display = infoOpen ? "block" : "none";
+    toggleInfo.innerHTML = infoOpen ? `<span>仕様メモ</span> <span>📘</span>` : `<span>仕様メモ</span> <span>📗</span>`;
+  });
+</script>
+</body>
+</html>
