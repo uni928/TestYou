@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ZIP ⇄ PNG8 (Indexed) バイナリエンコード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1b1c40, #050515);
+    color: #f6f7ff;
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 24px 12px;
+  }
+  .container {
+    width: 100%;
+    max-width: 980px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .container {
+      grid-template-columns: 1fr;
+    }
+  }
+  .panel {
+    background: rgba(10, 12, 30, 0.93);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.65);
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  h1 {
+    grid-column: 1 / -1;
+    margin: 0 0 10px;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .badge {
+    font-size: 0.7rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.28);
+    background: radial-gradient(circle at top, rgba(255,255,255,0.15), transparent 60%);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #c8cff8;
+  }
+  .title-sub {
+    grid-column: 1 / -1;
+    margin: 0 0 18px;
+    font-size: 0.85rem;
+    color: #9ca3d1;
+  }
+  .panel h2 {
+    margin: 0;
+    font-size: 1.0rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #a0a4c3;
+  }
+  .dropzone {
+    margin-top: 6px;
+    border-radius: 14px;
+    border: 1px dashed rgba(255,255,255,0.2);
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    background: radial-gradient(circle at top left, rgba(255,255,255,0.06), transparent 60%),
+                rgba(14,15,40,0.96);
+    transition: border-color 130ms ease-out, background 130ms ease-out, transform 120ms ease-out;
+  }
+  .dropzone:hover {
+    border-color: rgba(255,255,255,0.32);
+    transform: translateY(-1px);
+  }
+  .dropzone.dragover {
+    border-color: #ffb347;
+    background: radial-gradient(circle at top left, rgba(255,180,71,0.25), transparent 60%),
+                rgba(18,18,45,0.98);
+  }
+  input[type="file"] {
+    display:none;
+  }
+  .file-name {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: #ffb347;
+  }
+  .btn {
+    margin-top: 8px;
+    border: none;
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ffb347, #ff8c42);
+    color: #181010;
+    box-shadow:
+      0 12px 30px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(0,0,0,0.6) inset;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 120ms ease-out;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+    filter: grayscale(0.3);
+  }
+  .btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 15px 40px rgba(0,0,0,0.85),
+      0 0 0 1px rgba(0,0,0,0.55) inset;
+    filter: brightness(1.03);
+  }
+  .status {
+    font-size: 0.78rem;
+    color: #9ca3d1;
+    margin-top: 4px;
+  }
+  .status span {
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    margin-right:6px;
+    background:#555976;
+  }
+  .status.ok span { background:#53e88b; }
+  .status.err span { background:#ff4b6e; }
+  .result {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #c5c8ee;
+    word-break: break-all;
+  }
+  a.dl-link {
+    color:#ffb347;
+    text-decoration:none;
+    border-bottom:1px solid rgba(255,179,71,0.3);
+  }
+  a.dl-link:hover {
+    border-bottom-color:#ffb347;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      ZIP ⇄ PNG8 (Indexed) バイナリコンバータ
+      <span class="badge">PNG8 / INDEXED / NO ALPHA</span>
+    </h1>
+    <p class="title-sub">
+      Canvas を使わず、PNG8（インデックスカラー）を直接バイナリ生成・解析して ZIP と相互変換します。
+      1ピクセル = 1バイト（パレットインデックス）で完全可逆です。
+    </p>
+
+    <!-- LEFT: ZIP → PNG -->
+    <section class="panel">
+      <h2>ZIP → PNG8 にエンコード</h2>
+      <p>ZIPファイルを読み取り、そのバイト列を Indexed-color PNG のピクセル値として書き込みます。</p>
+      <label class="dropzone" id="zip-drop" for="zip-input">
+        ZIPファイルをドロップ / クリックして選択
+        <div class="file-name" id="zip-file-name">未選択</div>
+        <input type="file" id="zip-input" accept=".zip,application/zip">
+      </label>
+      <button class="btn" id="zip-to-png-btn">PNG8 に変換してダウンロード</button>
+      <div class="status" id="zip-status"><span></span><span id="zip-status-text">待機中</span></div>
+      <div class="result" id="zip-result"></div>
+    </section>
+
+    <!-- RIGHT: PNG → ZIP -->
+    <section class="panel">
+      <h2>PNG8 → ZIP にデコード</h2>
+      <p>上のエンコーダで生成した PNG8 を読み取り、中のバイト列を ZIP として復元します。</p>
+      <label class="dropzone" id="png-drop" for="png-input">
+        PNGファイルをドロップ / クリックして選択
+        <div class="file-name" id="png-file-name">未選択</div>
+        <input type="file" id="png-input" accept="image/png">
+      </label>
+      <button class="btn" id="png-to-zip-btn">ZIP に復元してダウンロード</button>
+      <div class="status" id="png-status"><span></span><span id="png-status-text">待機中</span></div>
+      <div class="result" id="png-result"></div>
+    </section>
+  </div>
+
+<script>
+// ===================== ユーティリティ =====================
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  return value.toFixed(value >= 10 ? 1 : 2) + " " + sizes[i];
+}
+
+function concatUint8Arrays(arrays) {
+  let total = 0;
+  for (const a of arrays) total += a.length;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) {
+    out.set(a, offset);
+    offset += a.length;
+  }
+  return out;
+}
+
+function writeUint32BE(value) {
+  return new Uint8Array([
+    (value >>> 24) & 0xFF,
+    (value >>> 16) & 0xFF,
+    (value >>>  8) & 0xFF,
+    (value >>>  0) & 0xFF
+  ]);
+}
+
+// crc32 生成
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) {
+      if (c & 1) {
+        c = 0xEDB88320 ^ (c >>> 1);
+      } else {
+        c = c >>> 1;
+      }
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function adler32(bytes) {
+  let s1 = 1;
+  let s2 = 0;
+  const MOD_ADLER = 65521;
+  for (let i = 0; i < bytes.length; i++) {
+    s1 = (s1 + bytes[i]) % MOD_ADLER;
+    s2 = (s2 + s1) % MOD_ADLER;
+  }
+  return ((s2 << 16) | s1) >>> 0;
+}
+
+// zlib + DEFLATE(非圧縮ブロック) でエンコード
+function zlibDeflateNoCompression(data) {
+  const chunks = [];
+  // zlib header: 0x78 0x01 (deflate, 32K window, no compression)
+  chunks.push(new Uint8Array([0x78, 0x01]));
+
+  let pos = 0;
+  const maxBlockSize = 65535;
+  const len = data.length;
+
+  while (pos < len) {
+    const blockLen = Math.min(maxBlockSize, len - pos);
+    const isFinal = (pos + blockLen === len) ? 1 : 0;
+
+    // BFINAL(1bit) + BTYPE=00(2bit) → 1 or 0
+    const headerByte = isFinal ? 0x01 : 0x00;
+    const block = new Uint8Array(5 + blockLen);
+    block[0] = headerByte;
+
+    // LEN, NLEN (little-endian)
+    block[1] = blockLen & 0xFF;
+    block[2] = (blockLen >>> 8) & 0xFF;
+    const nlen = (~blockLen) & 0xFFFF;
+    block[3] = nlen & 0xFF;
+    block[4] = (nlen >>> 8) & 0xFF;
+
+    // 非圧縮データ
+    block.set(data.subarray(pos, pos + blockLen), 5);
+    chunks.push(block);
+
+    pos += blockLen;
+  }
+
+  const ad = adler32(data);
+  const adBytes = writeUint32BE(ad);
+  chunks.push(adBytes);
+
+  return concatUint8Arrays(chunks);
+}
+
+// zlib(非圧縮のみ) を伸長
+function zlibInflateNoCompression(zData) {
+  if (zData.length < 6) {
+    throw new Error("zlibデータが短すぎます。");
+  }
+  let pos = 0;
+  const cmf = zData[pos++];
+  const flg = zData[pos++];
+  // 軽いチェック: 圧縮方式(下位4bit)が8(deflate)かどうか
+  const cm = cmf & 0x0F;
+  if (cm !== 8) {
+    throw new Error("非対応の圧縮方式です (CM=" + cm + ")");
+  }
+  // FLGチェックは省略（CMF*256+FLG % 31 など）
+
+  const out = [];
+  const dataEnd = zData.length - 4; // Adler32 を除いた位置まで
+
+  while (pos < dataEnd) {
+    const header = zData[pos++];
+    const bfinal = header & 0x01;
+    const btype  = (header >>> 1) & 0x03;
+
+    if (btype !== 0) {
+      throw new Error("非圧縮以外のブロックはサポートしていません。");
+    }
+
+    if (pos + 4 > dataEnd) {
+      throw new Error("不正なブロックヘッダです。");
+    }
+    const len = zData[pos] | (zData[pos+1] << 8);
+    const nlen = zData[pos+2] | (zData[pos+3] << 8);
+    pos += 4;
+    if (((len ^ nlen) & 0xFFFF) !== 0xFFFF) {
+      throw new Error("LEN/NLEN が不正です。");
+    }
+    if (pos + len > dataEnd) {
+      throw new Error("ブロック長が zlib データ範囲を超えています。");
+    }
+    out.push(zData.subarray(pos, pos + len));
+    pos += len;
+
+    if (bfinal) break;
+  }
+
+  // Adler32 はここでは検証せずに無視
+  return concatUint8Arrays(out);
+}
+
+// ===================== PNG8 (Indexed) エンコード =====================
+function encodeBytesToPngIndexed(payload) {
+  const dataLen = payload.length >>> 0;
+  const headerBytes = 4; // length を4byteで持つ
+
+  const totalPixels = headerBytes + dataLen;
+  const width  = Math.ceil(Math.sqrt(totalPixels));
+  const height = Math.ceil(totalPixels / width);
+
+  const rawScanlines = new Uint8Array(height * (1 + width));
+
+  // 各行: [filter=0, pixel0, pixel1, ...]
+  let pixelIndex = 0;
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * (1 + width);
+    rawScanlines[rowStart] = 0; // filter type 0
+    const pxBase = rowStart + 1;
+    for (let x = 0; x < width; x++) {
+      const p = pixelIndex++;
+      let v = 0;
+      if (p === 0) {
+        v = (dataLen >>> 24) & 0xFF;
+      } else if (p === 1) {
+        v = (dataLen >>> 16) & 0xFF;
+      } else if (p === 2) {
+        v = (dataLen >>> 8) & 0xFF;
+      } else if (p === 3) {
+        v = dataLen & 0xFF;
+      } else {
+        const idx = p - headerBytes;
+        if (idx < dataLen) {
+          v = payload[idx];
+        } else {
+          v = 0;
+        }
+      }
+      rawScanlines[pxBase + x] = v;
+    }
+  }
+
+  const ihdrData = new Uint8Array(13);
+  ihdrData.set(writeUint32BE(width), 0);
+  ihdrData.set(writeUint32BE(height), 4);
+  ihdrData[8] = 8; // bit depth
+  ihdrData[9] = 3; // color type = 3 (indexed)
+  ihdrData[10] = 0; // compression
+  ihdrData[11] = 0; // filter
+  ihdrData[12] = 0; // interlace
+
+  // パレット: 256色グレースケール
+  const plteData = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    plteData[i*3 + 0] = i;
+    plteData[i*3 + 1] = i;
+    plteData[i*3 + 2] = i;
+  }
+
+  const idatData = zlibDeflateNoCompression(rawScanlines);
+
+  // チャンク生成
+  function makeChunk(typeStr, data) {
+    const typeBytes = new TextEncoder().encode(typeStr);
+    const lenBytes = writeUint32BE(data.length);
+    const crcInput = concatUint8Arrays([typeBytes, data]);
+    const crc = crc32(crcInput);
+    const crcBytes = writeUint32BE(crc);
+    return concatUint8Arrays([lenBytes, typeBytes, data, crcBytes]);
+  }
+
+  const signature = new Uint8Array([137,80,78,71,13,10,26,10]); // PNG signature
+  const ihdr = makeChunk("IHDR", ihdrData);
+  const plte = makeChunk("PLTE", plteData);
+  const idat = makeChunk("IDAT", idatData);
+  const iend = makeChunk("IEND", new Uint8Array(0));
+
+  return concatUint8Arrays([signature, ihdr, plte, idat, iend]);
+}
+
+// ===================== PNG8 (Indexed) デコード =====================
+// ===================== PNG8 (Indexed) デコード（修正版） =====================
+function decodePngIndexedToBytes(pngBytes) {
+  // --- シグネチャ確認 ---
+  if (pngBytes.length < 8) {
+    throw new Error("PNGが短すぎます。");
+  }
+  const sig = pngBytes.subarray(0, 8);
+  const expected = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (sig[i] !== expected[i]) {
+      throw new Error("PNGシグネチャが不正です。");
+    }
+  }
+
+  let pos = 8;
+  let width = 0, height = 0;
+  let bitDepth = -1, colorType = -1;
+  const idatChunks = [];
+
+  // --- チャンクパース ---
+  while (pos + 8 <= pngBytes.length) {
+    // 長さ（32bit BE）
+    const length =
+      (pngBytes[pos] << 24) |
+      (pngBytes[pos + 1] << 16) |
+      (pngBytes[pos + 2] << 8) |
+      (pngBytes[pos + 3]);
+    pos += 4;
+
+    const type =
+      String.fromCharCode(
+        pngBytes[pos],
+        pngBytes[pos + 1],
+        pngBytes[pos + 2],
+        pngBytes[pos + 3]
+      );
+    pos += 4;
+
+    if (pos + length + 4 > pngBytes.length) {
+      throw new Error("PNGチャンク長が不正です。");
+    }
+
+    const data = pngBytes.subarray(pos, pos + length);
+    pos += length;
+
+    // CRC はここではチェックだけ読み飛ばす
+    pos += 4;
+
+    if (type === "IHDR") {
+      width =
+        (data[0] << 24) |
+        (data[1] << 16) |
+        (data[2] << 8) |
+        (data[3]);
+      height =
+        (data[4] << 24) |
+        (data[5] << 16) |
+        (data[6] << 8) |
+        (data[7]);
+
+      // JS のビット演算は符号付き32bitなので、>>>0で符号なしに補正
+      width = width >>> 0;
+      height = height >>> 0;
+
+      bitDepth = data[8];
+      colorType = data[9];
+
+      if (bitDepth !== 8 || colorType !== 3) {
+        throw new Error("このデコーダは bitDepth=8, colorType=3(Palette) のみ対応です。");
+      }
+    } else if (type === "IDAT") {
+      idatChunks.push(data);
+    } else if (type === "IEND") {
+      break;
+    }
+  }
+
+  if (!width || !height) {
+    throw new Error("IHDRが見つからないか、幅/高さが不正です。");
+  }
+  if (idatChunks.length === 0) {
+    throw new Error("IDATチャンクが見つかりません。");
+  }
+
+  // --- IDAT を結合して zlib(非圧縮)を展開 ---
+  const idatData = concatUint8Arrays(idatChunks);
+  const inflated = zlibInflateNoCompression(idatData);
+
+  const stride = 1 + width; // 各行: [filter(1byte) + pixels(width個)]
+
+  if (inflated.length !== stride * height) {
+    throw new Error(
+      "伸長結果のサイズが幅/高さと一致しません。inflated=" +
+        inflated.length +
+        ", expected=" +
+        (stride * height)
+    );
+  }
+
+  // --- フィルタ付きスキャンライン → ピクセル配列に変換 ---
+  const pixels = new Uint8Array(width * height);
+  let pIndex = 0;
+
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * stride;
+    const filterType = inflated[rowStart];
+    if (filterType !== 0) {
+      // encode 側が常にフィルタ0を使っている前提
+      throw new Error("未対応のフィルタタイプです (filterType=" + filterType + ")");
+    }
+    const pxBase = rowStart + 1;
+    for (let x = 0; x < width; x++) {
+      pixels[pIndex++] = inflated[pxBase + x];
+    }
+  }
+
+  // --- 先頭4ピクセルの値から埋め込まれた長さを復元 ---
+  if (pixels.length < 4) {
+    throw new Error("ヘッダを格納するピクセルが不足しています。");
+  }
+  let len =
+    (pixels[0] << 24) |
+    (pixels[1] << 16) |
+    (pixels[2] << 8) |
+    (pixels[3]);
+
+  // ここも >>>0 で符号なし32bitに補正
+  len = len >>> 0;
+
+  const headerBytes = 4;
+  const capacity = pixels.length - headerBytes;
+
+  if (len > capacity) {
+    throw new Error(
+      "埋め込まれた長さ情報が不正です (len=" + len + " / capacity=" + capacity + ")"
+    );
+  }
+
+  // --- 実データ部を取り出す ---
+  const out = new Uint8Array(len);
+  out.set(pixels.subarray(headerBytes, headerBytes + len));
+  return out;
+}
+
+
+// ===================== UI ロジック =====================
+const zipInput = document.getElementById("zip-input");
+const pngInput = document.getElementById("png-input");
+const zipDrop  = document.getElementById("zip-drop");
+const pngDrop  = document.getElementById("png-drop");
+const zipFileName = document.getElementById("zip-file-name");
+const pngFileName = document.getElementById("png-file-name");
+const zipBtn = document.getElementById("zip-to-png-btn");
+const pngBtn = document.getElementById("png-to-zip-btn");
+const zipStatus = document.getElementById("zip-status");
+const pngStatus = document.getElementById("png-status");
+const zipStatusText = document.getElementById("zip-status-text");
+const pngStatusText = document.getElementById("png-status-text");
+const zipResult = document.getElementById("zip-result");
+const pngResult = document.getElementById("png-result");
+
+let selectedZipFile = null;
+let selectedPngFile = null;
+
+function setStatus(el, text, type) {
+  const spanDot = el.querySelector("span");
+  const spanText = el.querySelector("#" + el.id + "-text") || el.querySelector("span + span");
+  spanText.textContent = text;
+  el.classList.remove("ok","err");
+  if (type === "ok") el.classList.add("ok");
+  if (type === "err") el.classList.add("err");
+}
+
+// ドロップゾーン共通
+function setupDropzone(drop, input, onFile) {
+  ["dragenter","dragover"].forEach(ev => {
+    drop.addEventListener(ev, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.classList.add("dragover");
+    });
+  });
+  ["dragleave","drop"].forEach(ev => {
+    drop.addEventListener(ev, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.classList.remove("dragover");
+    });
+  });
+  drop.addEventListener("drop", e => {
+    const files = e.dataTransfer.files;
+    if (files && files[0]) onFile(files[0]);
+  });
+  input.addEventListener("change", () => {
+    if (input.files && input.files[0]) onFile(input.files[0]);
+  });
+}
+
+setupDropzone(zipDrop, zipInput, file => {
+  selectedZipFile = file;
+  zipFileName.textContent = file.name + " (" + formatBytes(file.size) + ")";
+  setStatus(zipStatus, "ZIPファイルを読み込み準備OK", "ok");
+});
+
+setupDropzone(pngDrop, pngInput, file => {
+  selectedPngFile = file;
+  pngFileName.textContent = file.name + " (" + formatBytes(file.size) + ")";
+  setStatus(pngStatus, "PNGファイルを読み込み準備OK", "ok");
+});
+
+// ZIP → PNG
+zipBtn.addEventListener("click", async () => {
+  if (!selectedZipFile) {
+    alert("先にZIPファイルを選択してください。");
+    return;
+  }
+  zipBtn.disabled = true;
+  setStatus(zipStatus, "ZIPを読み込み中…", null);
+  zipResult.textContent = "";
+
+  try {
+    const buf = await selectedZipFile.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const pngBytes = encodeBytesToPngIndexed(bytes);
+
+    const blob = new Blob([pngBytes], { type: "image/png" });
+    const url = URL.createObjectURL(blob);
+    const baseName = selectedZipFile.name.replace(/\.zip$/i, "");
+    const fileName = baseName + "_indexed.png";
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+
+    zipResult.innerHTML =
+      `生成PNGサイズ: ${formatBytes(pngBytes.length)}<br>`+
+      `<a class="dl-link" href="${url}" download="${fileName}">${fileName}</a> を保存しました。`;
+    setStatus(zipStatus, "PNG8へのエンコード完了", "ok");
+  } catch (e) {
+    console.error(e);
+    alert("エンコード中にエラーが発生しました: " + e.message);
+    setStatus(zipStatus, "エラー: " + e.message, "err");
+  } finally {
+    zipBtn.disabled = false;
+  }
+});
+
+// PNG → ZIP
+pngBtn.addEventListener("click", async () => {
+  if (!selectedPngFile) {
+    alert("先にPNGファイルを選択してください。");
+    return;
+  }
+  pngBtn.disabled = true;
+  setStatus(pngStatus, "PNGを読み込み中…", null);
+  pngResult.textContent = "";
+
+  try {
+    const buf = await selectedPngFile.arrayBuffer();
+    const pngBytes = new Uint8Array(buf);
+    const zipBytes = decodePngIndexedToBytes(pngBytes);
+
+    const blob = new Blob([zipBytes], { type: "application/zip" });
+    const url = URL.createObjectURL(blob);
+    const baseName = selectedPngFile.name.replace(/\.png$/i, "");
+    const fileName = baseName + "_decoded.zip";
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+
+    pngResult.innerHTML =
+      `復元ZIPサイズ: ${formatBytes(zipBytes.length)}<br>`+
+      `<a class="dl-link" href="${url}" download="${fileName}">${fileName}</a> を保存しました。`;
+    setStatus(pngStatus, "ZIPの復元完了", "ok");
+  } catch (e) {
+    console.error(e);
+    alert("デコード中にエラーが発生しました: " + e.message);
+    setStatus(pngStatus, "エラー: " + e.message, "err");
+  } finally {
+    pngBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
