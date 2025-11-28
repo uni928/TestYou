@@ -295,6 +295,11 @@
       askBtn.className = 'btn-ask';
       askBtn.textContent = '聞く';
 
+     const tempBtn = document.createElement('button');
+     tempBtn.className = 'btn-ask';
+     tempBtn.style.background = '#0ea5e9';
+     tempBtn.textContent = '一時チャットで開く';
+
       askBtn.addEventListener('click', () => {
   let query = textarea.value.trim();
   if (!query) {
@@ -316,6 +321,30 @@
   window.open(url, '_blank');
 });
 
+     // 一時チャット版
+     tempBtn.addEventListener('click', () => {
+       let query = textarea.value.trim();
+       if (!query) {
+         alert('質問内容が空です。テキストを入力してください。');
+         return;
+       }
+
+       const rep = document.getElementById('replaceInput').value.trim();
+       if (rep) {
+         query = query
+           .replace(/ここに文章を貼ってください/g, rep)
+           .replace(/ここに文章を貼って下さい/g, rep);
+       }
+
+       // 一時チャット用クエリ（temporary-chat=true を付与）
+       const url =
+         'https://chatgpt.com/?q=' +
+         encodeURIComponent(query) +
+         '&temporary-chat=true';
+
+       window.open(url, '_blank');
+     });
+
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn-delete';
       deleteBtn.textContent = '削除';
@@ -329,6 +358,7 @@
       });
 
       footer.appendChild(askBtn);
+     footer.appendChild(tempBtn);
       footer.appendChild(deleteBtn);
 
       wrapper.appendChild(header);
