@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Uni928_ パスワード生成マネージャー</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    :root {
+        --bg-gradient: radial-gradient(circle at top left, #1f2937, #020617);
+        --card-bg: rgba(15,23,42,0.92);
+        --accent: #38bdf8;
+        --accent-soft: rgba(56,189,248,0.2);
+        --accent-strong: #0ea5e9;
+        --danger: #f97373;
+        --danger-soft: rgba(248,113,113,0.1);
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --border-subtle: rgba(148,163,184,0.35);
+        --radius-lg: 18px;
+        --radius-pill: 999px;
+        --shadow-strong: 0 20px 45px rgba(15,23,42,0.8);
+        --shadow-soft: 0 12px 30px rgba(15,23,42,0.6);
+        --transition-fast: 160ms ease-out;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg-gradient);
+        color: var(--text-main);
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 1120px;
+        margin: auto;
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.16), transparent 55%),
+                    radial-gradient(circle at bottom right, rgba(129,140,248,0.2), transparent 55%),
+                    linear-gradient(135deg, rgba(15,23,42,0.85), rgba(15,23,42,0.95));
+        border-radius: 28px;
+        box-shadow: var(--shadow-strong);
+        border: 1px solid rgba(148,163,184,0.4);
+        padding: 20px 22px 18px;
+        backdrop-filter: blur(20px) saturate(130%);
+    }
+
+    .app-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .title-block {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .app-title {
+        font-size: 1.3rem;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .app-title span.logo-pill {
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: var(--radius-pill);
+        background: radial-gradient(circle at 0 0, rgba(56,189,248,0.3), transparent 60%),
+                    rgba(15,23,42,0.9);
+        border: 1px solid rgba(56,189,248,0.7);
+        text-transform: uppercase;
+        color: #e0f2fe;
+    }
+
+    .app-subtitle {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .app-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .primary-btn, .ghost-btn, .pill-btn {
+        border-radius: var(--radius-pill);
+        border: 1px solid transparent;
+        padding: 7px 14px;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        background: transparent;
+        color: var(--text-main);
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+        white-space: nowrap;
+    }
+
+    .primary-btn {
+        background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
+        color: #0b1220;
+        font-weight: 600;
+        padding-inline: 18px;
+        box-shadow: var(--shadow-soft);
+        border-radius: 999px;
+    }
+    .primary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 35px rgba(8,47,73,0.9);
+        filter: brightness(1.05);
+    }
+    .primary-btn:active {
+        transform: translateY(0);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .pill-btn {
+        border-color: rgba(148,163,184,0.6);
+        background: linear-gradient(135deg, rgba(15,23,42,0.7), rgba(15,23,42,0.95));
+        color: var(--text-muted);
+    }
+    .pill-btn:hover {
+        border-color: rgba(148,163,184,0.9);
+        color: var(--text-main);
+        background: linear-gradient(135deg, rgba(30,64,175,0.7), rgba(15,23,42,0.95));
+        transform: translateY(-1px);
+    }
+
+    .ghost-btn {
+        border-color: rgba(148,163,184,0.35);
+        color: var(--text-muted);
+        padding-inline: 10px;
+    }
+    .ghost-btn:hover {
+        border-color: rgba(148,163,184,0.8);
+        color: var(--text-main);
+        background: rgba(15,23,42,0.9);
+    }
+
+    .icon {
+        font-size: 1rem;
+    }
+
+    .app-main {
+        display: grid;
+        grid-template-columns: minmax(0,2.5fr) minmax(0,1.3fr);
+        gap: 16px;
+        margin-top: 4px;
+    }
+
+    @media (max-width: 900px) {
+        .app-main {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 22px;
+        padding: 16px 15px 14px;
+        border: 1px solid rgba(51,65,85,0.9);
+        box-shadow: var(--shadow-soft);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(56,189,248,0.08), transparent 60%);
+        pointer-events: none;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .card-title {
+        font-size: 0.96rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-title-tag {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(56,189,248,0.7);
+        color: #bae6fd;
+        background: rgba(8,47,73,0.6);
+    }
+
+    .card-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .hint-line {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .badge-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        color: #6ee7b7;
+    }
+    .badge-live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34,197,94,0.3);
+    }
+
+    .scroll-area {
+        max-height: 460px;
+        overflow: auto;
+        padding-right: 6px;
+        margin-right: -4px;
+    }
+
+    .scroll-area::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scroll-area::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .scroll-area::-webkit-scrollbar-thumb {
+        background: rgba(148,163,184,0.55);
+        border-radius: 999px;
+    }
+
+    .entry-row {
+        border-radius: 14px;
+        border: 1px solid var(--border-subtle);
+        padding: 8px 9px 7px;
+        margin-bottom: 8px;
+        background: radial-gradient(circle at top left, rgba(30,64,175,0.4), rgba(15,23,42,0.95));
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 3fr);
+        grid-template-rows: auto auto;
+        gap: 6px 8px;
+        position: relative;
+    }
+
+    .entry-row:nth-child(odd) {
+        background: radial-gradient(circle at top left, rgba(14,165,233,0.32), rgba(15,23,42,0.96));
+    }
+
+    .entry-row::after {
+        content: attr(data-label);
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        font-size: 0.7rem;
+        color: rgba(148,163,184,0.85);
+    }
+
+    @media (max-width: 600px) {
+        .entry-row {
+            grid-template-columns: minmax(0,1fr);
+        }
+        .entry-row::after {
+            display: none;
+        }
+    }
+
+    .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .field-label {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .tiny-pill {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(148,163,184,0.7);
+        color: rgba(226,232,240,0.95);
+        background: rgba(30,64,175,0.8);
+    }
+
+    .field-input {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid rgba(30,64,175,0.75);
+        background: rgba(15,23,42,0.9);
+        padding: 7px 9px;
+        font-size: 0.8rem;
+        color: var(--text-main);
+        outline: none;
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    }
+    .field-input::placeholder {
+        color: rgba(148,163,184,0.65);
+    }
+    .field-input:focus {
+        border-color: var(--accent-strong);
+        box-shadow: 0 0 0 1px rgba(56,189,248,0.6);
+        background: rgba(15,23,42,0.98);
+    }
+
+    .password-field {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .password-display {
+        flex: 1;
+        font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        padding: 7px 9px;
+        border-radius: 10px;
+        border: 1px solid rgba(30,64,175,0.75);
+        background: rgba(15,23,42,0.9);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .entry-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .entry-btn {
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(148,163,184,0.6);
+        background: rgba(15,23,42,0.96);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding: 4px 9px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
+    }
+
+    .entry-btn:hover {
+        background: rgba(30,64,175,0.9);
+        border-color: rgba(148,163,184,1);
+        color: var(--text-main);
+        transform: translateY(-1px);
+    }
+
+    .entry-btn.danger {
+        border-color: rgba(248,113,113,0.8);
+        color: #fecaca;
+        background: rgba(127,29,29,0.85);
+    }
+    .entry-btn.danger:hover {
+        background: rgba(220,38,38,0.95);
+        border-color: rgba(248,113,113,1);
+        color: #fef2f2;
+    }
+
+    .entry-btn.icon-only {
+        padding-inline: 6px;
+        width: 28px;
+        justify-content: center;
+    }
+
+    .badge-small {
+        font-size: 0.68rem;
+        padding: 1px 8px;
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(148,163,184,0.6);
+        color: rgba(226,232,240,0.9);
+    }
+
+    .backup-card-note {
+        background: linear-gradient(135deg, rgba(2,6,23,0.95), rgba(15,23,42,0.98));
+        border-radius: 16px;
+        padding: 10px 11px;
+        border: 1px dashed rgba(148,163,184,0.7);
+        margin-bottom: 8px;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .backup-card-note strong {
+        color: #e5e7eb;
+    }
+
+    .backup-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .backup-textarea {
+        width: 100%;
+        min-height: 140px;
+        border-radius: 12px;
+        border: 1px solid rgba(31,41,55,0.9);
+        background: rgba(15,23,42,0.98);
+        padding: 8px 9px;
+        font-size: 0.78rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: var(--text-main);
+        resize: vertical;
+        outline: none;
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .backup-textarea:focus {
+        border-color: var(--accent-strong);
+        box-shadow: 0 0 0 1px rgba(56,189,248,0.5);
+    }
+
+    .file-input-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: var(--radius-pill);
+        border: 1px dashed rgba(148,163,184,0.7);
+        padding: 5px 11px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        background: rgba(15,23,42,0.95);
+        transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+    }
+    .file-input-label:hover {
+        border-color: rgba(248,250,252,0.8);
+        color: var(--text-main);
+        background: rgba(30,64,175,0.9);
+        transform: translateY(-1px);
+    }
+    .file-input-label input {
+        display: none;
+    }
+
+    .status-bar {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        margin-top: 6px;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(148,163,184,0.6);
+        background: rgba(15,23,42,0.96);
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(52,211,153,1);
+        box-shadow: 0 0 0 3px rgba(52,211,153,0.4);
+    }
+
+    .status-dot.saving {
+        background: rgba(250,204,21,1);
+        box-shadow: 0 0 0 3px rgba(250,204,21,0.4);
+    }
+
+    .status-dot.error {
+        background: rgba(248,113,113,1);
+        box-shadow: 0 0 0 3px rgba(248,113,113,0.4);
+    }
+
+    .counter-pill {
+        padding: 2px 8px;
+        border-radius: var(--radius-pill);
+        border: 1px solid rgba(148,163,184,0.5);
+        font-size: 0.7rem;
+    }
+
+    .muted {
+        opacity: 0.7;
+    }
+</style>
+</head>
+<body>
+<div class="app-shell">
+    <header class="app-header">
+        <div class="title-block">
+            <div class="app-title">
+                <span>Uni928_ パスワード生成マネージャー</span>
+                <span class="logo-pill">Secure Vault</span>
+            </div>
+            <div class="app-subtitle">
+                1クリックで <strong>Uni928_ + 英数字25文字</strong> を生成。  
+                IndexedDB にリアルタイム保存され、ブラウザ再起動後も続きから再開できます。
+            </div>
+        </div>
+        <div class="app-actions">
+            <button id="generateBtn" class="primary-btn">
+                <span class="icon">✨</span>
+                <span>新しいパスワードを生成</span>
+            </button>
+            <button id="clearAllBtn" class="pill-btn">
+                <span class="icon">🧹</span>
+                <span>すべて削除</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- 左：リスト -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">
+                        <span>パスワード一覧</span>
+                        <span class="card-title-tag">リアルタイム保存</span>
+                    </div>
+                    <div class="card-subtitle">
+                        タイトル / URL / 自動生成パスワード・コピー / 並べ替えをまとめて管理。
+                    </div>
+                </div>
+                <div class="badge-live">
+                    <span class="badge-live-dot"></span>
+                    <span>IndexedDB</span>
+                </div>
+            </div>
+            <p class="hint-line">
+                ヒント：よく使うログイン順に <strong>▲▼</strong> で並べ替えておくと便利です。
+            </p>
+            <div id="entryList" class="scroll-area"></div>
+            <div class="status-bar">
+                <div class="status-pill">
+                    <span id="saveStatusDot" class="status-dot"></span>
+                    <span id="saveStatusText">すべて保存済み</span>
+                </div>
+                <div>
+                    <span id="countBadge" class="counter-pill">登録件数: 0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右：バックアップ（エクスポート / インポート） -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">
+                        <span>バックアップ &amp; 復元</span>
+                        <span class="card-title-tag">Export / Import</span>
+                    </div>
+                    <div class="card-subtitle">
+                        キャッシュクリア時に備えて、状態を安全な場所に保存できます。
+                    </div>
+                </div>
+            </div>
+
+            <div class="backup-card-note">
+                <strong>推奨:</strong> 新しいパスワードを登録するたびにエクスポートして、  
+                オフライン環境（暗号化ストレージや別端末など）にバックアップしておくことをおすすめします。
+            </div>
+
+            <div class="backup-buttons">
+                <button id="exportBtn" class="pill-btn">
+                    <span class="icon">📤</span>
+                    <span>エクスポート（JSONをダウンロード）</span>
+                </button>
+                <button id="copyExportBtn" class="ghost-btn">
+                    <span class="icon">📋</span>
+                    <span>JSONをコピー</span>
+                </button>
+                <label class="file-input-label">
+                    <span class="icon">📥</span>
+                    <span>ファイルからインポート</span>
+                    <input id="importFileInput" type="file" accept=".json,application/json">
+                </label>
+                <button id="importFromTextBtn" class="ghost-btn">
+                    <span class="icon">🔄</span>
+                    <span>下のエリアからインポート</span>
+                </button>
+            </div>
+
+            <textarea id="backupText" class="backup-textarea"
+                      placeholder="ここにエクスポートされたJSONが表示されます。&#10;他の場所に保存しておき、復元したいときはJSONを貼り付けて「下のエリアからインポート」を押してください。"></textarea>
+
+            <div class="status-bar">
+                <span class="muted">※ JSON には「新しいパスワード登録のたびにエクスポート推奨」という説明文も含まれます。</span>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+(function() {
+    "use strict";
+
+    // ==============================
+    // 設定
+    // ==============================
+    const DB_NAME = "Uni928PasswordDB";
+    const DB_VERSION = 1;
+    const STORE_NAME = "state";
+    const STATE_KEY = "main";
+
+    const PREFIX = "Uni928_";
+    const RANDOM_LENGTH = 25;
+    const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    // ==============================
+    // DOM 要素
+    // ==============================
+    const entryListEl = document.getElementById("entryList");
+    const generateBtn = document.getElementById("generateBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const copyExportBtn = document.getElementById("copyExportBtn");
+    const importFileInput = document.getElementById("importFileInput");
+    const importFromTextBtn = document.getElementById("importFromTextBtn");
+    const backupText = document.getElementById("backupText");
+    const saveStatusDot = document.getElementById("saveStatusDot");
+    const saveStatusText = document.getElementById("saveStatusText");
+    const countBadge = document.getElementById("countBadge");
+
+    // ==============================
+    // 状態
+    // ==============================
+    let db = null;
+    let items = [];
+    let saveTimer = null;
+    let isSaving = false;
+
+    // ==============================
+    // IndexedDB 初期化
+    // ==============================
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            if (db) {
+                return resolve(db);
+            }
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onupgradeneeded = function(e) {
+                const database = e.target.result;
+                if (!database.objectStoreNames.contains(STORE_NAME)) {
+                    const store = database.createObjectStore(STORE_NAME);
+                    // keyPath をあえて持たせず、STATE_KEY 固定で保存するシンプル構成
+                    store.put(null, STATE_KEY);
+                }
+            };
+
+            request.onsuccess = function(e) {
+                db = e.target.result;
+                resolve(db);
+            };
+
+            request.onerror = function(e) {
+                console.error("IndexedDB open error:", e.target.error);
+                reject(e.target.error);
+            };
+        });
+    }
+
+    function loadState() {
+        return openDB().then(database => {
+            return new Promise((resolve, reject) => {
+                const tx = database.transaction(STORE_NAME, "readonly");
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.get(STATE_KEY);
+                req.onsuccess = function(e) {
+                    resolve(e.target.result || null);
+                };
+                req.onerror = function(e) {
+                    console.error("State load error:", e.target.error);
+                    reject(e.target.error);
+                };
+            });
+        });
+    }
+
+    function saveStateNow() {
+        if (!db) {
+            return openDB().then(() => saveStateNow());
+        }
+        const state = {
+            version: 1,
+            exportedBy: "Uni928_ パスワード生成マネージャー",
+            recommended: "新しいパスワードを登録するたびにエクスポートして、安全な場所にバックアップしておくことをおすすめします。",
+            updatedAt: new Date().toISOString(),
+            items: items
+        };
+
+        isSaving = true;
+        updateSaveIndicator("saving");
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.put(state, STATE_KEY);
+
+            req.onsuccess = function() {
+                isSaving = false;
+                updateSaveIndicator("saved");
+                resolve();
+            };
+            req.onerror = function(e) {
+                console.error("State save error:", e.target.error);
+                isSaving = false;
+                updateSaveIndicator("error");
+                reject(e.target.error);
+            };
+        });
+    }
+
+    function scheduleSave() {
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+        }
+        updateSaveIndicator("saving");
+        saveTimer = setTimeout(() => {
+            saveTimer = null;
+            saveStateNow();
+        }, 400);
+    }
+
+    // ==============================
+    // UI 状態表示
+    // ==============================
+    function updateSaveIndicator(status) {
+        // status: "saved" | "saving" | "error"
+        if (status === "saving") {
+            saveStatusDot.classList.add("saving");
+            saveStatusDot.classList.remove("error");
+            saveStatusText.textContent = "保存中…";
+        } else if (status === "error") {
+            saveStatusDot.classList.add("error");
+            saveStatusDot.classList.remove("saving");
+            saveStatusText.textContent = "保存エラーが発生しました";
+        } else {
+            saveStatusDot.classList.remove("saving", "error");
+            saveStatusText.textContent = "すべて保存済み";
+        }
+    }
+
+    function updateCountBadge() {
+        countBadge.textContent = "登録件数: " + items.length;
+    }
+
+    // ==============================
+    // パスワード生成
+    // ==============================
+    function generateRandomPassword() {
+        let result = PREFIX;
+        const len = RANDOM_LENGTH;
+        const charsetLen = CHARSET.length;
+        const randomValues = new Uint32Array(len);
+        window.crypto.getRandomValues(randomValues);
+        for (let i = 0; i < len; i++) {
+            const idx = randomValues[i] % charsetLen;
+            result += CHARSET.charAt(idx);
+        }
+        return result;
+    }
+
+    function addNewEntry() {
+        const password = generateRandomPassword();
+        const id = "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+        const newItem = {
+            id: id,
+            title: "",
+            url: "",
+            password: password,
+            createdAt: new Date().toISOString()
+        };
+        items.unshift(newItem); // 新しいものを上に
+        renderList();
+        scheduleSave();
+    }
+
+    // ==============================
+    // リスト描画
+    // ==============================
+    function renderList() {
+        entryListEl.innerHTML = "";
+        items.forEach((item, index) => {
+            const row = document.createElement("div");
+            row.className = "entry-row";
+            row.dataset.id = item.id;
+            row.dataset.label = "No. " + (index + 1);
+
+            // タイトル
+            const titleGroup = document.createElement("div");
+            titleGroup.className = "field-group";
+            const titleLabel = document.createElement("label");
+            titleLabel.className = "field-label";
+            titleLabel.innerHTML = 'タイトル <span class="tiny-pill">任意（サービス名など）</span>';
+            const titleInput = document.createElement("input");
+            titleInput.type = "text";
+            titleInput.className = "field-input";
+            titleInput.placeholder = "例）ChatGPT / Google / ネットバンキング";
+            titleInput.value = item.title || "";
+            titleGroup.appendChild(titleLabel);
+            titleGroup.appendChild(titleInput);
+
+            // URL
+            const urlGroup = document.createElement("div");
+            urlGroup.className = "field-group";
+            const urlLabel = document.createElement("label");
+            urlLabel.className = "field-label";
+            urlLabel.innerHTML = 'URL <span class="tiny-pill">任意</span>';
+            const urlInput = document.createElement("input");
+            urlInput.type = "text";
+            urlInput.className = "field-input";
+            urlInput.placeholder = "例）https://example.com/login";
+            urlInput.value = item.url || "";
+            urlGroup.appendChild(urlLabel);
+            urlGroup.appendChild(urlInput);
+
+            // パスワード
+            const passGroup = document.createElement("div");
+            passGroup.className = "field-group";
+            const passLabel = document.createElement("label");
+            passLabel.className = "field-label";
+            passLabel.innerHTML = 'パスワード <span class="tiny-pill">自動生成 / クリックでコピー</span>';
+            const passwordField = document.createElement("div");
+            passwordField.className = "password-field";
+            const passwordDisplay = document.createElement("div");
+            passwordDisplay.className = "password-display";
+            passwordDisplay.textContent = item.password;
+
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "entry-btn";
+            copyBtn.innerHTML = '<span class="icon">📋</span><span>コピー</span>';
+
+            passwordField.appendChild(passwordDisplay);
+            passwordField.appendChild(copyBtn);
+            passGroup.appendChild(passLabel);
+            passGroup.appendChild(passwordField);
+
+            // アクション
+            const actionsGroup = document.createElement("div");
+            actionsGroup.className = "entry-actions";
+
+            const upBtn = document.createElement("button");
+            upBtn.className = "entry-btn icon-only";
+            upBtn.innerHTML = "▲";
+
+            const downBtn = document.createElement("button");
+            downBtn.className = "entry-btn icon-only";
+            downBtn.innerHTML = "▼";
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "entry-btn danger";
+            deleteBtn.innerHTML = '<span class="icon">🗑</span><span>削除</span>';
+
+            actionsGroup.appendChild(upBtn);
+            actionsGroup.appendChild(downBtn);
+            actionsGroup.appendChild(deleteBtn);
+
+            // レイアウトへ配置
+            row.appendChild(titleGroup);       // row col1, row1
+            row.appendChild(urlGroup);         // row col2, row1
+            row.appendChild(passGroup);        // row col1, row2
+            row.appendChild(actionsGroup);     // row col2, row2
+
+            // イベント設定
+            titleInput.addEventListener("input", () => {
+                const target = items.find(x => x.id === item.id);
+                if (target) {
+                    target.title = titleInput.value;
+                    scheduleSave();
+                }
+            });
+
+            urlInput.addEventListener("input", () => {
+                const target = items.find(x => x.id === item.id);
+                if (target) {
+                    target.url = urlInput.value;
+                    scheduleSave();
+                }
+            });
+
+            copyBtn.addEventListener("click", () => {
+                copyToClipboard(item.password).then(() => {
+                    copyBtn.innerHTML = '<span class="icon">✅</span><span>コピー済み</span>';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<span class="icon">📋</span><span>コピー</span>';
+                    }, 1300);
+                }).catch(() => {
+                    alert("クリップボードへのコピーに失敗しました。手動でコピーしてください。");
+                });
+            });
+
+            deleteBtn.addEventListener("click", () => {
+                if (!confirm("このパスワードを削除しますか？")) return;
+                items = items.filter(x => x.id !== item.id);
+                renderList();
+                scheduleSave();
+            });
+
+            upBtn.addEventListener("click", () => {
+                const pos = items.findIndex(x => x.id === item.id);
+                if (pos > 0) {
+                    const tmp = items[pos - 1];
+                    items[pos - 1] = items[pos];
+                    items[pos] = tmp;
+                    renderList();
+                    scheduleSave();
+                }
+            });
+
+            downBtn.addEventListener("click", () => {
+                const pos = items.findIndex(x => x.id === item.id);
+                if (pos !== -1 && pos < items.length - 1) {
+                    const tmp = items[pos + 1];
+                    items[pos + 1] = items[pos];
+                    items[pos] = tmp;
+                    renderList();
+                    scheduleSave();
+                }
+            });
+
+            entryListEl.appendChild(row);
+        });
+
+        updateCountBadge();
+    }
+
+    function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        return new Promise((resolve, reject) => {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                const successful = document.execCommand("copy");
+                document.body.removeChild(textarea);
+                if (successful) resolve();
+                else reject(new Error("execCommand copy failed"));
+            } catch (e) {
+                document.body.removeChild(textarea);
+                reject(e);
+            }
+        });
+    }
+
+    // ==============================
+    // エクスポート / インポート
+    // ==============================
+    function buildExportData() {
+        const now = new Date();
+        const payload = {
+            version: 1,
+            exportedBy: "Uni928_ パスワード生成マネージャー",
+            note: "このバックアップは Uni928_ パスワード生成サイトからエクスポートされたデータです。新しいパスワードを登録するたびにエクスポートして、安全な場所にバックアップしておくことを強くおすすめします。",
+            exportedAt: now.toISOString(),
+            items: items
+        };
+        return JSON.stringify(payload, null, 2);
+    }
+
+    function downloadExportFile() {
+        const json = buildExportData();
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mi = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+
+        const filename = `uni928_backup_${yyyy}${mm}${dd}_${hh}${mi}${ss}.json`;
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        backupText.value = json;
+    }
+
+    function importFromJSON(jsonString) {
+        let data;
+        try {
+            data = JSON.parse(jsonString);
+        } catch (e) {
+            alert("JSON の解析に失敗しました。フォーマットを確認してください。");
+            return;
+        }
+
+        if (!data || !Array.isArray(data.items)) {
+            alert("この JSON には有効な items 配列がありません。");
+            return;
+        }
+
+        const confirmMsg = "JSON から復元しますか？\n現在のリストは上書きされます。";
+        if (!confirm(confirmMsg)) return;
+
+        items = data.items.map((item) => ({
+            id: item.id || ("id_" + Math.random().toString(36).slice(2)),
+            title: item.title || "",
+            url: item.url || "",
+            password: item.password || "",
+            createdAt: item.createdAt || new Date().toISOString()
+        }));
+
+        renderList();
+        scheduleSave();
+        alert("インポートが完了しました。");
+    }
+
+    // ==============================
+    // イベント設定
+    // ==============================
+    function setupEvents() {
+        generateBtn.addEventListener("click", () => {
+            addNewEntry();
+        });
+
+        clearAllBtn.addEventListener("click", () => {
+            if (!items.length) return;
+            const msg = "本当にすべてのパスワードを削除しますか？\n（バックアップがない場合は元に戻せません）";
+            if (!confirm(msg)) return;
+            items = [];
+            renderList();
+            scheduleSave();
+        });
+
+        exportBtn.addEventListener("click", () => {
+            downloadExportFile();
+            alert("エクスポート完了：新しいパスワードを登録するたびに、最新状態をエクスポートして安全な場所に保管することをおすすめします。");
+        });
+
+        copyExportBtn.addEventListener("click", () => {
+            const json = buildExportData();
+            backupText.value = json;
+            copyToClipboard(json).then(() => {
+                copyExportBtn.innerHTML = '<span class="icon">✅</span><span>コピー済み</span>';
+                setTimeout(() => {
+                    copyExportBtn.innerHTML = '<span class="icon">📋</span><span>JSONをコピー</span>';
+                }, 1300);
+            }).catch(() => {
+                alert("クリップボードへのコピーに失敗しました。テキストエリアから手動でコピーしてください。");
+            });
+        });
+
+        importFileInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const content = ev.target.result;
+                backupText.value = content;
+                importFromJSON(content);
+                importFileInput.value = "";
+            };
+            reader.onerror = function() {
+                alert("ファイルの読み込みに失敗しました。");
+            };
+            reader.readAsText(file, "utf-8");
+        });
+
+        importFromTextBtn.addEventListener("click", () => {
+            const text = backupText.value.trim();
+            if (!text) {
+                alert("インポートする JSON が空です。");
+                return;
+            }
+            importFromJSON(text);
+        });
+    }
+
+    // ==============================
+    // 初期化
+    // ==============================
+    function init() {
+        setupEvents();
+        loadState().then(state => {
+            if (state && Array.isArray(state.items)) {
+                items = state.items.map(item => ({
+                    id: item.id || ("id_" + Math.random().toString(36).slice(2)),
+                    title: item.title || "",
+                    url: item.url || "",
+                    password: item.password || "",
+                    createdAt: item.createdAt || new Date().toISOString()
+                }));
+            } else {
+                items = [];
+            }
+            renderList();
+            updateSaveIndicator("saved");
+        }).catch(err => {
+            console.error("初期状態の読み込みに失敗しました:", err);
+            updateSaveIndicator("error");
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
