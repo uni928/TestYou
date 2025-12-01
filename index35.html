@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>職員メッセージボード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+    :root {
+        --bg: #020617;
+        --card-bg: #020617;
+        --panel-bg: #020617;
+        --glass: rgba(15,23,42,0.85);
+        --glass-soft: rgba(15,23,42,0.7);
+        --accent: #38bdf8;
+        --accent-soft: rgba(56,189,248,0.18);
+        --accent-strong: rgba(56,189,248,0.6);
+        --my-bubble: linear-gradient(135deg,#38bdf8,#22c1c3);
+        --other-bubble: #020617;
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --border-subtle: rgba(148,163,184,0.35);
+        --shadow-soft: 0 18px 50px rgba(15,23,42,0.9);
+        --radius-xl: 1.6rem;
+        --radius-lg: 1.0rem;
+        --radius-pill: 999px;
+        --transition-fast: 0.18s ease-out;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+            radial-gradient(circle at 10% 0%, rgba(56,189,248,0.22), transparent 55%),
+            radial-gradient(circle at 90% 100%, rgba(94,234,212,0.16), transparent 55%),
+            radial-gradient(circle at 50% 50%, rgba(15,23,42,0.95), #020617);
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 960px;
+        height: min(720px, 96vh);
+        border-radius: 2rem;
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.1), transparent 42%),
+                    radial-gradient(circle at bottom right, rgba(94,234,212,0.12), transparent 40%),
+                    rgba(15,23,42,0.97);
+        box-shadow: var(--shadow-soft);
+        border: 1px solid rgba(148,163,184,0.35);
+        padding: 18px 20px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        backdrop-filter: blur(22px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .app-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(135deg, rgba(56,189,248,0.16), transparent 60%),
+            linear-gradient(-135deg, rgba(94,234,212,0.16), transparent 65%);
+        opacity: 0.18;
+        mix-blend-mode: screen;
+        pointer-events: none;
+    }
+
+    .app-inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        gap: 12px;
+    }
+
+    /* ヘッダー */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 6px 4px;
+        border-radius: 999px;
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.28), transparent 55%),
+                    radial-gradient(circle at bottom right, rgba(94,234,212,0.22), transparent 55%),
+                    rgba(15,23,42,0.85);
+        border: 1px solid rgba(148,163,184,0.55);
+        box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+    }
+
+    .title-block {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-left: 4px;
+    }
+
+    .app-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background:
+            conic-gradient(from 160deg, #38bdf8, #a855f7, #22c55e, #38bdf8);
+        padding: 2px;
+        box-shadow: 0 0 0 1px rgba(15,23,42,0.9), 0 12px 30px rgba(8,47,73,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .app-icon-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: radial-gradient(circle at 30% 0%, rgba(248,250,252,0.2), transparent 55%),
+                    rgba(15,23,42,0.96);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #e0f2fe;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.05em;
+    }
+
+    .title-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .title-main {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .title-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(15,23,42,0.9);
+        color: #7dd3fc;
+        border: 1px solid rgba(56,189,248,0.5);
+    }
+
+    .title-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-right: 4px;
+    }
+
+    .connection-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(15,23,42,0.95);
+        border: 1px solid rgba(148,163,184,0.8);
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34,197,94,0.4);
+    }
+
+    .header-buttons {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .mini-button {
+        border: none;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        background: rgba(15,23,42,0.95);
+        color: var(--text-muted);
+        border: 1px solid rgba(148,163,184,0.7);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    }
+    .mini-button span.icon {
+        font-size: 13px;
+    }
+    .mini-button:hover {
+        background: rgba(15,23,42,1);
+        color: #e5e7eb;
+        transform: translateY(-1px);
+        border-color: rgba(226,232,240,0.85);
+    }
+
+    /* 上部パネル（自分の名前 + エクスポート/インポート） */
+    .top-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.8fr);
+        gap: 10px;
+        padding: 10px;
+        border-radius: 20px;
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.22), transparent 55%),
+                    radial-gradient(circle at bottom right, rgba(94,234,212,0.18), transparent 55%),
+                    rgba(15,23,42,0.94);
+        border: 1px solid rgba(148,163,184,0.6);
+        box-shadow: 0 18px 40px rgba(15,23,42,0.8);
+    }
+
+    @media (max-width: 720px) {
+        .top-panel {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .app-shell {
+            border-radius: 1.4rem;
+            padding: 12px 10px 10px;
+        }
+    }
+
+    .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .field-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .field-label strong {
+        font-size: 13px;
+        color: #e5e7eb;
+    }
+
+    .pill-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .pill-input {
+        width: 100%;
+        padding: 8px 12px 8px 32px;
+        border-radius: 999px;
+        border: 1px solid rgba(148,163,184,0.8);
+        background: radial-gradient(circle at top left, rgba(15,23,42,0.98), rgba(15,23,42,0.96));
+        color: var(--text-main);
+        font-size: 13px;
+        outline: none;
+        box-shadow: 0 10px 24px rgba(15,23,42,0.9);
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .pill-input::placeholder {
+        color: rgba(148,163,184,0.75);
+    }
+
+    .pill-input:focus {
+        border-color: rgba(56,189,248,0.9);
+        box-shadow:
+            0 0 0 1px rgba(56,189,248,0.85),
+            0 12px 30px rgba(8,47,73,1);
+        background: radial-gradient(circle at top left, rgba(15,23,42,1), rgba(15,23,42,0.98));
+        transform: translateY(-0.5px);
+    }
+
+    .pill-input-icon {
+        position: absolute;
+        left: 10px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .hint-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(15,23,42,0.95);
+        border: 1px solid rgba(148,163,184,0.7);
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .export-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-end;
+    }
+
+    .export-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .primary-btn, .ghost-btn {
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 12px;
+        padding: 7px 14px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+        white-space: nowrap;
+    }
+
+    .primary-btn {
+        background: radial-gradient(circle at 0% 0%, rgba(248,250,252,0.25), transparent 60%),
+                    linear-gradient(135deg,#38bdf8,#22c55e);
+        color: #0b1120;
+        box-shadow:
+            0 0 0 1px rgba(15,23,42,0.8),
+            0 14px 32px rgba(8,47,73,0.9);
+    }
+
+    .primary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 0 0 1px rgba(248,250,252,0.9),
+            0 18px 40px rgba(8,47,73,1);
+    }
+
+    .ghost-btn {
+        background: rgba(15,23,42,0.9);
+        color: var(--text-muted);
+        border-color: rgba(148,163,184,0.8);
+    }
+
+    .ghost-btn:hover {
+        background: rgba(15,23,42,1);
+        color: #e5e7eb;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 26px rgba(15,23,42,1);
+        border-color: rgba(226,232,240,0.9);
+    }
+
+    .btn-icon {
+        font-size: 14px;
+    }
+
+    .export-note {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-align: right;
+    }
+
+    /* メインコンテンツ（チャット + 入力エリア） */
+    .main-area {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .chat-shell {
+        flex: 1;
+        min-height: 0;
+        border-radius: 20px;
+        background:
+            radial-gradient(circle at top left, rgba(56,189,248,0.08), transparent 60%),
+            radial-gradient(circle at bottom right, rgba(94,234,212,0.08), transparent 60%),
+            rgba(15,23,42,0.92);
+        border: 1px solid rgba(148,163,184,0.65);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 18px 38px rgba(15,23,42,0.9);
+    }
+
+    .chat-header-bar {
+        padding: 8px 16px 6px;
+        border-bottom: 1px solid rgba(31,41,55,1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(to right, rgba(15,23,42,0.98), rgba(15,23,42,0.96));
+    }
+
+    .chat-header-title {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .chat-header-title strong {
+        font-size: 13px;
+        color: #e5e7eb;
+    }
+
+    .pill-tag {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(17,24,39,0.96);
+        border: 1px solid rgba(55,65,81,0.95);
+        color: var(--text-muted);
+    }
+
+    .chat-header-tools {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .tiny-text-btn {
+        font-size: 10px;
+        border-radius: 999px;
+        padding: 3px 8px;
+        border: 1px solid rgba(55,65,81,0.95);
+        background: rgba(15,23,42,0.98);
+        color: var(--text-muted);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+    }
+    .tiny-text-btn:hover {
+        background: rgba(15,23,42,1);
+        color: #e5e7eb;
+        border-color: rgba(156,163,175,0.9);
+        transform: translateY(-0.5px);
+    }
+
+    .chat-list {
+        flex: 1;
+        min-height: 0;
+        padding: 14px 16px 10px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148,163,184,0.7) transparent;
+        background:
+            radial-gradient(circle at 0% 0%, rgba(15,23,42,0.9), rgba(15,23,42,1));
+    }
+
+    .chat-list::-webkit-scrollbar {
+        width: 8px;
+    }
+    .chat-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .chat-list::-webkit-scrollbar-thumb {
+        background: rgba(148,163,184,0.7);
+        border-radius: 999px;
+    }
+
+    .chat-empty {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-size: 12px;
+    }
+
+    .chat-empty-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 0%, rgba(248,250,252,0.22), transparent 60%),
+                    rgba(15,23,42,1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        box-shadow: 0 14px 35px rgba(15,23,42,1);
+        border: 1px solid rgba(148,163,184,0.7);
+    }
+
+    .message-row {
+        display: flex;
+        margin-bottom: 8px;
+    }
+
+    .message-row.me {
+        justify-content: flex-end;
+    }
+
+    .message-row.other {
+        justify-content: flex-start;
+    }
+
+    .message-bubble-wrapper {
+        max-width: min(72%, 520px);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .message-meta {
+        font-size: 10px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .message-meta.me {
+        justify-content: flex-end;
+    }
+
+    .message-meta .name {
+        font-weight: 500;
+        color: #e5e7eb;
+        max-width: 160px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .message-meta .time {
+        opacity: 0.9;
+    }
+
+    .message-bubble {
+        position: relative;
+        padding: 10px 12px;
+        border-radius: 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        box-shadow: 0 14px 30px rgba(15,23,42,0.9);
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+
+    .message-row.me .message-bubble {
+        margin-left: 32px;
+        border-bottom-right-radius: 4px;
+        background: var(--my-bubble);
+        color: #0b1120;
+    }
+
+    .message-row.other .message-bubble {
+        margin-right: 32px;
+        border-bottom-left-radius: 4px;
+        background: var(--other-bubble);
+        color: #e5e7eb;
+        border: 1px solid rgba(55,65,81,0.95);
+    }
+
+    .message-row.me .message-bubble::after,
+    .message-row.other .message-bubble::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        width: 10px;
+        height: 10px;
+    }
+
+    .message-row.me .message-bubble::after {
+        right: -4px;
+        background: linear-gradient(135deg, transparent 0, transparent 50%, #22c55e 50%, #22c55e 100%);
+        opacity: 0.95;
+    }
+
+    .message-row.other .message-bubble::after {
+        left: -4px;
+        background: linear-gradient(-135deg, transparent 0, transparent 50%, rgba(15,23,42,1) 50%, rgba(15,23,42,1) 100%);
+    }
+
+    /* 入力エリア */
+    .input-shell {
+        border-top: 1px solid rgba(31,41,55,0.95);
+        background: linear-gradient(to bottom, rgba(15,23,42,0.98), rgba(15,23,42,1));
+        padding: 8px 12px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .input-upper-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .input-upper-row span strong {
+        color: #e5e7eb;
+    }
+
+    .input-main-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    .message-textarea {
+        width: 100%;
+        min-height: 52px;
+        max-height: 96px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        border: 1px solid rgba(55,65,81,0.95);
+        background: radial-gradient(circle at top left, rgba(15,23,42,0.98), rgba(15,23,42,1));
+        color: var(--text-main);
+        font-size: 13px;
+        resize: vertical;
+        outline: none;
+        box-shadow: 0 14px 26px rgba(15,23,42,1);
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .message-textarea::placeholder {
+        color: rgba(148,163,184,0.8);
+    }
+
+    .message-textarea:focus {
+        border-color: rgba(56,189,248,0.9);
+        box-shadow:
+            0 0 0 1px rgba(56,189,248,0.7),
+            0 18px 38px rgba(8,47,73,1);
+        background: radial-gradient(circle at top left, rgba(15,23,42,1), rgba(15,23,42,0.98));
+        transform: translateY(-0.5px);
+    }
+
+    .send-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+    }
+
+    .send-btn {
+        border-radius: 999px;
+        border: none;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: radial-gradient(circle at 0% 0%, rgba(248,250,252,0.3), transparent 55%),
+                    linear-gradient(135deg,#38bdf8,#22c55e);
+        color: #020617;
+        box-shadow:
+            0 0 0 1px rgba(15,23,42,0.85),
+            0 16px 38px rgba(8,47,73,1);
+        transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    }
+
+    .send-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+        box-shadow: none;
+    }
+
+    .send-btn:not(:disabled):hover {
+        transform: translateY(-1px) translateX(-0.5px);
+        box-shadow:
+            0 0 0 1px rgba(248,250,252,0.9),
+            0 20px 44px rgba(8,47,73,1);
+    }
+
+    .send-btn-icon {
+        font-size: 16px;
+    }
+
+    .send-hint {
+        font-size: 10px;
+        color: var(--text-muted);
+        padding-right: 4px;
+    }
+
+    @media (max-width: 520px) {
+        .input-main-row {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .send-group {
+            align-items: stretch;
+        }
+        .send-btn {
+            justify-content: center;
+            width: 100%;
+        }
+        .chat-header-tools {
+            display: none;
+        }
+    }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="app-inner">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="title-block">
+        <div class="app-icon">
+          <div class="app-icon-inner">SB</div>
+        </div>
+        <div class="title-text">
+          <div class="title-main">
+            職員メッセージボード
+            <span class="title-badge">ローカル共有</span>
+          </div>
+          <div class="title-sub">時刻・名前・メッセージをチャット形式で記録</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="connection-pill">
+          <span class="status-dot"></span>
+          <span>オフライン保存（IndexedDB）</span>
+        </div>
+        <div class="header-buttons">
+          <button type="button" class="mini-button" id="scrollBottomBtn">
+            <span class="icon">⬇</span><span>最新へ</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 上部パネル：自分の名前 + エクスポート/インポート -->
+    <section class="top-panel">
+      <div class="field-group">
+        <div class="field-label">
+          <span><strong>自分の名前</strong></span>
+          <span class="hint-badge">リアルタイムで保存・復元</span>
+        </div>
+        <div class="pill-input-wrapper">
+          <span class="pill-input-icon">👤</span>
+          <input id="myNameInput" class="pill-input" type="text" placeholder="例）総務 太郎"
+                 autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="export-panel">
+        <div class="field-label">
+          <span><strong>ログの共有</strong></span>
+          <span class="hint-badge">ファイルでエクスポート / インポート</span>
+        </div>
+        <div class="export-buttons">
+          <button type="button" class="primary-btn" id="exportBtn">
+            <span class="btn-icon">💾</span>
+            <span>メッセージをエクスポート</span>
+          </button>
+          <button type="button" class="ghost-btn" id="importBtn">
+            <span class="btn-icon">📂</span>
+            <span>ファイルからインポート</span>
+          </button>
+          <input type="file" id="importFileInput" accept=".txt" style="display:none">
+        </div>
+        <div class="export-note">
+          他の職員とエクスポートした <code>.txt</code> を<br>保存しあってインポートすると、ログを統合できます。
+        </div>
+      </div>
+    </section>
+
+    <!-- チャット領域 + 入力エリア -->
+    <main class="main-area">
+      <section class="chat-shell">
+        <div class="chat-header-bar">
+          <div class="chat-header-title">
+            <strong>メッセージ一覧</strong>
+            <span>（自分の名前と一致するメッセージは右側に表示）</span>
+          </div>
+          <div class="chat-header-tools">
+            <span class="pill-tag">時刻・名前・内容で記録</span>
+            <button type="button" class="tiny-text-btn" id="clearBtn">
+              <span>🧹</span> 一覧をクリア（ブラウザ内のみ）
+            </button>
+          </div>
+        </div>
+        <div id="chatList" class="chat-list">
+          <div class="chat-empty">
+            <div class="chat-empty-icon">💬</div>
+            <div>まだメッセージはありません。</div>
+            <div>下の欄から、最初のひとことを投稿してみてください。</div>
+          </div>
+        </div>
+
+        <div class="input-shell">
+          <div class="input-upper-row">
+            <span>
+              <strong>メッセージ</strong> を入力して「送信」
+            </span>
+            <span>Enter：送信 / Shift+Enter：改行</span>
+          </div>
+          <div class="input-main-row">
+            <textarea id="messageInput" class="message-textarea"
+                      placeholder="ここに呟きや連絡事項を入力してください…"></textarea>
+            <div class="send-group">
+              <button type="button" class="send-btn" id="sendBtn">
+                <span class="send-btn-icon">📨</span>
+                <span>送信</span>
+              </button>
+              <div class="send-hint">※ 自分の名前が未入力でも送信できます</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  // ==========================
+  //  状態
+  // ==========================
+  let messages = []; // { time, name, text }
+
+  // ==========================
+  //  IndexedDB（自分の名前のみ）
+  // ==========================
+  const DB_NAME = 'staffMessageBoard';
+  const DB_VERSION = 1;
+  const STORE_SETTINGS = 'settings';
+  let db = null;
+
+  function openIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onerror = () => reject(req.error);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+          db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => {
+        db = req.result;
+        resolve(db);
+      };
+    });
+  }
+
+  function saveMyNameToDB(name) {
+    if (!db) return;
+    const tx = db.transaction(STORE_SETTINGS, 'readwrite');
+    const store = tx.objectStore(STORE_SETTINGS);
+    store.put({ key: 'myName', value: name });
+  }
+
+  function loadMyNameFromDB() {
+    return new Promise(resolve => {
+      if (!db) {
+        resolve('');
+        return;
+      }
+      const tx = db.transaction(STORE_SETTINGS, 'readonly');
+      const store = tx.objectStore(STORE_SETTINGS);
+      const req = store.get('myName');
+      req.onsuccess = () => {
+        resolve(req.result ? req.result.value || '' : '');
+      };
+      req.onerror = () => resolve('');
+    });
+  }
+
+  // ==========================
+  //  ユーティリティ
+  // ==========================
+  function formatNow() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const y = d.getFullYear();
+    const m = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const h = pad(d.getHours());
+    const min = pad(d.getMinutes());
+    const s = pad(d.getSeconds());
+    return `${y}/${m}/${day} ${h}:${min}:${s}`;
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, ch => {
+      switch (ch) {
+        case '&': return '&amp;';
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '"': return '&quot;';
+        case '\'': return '&#39;';
+        default: return ch;
+      }
+    });
+  }
+
+  function scrollChatToBottom(smooth = true) {
+    const chatList = document.getElementById('chatList');
+    if (!chatList) return;
+    const behavior = smooth ? 'smooth' : 'auto';
+    chatList.scrollTo({ top: chatList.scrollHeight + 64, behavior });
+  }
+
+  // ==========================
+  //  描画
+  // ==========================
+  function renderMessages() {
+    const chatList = document.getElementById('chatList');
+    const myName = document.getElementById('myNameInput').value.trim();
+
+    if (!messages.length) {
+      chatList.innerHTML = `
+        <div class="chat-empty">
+          <div class="chat-empty-icon">💬</div>
+          <div>まだメッセージはありません。</div>
+          <div>下の欄から、最初のひとことを投稿してみてください。</div>
+        </div>`;
+      return;
+    }
+
+    const parts = messages.map(m => {
+      const isMe = myName && m.name.trim() && (m.name.trim() === myName);
+      const rowClass = isMe ? 'me' : 'other';
+      const safeName = escapeHTML(m.name || '（名無し）');
+      const safeText = escapeHTML(m.text || '').replace(/\r?\n/g, '<br>');
+      const safeTime = escapeHTML(m.time || '');
+      return `
+        <div class="message-row ${rowClass}">
+          <div class="message-bubble-wrapper">
+            <div class="message-meta ${rowClass}">
+              <span class="name">${safeName}</span>
+              <span class="time">${safeTime}</span>
+            </div>
+            <div class="message-bubble">${safeText}</div>
+          </div>
+        </div>`;
+    });
+
+    chatList.innerHTML = parts.join('');
+    scrollChatToBottom(true);
+  }
+
+  // ==========================
+  //  送信
+  // ==========================
+  function sendMessage() {
+    const nameInput = document.getElementById('myNameInput');
+    const msgInput = document.getElementById('messageInput');
+
+    const text = msgInput.value.trim();
+    if (!text) {
+      msgInput.focus();
+      return;
+    }
+
+    const myName = nameInput.value.trim();
+    const time = formatNow();
+
+    messages.push({
+      time,
+      name: myName || '',
+      text
+    });
+
+    msgInput.value = '';
+    renderMessages();
+    msgInput.focus();
+  }
+
+  // ==========================
+  //  エクスポート
+  // ==========================
+  function exportMessages() {
+    if (!messages.length) {
+      alert('エクスポートするメッセージがありません。');
+      return;
+    }
+
+    const lines = [];
+    lines.push('# staff-message-board export');
+    lines.push('# format: time\\tname\\tmessage (改行は \\n として保存)');
+    lines.push('# 例: 2025/01/01 09:00:00\\t総務 太郎\\tおはようございます');
+
+    messages.forEach(m => {
+      const time = m.time || '';
+      const name = m.name || '';
+      const text = (m.text || '').replace(/\r?\n/g, '\\n');
+      lines.push(`${time}\t${name}\t${text}`);
+    });
+
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const y = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    const fileName = `messages-${y}${mm}${dd}-${hh}${mi}.txt`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ==========================
+  //  インポート
+  // ==========================
+  function parseImportedText(text) {
+    const lines = text.split(/\r?\n/);
+    const imported = [];
+
+    for (const line of lines) {
+      if (!line || line.trim().length === 0) continue;
+      if (line.startsWith('#')) continue;
+
+      const parts = line.split('\t');
+      if (parts.length < 3) continue;
+
+      const time = parts[0];
+      const name = parts[1];
+      const rawText = parts.slice(2).join('\t');
+      const textRestored = rawText.replace(/\\n/g, '\n');
+
+      imported.push({
+        time,
+        name,
+        text: textRestored
+      });
+    }
+    return imported;
+  }
+
+  function handleImportFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = String(e.target.result || '');
+      const importedMessages = parseImportedText(text);
+      if (!importedMessages.length) {
+        alert('インポートできるメッセージが見つかりませんでした。');
+        return;
+      }
+
+      // そのまま末尾に統合（重複チェックは行わない）
+      messages = messages.concat(importedMessages);
+      renderMessages();
+      alert(`インポート完了：${importedMessages.length}件のメッセージを読み込みました。`);
+    };
+    reader.onerror = () => {
+      alert('ファイルの読み込み中にエラーが発生しました。');
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  // ==========================
+  //  初期化
+  // ==========================
+  window.addEventListener('DOMContentLoaded', async () => {
+    // IndexedDB を開いて、自分の名前を復元
+    try {
+      await openIndexedDB();
+      const savedName = await loadMyNameFromDB();
+      const nameInput = document.getElementById('myNameInput');
+      nameInput.value = savedName || '';
+    } catch (e) {
+      console.warn('IndexedDB の初期化に失敗しました:', e);
+    }
+
+    // 自分の名前：リアルタイム保存
+    document.getElementById('myNameInput').addEventListener('input', e => {
+      const value = e.target.value;
+      saveMyNameToDB(value);
+      // 名前変更に合わせて、自分／他人の表示位置を再計算
+      renderMessages();
+    });
+
+    // 送信ボタン
+    document.getElementById('sendBtn').addEventListener('click', () => {
+      sendMessage();
+    });
+
+    // メッセージ入力：Enterで送信、Shift+Enterで改行
+    const msgInput = document.getElementById('messageInput');
+    msgInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // エクスポート
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      exportMessages();
+    });
+
+    // インポート
+    const importFileInput = document.getElementById('importFileInput');
+    document.getElementById('importBtn').addEventListener('click', () => {
+      importFileInput.value = '';
+      importFileInput.click();
+    });
+    importFileInput.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      handleImportFile(file);
+    });
+
+    // 一覧クリア（ブラウザ内の messages 配列のみ）
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (!messages.length) return;
+      const ok = confirm('メッセージ一覧をクリアしますか？（エクスポート済みのファイルには影響しません）');
+      if (!ok) return;
+      messages = [];
+      renderMessages();
+    });
+
+    // 最新へスクロール
+    document.getElementById('scrollBottomBtn').addEventListener('click', () => {
+      scrollChatToBottom(true);
+    });
+
+    // 最初の描画
+    renderMessages();
+  });
+</script>
+</body>
+</html>
