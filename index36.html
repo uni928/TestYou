@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>漫画コレクション管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-gradient-from: #0f172a;
+      --bg-gradient-to: #020617;
+      --accent: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.12);
+      --accent-strong: rgba(129, 140, 248, 0.25);
+      --accent-text: #e5e7eb;
+      --card-bg: rgba(15, 23, 42, 0.92);
+      --card-border: rgba(148, 163, 184, 0.35);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f97373;
+      --danger-soft: rgba(248, 113, 113, 0.18);
+      --shadow-soft: 0 22px 45px rgba(15, 23, 42, 0.75);
+      --radius-lg: 18px;
+      --radius-pill: 999px;
+      --transition-fast: 0.15s ease-out;
+      --transition-med: 0.22s ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      color: var(--text-main);
+      background: radial-gradient(circle at top, #1d2437 0, #020617 55%);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1100px;
+      margin: auto;
+      background: linear-gradient(
+          135deg,
+          rgba(148, 163, 184, 0.16),
+          transparent 40%
+        ),
+        var(--card-bg);
+      border-radius: 24px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      isolation: isolate;
+    }
+
+    /* 背景のデコレーション */
+    .app-shell::before,
+    .app-shell::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.4;
+      z-index: -1;
+    }
+    .app-shell::before {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, #4f46e5, transparent 70%);
+      top: -80px;
+      right: -40px;
+    }
+    .app-shell::after {
+      width: 230px;
+      height: 230px;
+      background: radial-gradient(circle, #e11d48, transparent 70%);
+      bottom: -80px;
+      left: -40px;
+      opacity: 0.35;
+    }
+
+    .app-header {
+      padding: 18px 22px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+      background: linear-gradient(
+        to bottom,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.7)
+      );
+    }
+
+    .title-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #facc15, #f97316 50%, #4f46e5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 25px rgba(15, 23, 42, 0.9);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-circle span {
+      font-size: 22px;
+      filter: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.7));
+    }
+
+    .app-title-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .app-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.18);
+      color: #a5f3fc;
+      border: 1px solid rgba(45, 212, 191, 0.35);
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .header-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px 8px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .tab {
+      flex-shrink: 0;
+      position: relative;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast),
+        transform 0.08s ease-out;
+      white-space: nowrap;
+    }
+
+    .tab span.icon {
+      font-size: 15px;
+    }
+
+    .tab:hover {
+      background: rgba(15, 23, 42, 0.85);
+      border-color: rgba(148, 163, 184, 0.5);
+      color: #e5e7eb;
+      transform: translateY(-1px);
+    }
+
+    .tab.active {
+      background: radial-gradient(circle at 0 0, #4f46e5 0, #1f2937 60%);
+      color: var(--accent-text);
+      border-color: rgba(129, 140, 248, 0.9);
+      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
+    }
+
+    .tab.active .tab-indicator {
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      border: 1px solid rgba(191, 219, 254, 0.6);
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .tab-label-text {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-body {
+      padding: 14px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 320px;
+    }
+
+    .content-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 820px) {
+      .app-shell {
+        border-radius: 18px;
+      }
+      .content-columns {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header-meta {
+        justify-content: flex-start;
+      }
+      .tab-bar {
+        padding-inline: 12px;
+      }
+      .app-body {
+        padding-inline: 12px;
+      }
+    }
+
+    .panel {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: radial-gradient(
+          circle at 0 0,
+          rgba(148, 163, 184, 0.16),
+          transparent 50%
+        ),
+        rgba(15, 23, 42, 0.9);
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: rgba(129, 140, 248, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .panel-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .pill-counter {
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: #e5e7eb;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
+    .input-group {
+      flex: 1 1 160px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-label span.hint {
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .text-input,
+    .number-input {
+      outline: none;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.85);
+      padding: 7px 12px;
+      color: var(--text-main);
+      font-size: 13px;
+      transition: border-color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        background var(--transition-fast),
+        transform 0.08s ease-out;
+      width: 100%;
+    }
+
+    .text-input::placeholder,
+    .number-input::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    .text-input:focus,
+    .number-input:focus {
+      border-color: rgba(129, 140, 248, 0.9);
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.6);
+      background: rgba(15, 23, 42, 0.98);
+      transform: translateY(-0.5px);
+    }
+
+    .number-input::-webkit-inner-spin-button,
+    .number-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .primary-button,
+    .ghost-button {
+      border-radius: var(--radius-pill);
+      padding: 7px 14px;
+      font-size: 13px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background var(--transition-med),
+        color var(--transition-med),
+        border-color var(--transition-med),
+        box-shadow var(--transition-med),
+        transform 0.08s ease-out;
+    }
+
+    .primary-button {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #e5e7eb;
+      box-shadow: 0 10px 24px rgba(79, 70, 229, 0.5);
+    }
+    .primary-button:hover {
+      background: linear-gradient(135deg, #4338ca, #4f46e5);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgba(79, 70, 229, 0.6);
+    }
+    .primary-button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
+    }
+
+    .ghost-button {
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text-main);
+      border-color: rgba(148, 163, 184, 0.5);
+    }
+    .ghost-button:hover {
+      background: rgba(31, 41, 55, 0.98);
+      border-color: rgba(191, 219, 254, 0.9);
+      transform: translateY(-1px);
+    }
+    .ghost-button:active {
+      transform: translateY(0);
+    }
+
+    .button-icon {
+      font-size: 14px;
+    }
+
+    .button-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .list-scroll {
+      margin-top: 6px;
+      padding-right: 4px;
+      overflow-y: auto;
+      max-height: 320px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .list-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .list-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .list-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.7);
+      border-radius: 999px;
+    }
+
+    .manga-card {
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: linear-gradient(
+        140deg,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.9)
+      );
+      padding: 10px 11px;
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .manga-card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(129, 140, 248, 0.4),
+        transparent 60%
+      );
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      pointer-events: none;
+    }
+
+    .manga-card:hover::before {
+      opacity: 1;
+    }
+
+    .manga-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .manga-name {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .manga-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      border-radius: 999px;
+      padding: 2px 7px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.9);
+      font-size: 10px;
+    }
+
+    .muted-text {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .missing-list-preview {
+      font-size: 11px;
+      color: rgba(209, 213, 219, 0.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .manga-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ghost-pill {
+      border-radius: var(--radius-pill);
+      padding: 4px 9px;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .manga-detail-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    .manga-detail-name {
+      font-size: 16px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .manga-detail-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .stat-pill {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      padding: 3px 8px;
+      background: rgba(15, 23, 42, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #facc15;
+    }
+
+    .volume-add-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
+    .volume-grid-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    .volume-grid-header span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .volume-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 7px;
+      margin-top: 4px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .volume-grid::-webkit-scrollbar {
+      width: 6px;
+    }
+    .volume-grid::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .volume-grid::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.7);
+      border-radius: 999px;
+    }
+
+    .volume-pill {
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.65);
+      background: linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.88)
+      );
+      padding: 6px 7px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12px;
+      min-width: 0;
+      transition: border-color var(--transition-fast),
+        background var(--transition-fast),
+        transform 0.08s ease-out,
+        box-shadow var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .volume-pill::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(129, 140, 248, 0.35),
+        transparent 55%
+      );
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      pointer-events: none;
+    }
+
+    .volume-pill:hover::before {
+      opacity: 1;
+    }
+
+    .volume-pill:hover {
+      border-color: rgba(191, 219, 254, 0.9);
+      transform: translateY(-1px);
+      box-shadow: 0 9px 20px rgba(15, 23, 42, 0.8);
+    }
+
+    .volume-label {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .volume-label-main {
+      font-weight: 500;
+    }
+
+    .volume-label-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .volume-delete-btn {
+      border-radius: 999px;
+      border: none;
+      background: var(--danger-soft);
+      color: #fecaca;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background var(--transition-fast),
+        transform 0.08s ease-out,
+        box-shadow var(--transition-fast);
+      box-shadow: 0 6px 12px rgba(248, 113, 113, 0.4);
+    }
+
+    .volume-delete-btn:hover {
+      background: rgba(248, 113, 113, 0.9);
+      transform: translateY(-1px) scale(1.03);
+      box-shadow: 0 9px 20px rgba(248, 113, 113, 0.6);
+    }
+
+    .volume-delete-btn:active {
+      transform: translateY(0) scale(0.97);
+      box-shadow: 0 4px 9px rgba(248, 113, 113, 0.45);
+    }
+
+    .helper-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .highlight {
+      color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="title-block">
+        <div class="logo-circle">
+          <span>📚</span>
+        </div>
+        <div class="app-title-text">
+          <div class="app-title">
+            漫画コレクション
+            <span class="badge">IndexedDB オフライン対応</span>
+          </div>
+          <div class="app-subtitle">
+            持っていない巻だけを一目でチェック。状態はブラウザに自動保存されます。
+          </div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="header-chip">
+          <span class="header-dot"></span>
+          <span>自動保存中</span>
+        </div>
+        <div class="header-chip">
+          <span>💾</span>
+          <span>ブラウザ内ストレージに保存</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tab-bar" id="tabBar"></nav>
+
+    <main class="app-body">
+      <div id="tabContent"></div>
+    </main>
+  </div>
+
+  <script>
+    // ==========================
+    // IndexedDB 設定
+    // ==========================
+    const DB_NAME = "mangaCollectionDB";
+    const DB_VERSION = 1;
+    const STORE_NAME = "kv";
+
+    let db = null;
+    let state = {
+      mangas: [],
+      activeTabId: "list", // "list" または manga.id
+    };
+
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: "key" });
+          }
+        };
+
+        request.onsuccess = (event) => {
+          db = event.target.result;
+          resolve();
+        };
+
+        request.onerror = (event) => {
+          console.error("IndexedDB の初期化に失敗しました:", event.target.error);
+          reject(event.target.error);
+        };
+      });
+    }
+
+    function loadStateFromDB() {
+      return new Promise((resolve) => {
+        if (!db) {
+          resolve();
+          return;
+        }
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get("state");
+
+        req.onsuccess = (event) => {
+          const result = event.target.result;
+          if (result && result.value) {
+            state = result.value;
+          }
+          // フォールバック
+          if (!state || !Array.isArray(state.mangas)) {
+            state = { mangas: [], activeTabId: "list" };
+          }
+          if (!state.activeTabId) {
+            state.activeTabId = "list";
+          }
+          resolve();
+        };
+
+        req.onerror = () => {
+          console.warn("状態の読み込みに失敗しました。新しい状態から開始します。");
+          resolve();
+        };
+      });
+    }
+
+    function saveStateToDB() {
+      if (!db) return;
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ key: "state", value: state });
+      } catch (e) {
+        console.error("状態の保存に失敗しました:", e);
+      }
+    }
+
+    // ==========================
+    // ユーティリティ
+    // ==========================
+
+    function generateMangaId() {
+      return (
+        "m_" +
+        Date.now().toString(36) +
+        "_" +
+        Math.random().toString(36).slice(2, 8)
+      );
+    }
+
+    function formatVolumePreview(volumes) {
+      if (!volumes || volumes.length === 0) {
+        return "未所持巻はありません。コンプリート済み 🎉";
+      }
+      const sorted = [...volumes].sort((a, b) => a - b);
+      const previewCount = 12;
+      const head = sorted.slice(0, previewCount);
+      const tailCount = sorted.length - head.length;
+
+      const text =
+        head.map((v) => `第${v}巻`).join("・") +
+        (tailCount > 0 ? ` …ほか ${tailCount} 巻` : "");
+      return text;
+    }
+
+    function countTotalInitialVolumes(manga) {
+      // 初回登録時の巻数が分からないので、
+      // ひとまず「未所持 + 所持済み推定」は使わず、
+      // 未所持巻数だけを表示に使う。
+      return manga.volumes.length;
+    }
+
+    // ==========================
+    // タブ表示
+    // ==========================
+    function renderTabs() {
+      const tabBar = document.getElementById("tabBar");
+      tabBar.innerHTML = "";
+
+      // 漫画リストタブ
+      const listTab = document.createElement("button");
+      listTab.className =
+        "tab" + (state.activeTabId === "list" ? " active" : "");
+      listTab.innerHTML = `
+        <span class="icon">📂</span>
+        <span class="tab-label-text">漫画リスト</span>
+        ${
+          state.activeTabId === "list"
+            ? '<span class="tab-indicator"></span>'
+            : ""
+        }
+      `;
+      listTab.addEventListener("click", () => {
+        state.activeTabId = "list";
+        saveStateToDB();
+        render();
+      });
+      tabBar.appendChild(listTab);
+
+      // 個別漫画タブ
+      state.mangas.forEach((manga) => {
+        const tab = document.createElement("button");
+        const isActive = state.activeTabId === manga.id;
+        tab.className = "tab" + (isActive ? " active" : "");
+        tab.innerHTML = `
+          <span class="icon">📘</span>
+          <span class="tab-label-text">${escapeHtmlShort(manga.name)}</span>
+          ${isActive ? '<span class="tab-indicator"></span>' : ""}
+        `;
+        tab.title = manga.name;
+        tab.addEventListener("click", () => {
+          state.activeTabId = manga.id;
+          saveStateToDB();
+          render();
+        });
+        tabBar.appendChild(tab);
+      });
+    }
+
+    // ==========================
+    // メインコンテンツ描画
+    // ==========================
+
+    function render() {
+      renderTabs();
+      const container = document.getElementById("tabContent");
+      container.innerHTML = "";
+
+      if (state.activeTabId === "list") {
+        renderMangaListView(container);
+      } else {
+        const manga = state.mangas.find(
+          (m) => m.id === state.activeTabId
+        );
+        if (!manga) {
+          // 該当漫画がない場合は一覧に戻す
+          state.activeTabId = "list";
+          saveStateToDB();
+          renderMangaListView(container);
+        } else {
+          renderMangaDetailView(container, manga);
+        }
+      }
+    }
+
+    // ========== 漫画リストビュー ==========
+    function renderMangaListView(root) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "content-columns";
+
+      const leftPanel = document.createElement("section");
+      leftPanel.className = "panel";
+
+      leftPanel.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">
+              <span class="panel-title-icon">➕</span>
+              漫画を追加
+            </div>
+            <div class="panel-subtitle">
+              タイトルと最大巻数を入力して、管理対象の漫画をリストに加えます。
+            </div>
+          </div>
+          <div class="pill-counter">
+            合計タイトル数：<span class="highlight">${
+              state.mangas.length
+            }</span>
+          </div>
+        </div>
+      `;
+
+      const formRow = document.createElement("div");
+      formRow.className = "form-row";
+
+      const nameGroup = document.createElement("div");
+      nameGroup.className = "input-group";
+      nameGroup.innerHTML = `
+        <label class="input-label">
+          漫画名
+          <span class="hint">例）ONE PIECE, 進撃の巨人 など</span>
+        </label>
+        <input id="mangaNameInput" class="text-input" type="text" placeholder="漫画のタイトルを入力" />
+      `;
+
+      const volumeGroup = document.createElement("div");
+      volumeGroup.className = "input-group";
+      volumeGroup.innerHTML = `
+        <label class="input-label">
+          最大巻数
+          <span class="hint">数字のみ（例：40）</span>
+        </label>
+        <input id="mangaVolumeInput" class="number-input" type="number" min="1" inputmode="numeric" placeholder="最大巻数を入力" />
+      `;
+
+      formRow.appendChild(nameGroup);
+      formRow.appendChild(volumeGroup);
+
+      const buttonRow = document.createElement("div");
+      buttonRow.className = "button-row";
+
+      const addButton = document.createElement("button");
+      addButton.className = "primary-button";
+      addButton.innerHTML = `
+        <span class="button-icon">📥</span>
+        <span>リストに加える</span>
+      `;
+      addButton.addEventListener("click", () => {
+        const nameInput = /** @type {HTMLInputElement} */ (
+          document.getElementById("mangaNameInput")
+        );
+        const volumeInput = /** @type {HTMLInputElement} */ (
+          document.getElementById("mangaVolumeInput")
+        );
+        const name = nameInput.value.trim();
+        const maxVolume = parseInt(volumeInput.value, 10);
+
+        if (!name) {
+          alert("漫画名を入力してください。");
+          nameInput.focus();
+          return;
+        }
+        if (!maxVolume || maxVolume <= 0) {
+          alert("最大巻数には 1 以上の数字を入力してください。");
+          volumeInput.focus();
+          return;
+        }
+        if (maxVolume > 400) {
+          const ok = confirm(
+            "かなり大きい巻数が指定されています。本当に追加しますか？"
+          );
+          if (!ok) return;
+        }
+
+        const id = generateMangaId();
+        const volumes = [];
+        for (let i = 1; i <= maxVolume; i++) {
+          volumes.push(i);
+        }
+
+        state.mangas.push({
+          id,
+          name,
+          volumes,
+        });
+        state.activeTabId = id;
+
+        saveStateToDB();
+        render();
+      });
+
+      const helpGhost = document.createElement("div");
+      helpGhost.className = "ghost-pill";
+      helpGhost.innerHTML = `
+        <span>💡</span>
+        <span>登録後は、その漫画専用のタブから巻ごとに管理できます。</span>
+      `;
+
+      buttonRow.appendChild(addButton);
+      buttonRow.appendChild(helpGhost);
+
+      leftPanel.appendChild(formRow);
+      leftPanel.appendChild(buttonRow);
+
+      const rightPanel = document.createElement("section");
+      rightPanel.className = "panel";
+
+      rightPanel.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">
+              <span class="panel-title-icon">📂</span>
+              登録済みの漫画
+            </div>
+            <div class="panel-subtitle">
+              タイトルをクリックすると、その漫画専用タブが開きます。
+            </div>
+          </div>
+          <div class="pill-counter">
+            ${
+              state.mangas.length === 0
+                ? "まだ漫画は登録されていません"
+                : `登録済みタイトル：<span class="highlight">${state.mangas.length}</span>`
+            }
+          </div>
+        </div>
+      `;
+
+      const listScroll = document.createElement("div");
+      listScroll.className = "list-scroll";
+
+      if (state.mangas.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "helper-text";
+        empty.innerHTML =
+          "右側のフォームから、まずは1作品追加してみてください。<br>巻数には「現時点で管理したい最大巻数」を入力します。";
+        listScroll.appendChild(empty);
+      } else {
+        const sorted = [...state.mangas].sort((a, b) =>
+          a.name.localeCompare(b.name, "ja")
+        );
+        for (const manga of sorted) {
+          const card = document.createElement("div");
+          card.className = "manga-card";
+
+          const main = document.createElement("div");
+          main.className = "manga-main";
+
+          const nameEl = document.createElement("div");
+          nameEl.className = "manga-name";
+          nameEl.textContent = manga.name;
+
+          const meta = document.createElement("div");
+          meta.className = "manga-meta";
+
+          const missingCount = manga.volumes.length;
+          const tagMissing = document.createElement("span");
+          tagMissing.className = "tag";
+          tagMissing.textContent =
+            missingCount === 0
+              ? "未所持なし（コンプリート）"
+              : `未所持：${missingCount} 巻`;
+
+          meta.appendChild(tagMissing);
+
+          const preview = document.createElement("div");
+          preview.className = "missing-list-preview";
+          preview.textContent = formatVolumePreview(manga.volumes);
+
+          main.appendChild(nameEl);
+          main.appendChild(meta);
+          main.appendChild(preview);
+
+          const actions = document.createElement("div");
+          actions.className = "manga-actions";
+
+          const openButton = document.createElement("button");
+          openButton.className = "ghost-button";
+          openButton.innerHTML = `
+            <span class="button-icon">➡️</span>
+            <span>詳細を開く</span>
+          `;
+          openButton.addEventListener("click", () => {
+            state.activeTabId = manga.id;
+            saveStateToDB();
+            render();
+          });
+
+          actions.appendChild(openButton);
+
+          card.appendChild(main);
+          card.appendChild(actions);
+          listScroll.appendChild(card);
+        }
+      }
+
+      rightPanel.appendChild(listScroll);
+
+      wrapper.appendChild(leftPanel);
+      wrapper.appendChild(rightPanel);
+
+      root.appendChild(wrapper);
+    }
+
+    // ========== 個別漫画ビュー ==========
+    function renderMangaDetailView(root, manga) {
+      const panel = document.createElement("section");
+      panel.className = "panel";
+
+      // ヘッダ
+      const header = document.createElement("div");
+      header.className = "manga-detail-header";
+
+      const title = document.createElement("div");
+      title.className = "manga-detail-name";
+      title.innerHTML = `
+        <span>📘</span>
+        <span>${escapeHtmlShort(manga.name)}</span>
+      `;
+
+      const stats = document.createElement("div");
+      stats.className = "manga-detail-stats";
+
+      const statMissing = document.createElement("div");
+      statMissing.className = "stat-pill";
+      const missingCount = manga.volumes.length;
+      statMissing.innerHTML = `
+        <span class="stat-dot"></span>
+        <span>未所持巻：<strong>${missingCount}</strong> 巻</span>
+      `;
+
+      stats.appendChild(statMissing);
+
+      const statHint = document.createElement("div");
+      statHint.className = "stat-pill";
+      statHint.innerHTML = `
+        <span>💡</span>
+        <span>表示されている巻を<span class="highlight">「持っていない巻」</span>として管理します。</span>
+      `;
+      stats.appendChild(statHint);
+
+      header.appendChild(title);
+      header.appendChild(stats);
+
+      // 巻追加フォーム
+      const volumeAddRow = document.createElement("div");
+      volumeAddRow.className = "volume-add-row";
+
+      const volumeInputGroup = document.createElement("div");
+      volumeInputGroup.className = "input-group";
+      volumeInputGroup.style.flex = "0 0 150px";
+      volumeInputGroup.innerHTML = `
+        <label class="input-label">
+          巻数を追加
+          <span class="hint">例：5（第5巻を未所持リストに追加）</span>
+        </label>
+        <input class="number-input" id="addVolumeInput" type="number" min="1" inputmode="numeric" placeholder="巻数を入力" />
+      `;
+
+      const volumeButtonGroup = document.createElement("div");
+      volumeButtonGroup.style.display = "flex";
+      volumeButtonGroup.style.alignItems = "flex-end";
+
+      const addVolumeButton = document.createElement("button");
+      addVolumeButton.className = "ghost-button";
+      addVolumeButton.innerHTML = `
+        <span class="button-icon">➕</span>
+        <span>この巻を追加</span>
+      `;
+
+      addVolumeButton.addEventListener("click", () => {
+        const input = /** @type {HTMLInputElement} */ (
+          document.getElementById("addVolumeInput")
+        );
+        const value = parseInt(input.value, 10);
+
+        if (!value || value <= 0) {
+          alert("1 以上の巻数を入力してください。");
+          input.focus();
+          return;
+        }
+
+        if (manga.volumes.includes(value)) {
+          alert(`第${value}巻はすでに未所持として登録されています。`);
+          input.focus();
+          return;
+        }
+
+        manga.volumes.push(value);
+        manga.volumes.sort((a, b) => a - b);
+
+        saveStateToDB();
+        render();
+      });
+
+      volumeButtonGroup.appendChild(addVolumeButton);
+
+      volumeAddRow.appendChild(volumeInputGroup);
+      volumeAddRow.appendChild(volumeButtonGroup);
+
+      // ヘルパーテキスト
+      const helper = document.createElement("div");
+      helper.className = "helper-text";
+      helper.innerHTML = `
+        画面に並んでいる巻は「まだ持っていない巻」です。<br>
+        実際にその巻を購入したら、<span class="highlight">－ボタンを押して一覧から消す</span>ことで「所持済み」を表現します。
+      `;
+
+      // 巻一覧
+      const gridHeader = document.createElement("div");
+      gridHeader.className = "volume-grid-header";
+      gridHeader.innerHTML = `
+        <span>未所持巻一覧</span>
+        <span>${
+          manga.volumes.length === 0
+            ? "すべて所持しています 🎉"
+            : `未所持：${manga.volumes.length} 巻`
+        }</span>
+      `;
+
+      const grid = document.createElement("div");
+      grid.className = "volume-grid";
+
+      if (manga.volumes.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "helper-text";
+        empty.innerHTML =
+          "未所持の巻はありません。この作品はコンプリート状態です。<br>新刊が出たら「巻数を追加」から登録してください。";
+        grid.appendChild(empty);
+      } else {
+        const sorted = [...manga.volumes].sort((a, b) => a - b);
+        for (const v of sorted) {
+          const pill = document.createElement("div");
+          pill.className = "volume-pill";
+
+          const label = document.createElement("div");
+          label.className = "volume-label";
+          label.innerHTML = `
+            <span class="volume-label-main">第${v}巻</span>
+            <span class="volume-label-sub">未所持</span>
+          `;
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "volume-delete-btn";
+          delBtn.type = "button";
+          delBtn.textContent = "－";
+          delBtn.title = "この巻をリストから消す（所持済みとして扱う）";
+
+          delBtn.addEventListener("click", () => {
+            // クリックでその巻を削除 => 所持済み
+            const confirmRemove = confirm(
+              `第${v}巻を「所持済み」として未所持リストから外しますか？`
+            );
+            if (!confirmRemove) return;
+
+            manga.volumes = manga.volumes.filter((n) => n !== v);
+            saveStateToDB();
+            render();
+          });
+
+          pill.appendChild(label);
+          pill.appendChild(delBtn);
+
+          grid.appendChild(pill);
+        }
+      }
+
+      panel.appendChild(header);
+      panel.appendChild(volumeAddRow);
+      panel.appendChild(helper);
+      panel.appendChild(gridHeader);
+      panel.appendChild(grid);
+
+      root.appendChild(panel);
+    }
+
+    // ==========================
+    // HTML エスケープ（簡易）
+    // ==========================
+    function escapeHtmlShort(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    // ==========================
+    // 初期化
+    // ==========================
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        await openDatabase();
+        await loadStateFromDB();
+      } catch (e) {
+        console.error("アプリ初期化時にエラーが発生しました:", e);
+      }
+      render();
+    });
+  </script>
+</body>
+</html>
