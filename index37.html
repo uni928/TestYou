@@ -410,7 +410,7 @@
             <div>
                 <div class="field-label">
                     <span>文章入力</span>
-                    <span class="hint">最大 32767 文字 / UTF-16 1文字=16bit で埋め込み</span>
+                    <span class="hint">最大 2,097,151 文字（理論値） / UTF-16 1文字=16bit で埋め込み</span>
                 </div>
                 <textarea id="inputText" placeholder="ここに埋め込みたい文章を入力してください。改行や日本語もそのまま保存されます。"></textarea>
             </div>
@@ -448,7 +448,7 @@
                 <span id="encodeStatus">操作待ちです。</span>
                 <span class="info-pill">
                     <span class="dot"></span>
-                    <span>先頭 5 ピクセルに文字数 / 残りに本文を格納</span>
+                    <span>先頭 7 ピクセルに文字数 / 残りに本文を格納</span>
                 </span>
             </div>
         </section>
@@ -541,11 +541,12 @@
             return;
         }
         const totalPixels = originalImageData.width * originalImageData.height;
-        if (totalPixels <= 5) {
+        // 先頭7ピクセルは文字数情報用に使用
+        if (totalPixels <= 7) {
             capacityInfo.textContent = '格納可能文字数: 0 文字（画像が小さすぎます）';
-            return;
-        }
-        const availablePixels = totalPixels - 5;  // 先頭5ピクセルは文字数
+             return;
+         }
+        const availablePixels = totalPixels - 7;  // 先頭7ピクセルは文字数
         const capacityBits = availablePixels * 3; // 1ピクセル3bit
         const maxChars = Math.floor(capacityBits / 16); // 1文字16bit (UTF-16)
         capacityInfo.textContent = '格納可能文字数: ' + maxChars + ' 文字';
@@ -604,10 +605,11 @@
             alert('埋め込みたい文章を入力してください。');
             return;
         }
-        if (text.length > 32767) {
-            alert('文字数が多すぎます。最大 32767 文字までです。');
-            return;
-        }
+        // 先頭7ピクセル＝21bitで表現可能な理論最大値は 2^21 - 1 = 2,097,151
+        if (text.length > 2097151) {
+            alert('文字数が多すぎます。理論上の最大値 2,097,151 文字を超えています。');
+             return;
+         }
 
         // α=255チェック
         if (!checkAllAlphaFull(originalImageData)) {
@@ -618,12 +620,12 @@
         const width = originalImageData.width;
         const height = originalImageData.height;
         const totalPixels = width * height;
-        if (totalPixels <= 5) {
-            alert('画像が小さすぎます。先頭5ピクセルに文字数を格納するため、もっと大きな画像を使用してください。');
+        if (totalPixels <= 7) {
+            alert('画像が小さすぎます。先頭7ピクセルに文字数を格納するため、もっと大きな画像を使用してください。');
             return;
         }
 
-        const availablePixels = totalPixels - 5;
+        const availablePixels = totalPixels - 7;
         const capacityBits = availablePixels * 3; // 1px=3bit
         const neededBits = text.length * 16;      // 1文字16bit
 
@@ -640,8 +642,8 @@
         const bits = [];
         const len = text.length;
 
-        // 先頭15bit: 文字数 (0〜32767)
-        for (let i = 14; i >= 0; i--) {
+        // 先頭21bit: 文字数 (0〜2,097,151)
+        for (let i = 20; i >= 0; i--) {
             bits.push((len >> i) & 1);
         }
 
@@ -691,7 +693,7 @@
         const width = canvas.width;
         const height = canvas.height;
         const totalPixels = width * height;
-        if (totalPixels < 5) {
+        if (totalPixels < 7) {
             alert('画像が小さすぎて、埋め込まれた情報を抽出できません。');
             return;
         }
@@ -699,9 +701,9 @@
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        // 先頭5ピクセル（15bit）から文字数を復元
+        // 先頭5ピクセル（21bit）から文字数を復元
         const headerBits = [];
-        for (let p = 0; p < 5; p++) {
+        for (let p = 0; p < 7; p++) {
             const alpha = data[p * 4 + 3];
             let diff = 255 - alpha; // 0〜7 のはず
             if (diff < 0) diff = 0;
@@ -716,7 +718,7 @@
 
         // 15bit → 文字数
         let length = 0;
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 21; i++) {
             length = (length << 1) | (headerBits[i] || 0);
         }
         if (length === 0) {
@@ -725,12 +727,12 @@
             alert('埋め込まれた文章はありません（文字数 0）。');
             return;
         }
-        if (length > 32767) {
+        if (length > 2097151) {
             alert('文字数情報が不正です。データが壊れている可能性があります。');
             return;
         }
 
-        const availablePixels = totalPixels - 5;
+        const availablePixels = totalPixels - 7;
         const capacityBits = availablePixels * 3;
         const neededBits = length * 16;
         if (neededBits > capacityBits) {
@@ -741,7 +743,8 @@
         // 本文ビット列を読み取り
         const bitsNeeded = neededBits;
         const charBits = [];
-        for (let p = 5; p < totalPixels && charBits.length < bitsNeeded; p++) {
+        for (let p = 7; p < totalPixels && charBits.length < bitsNeeded; p++) {
+             
             const alpha = data[p * 4 + 3];
             let diff = 255 - alpha;
             if (diff < 0) diff = 0;
