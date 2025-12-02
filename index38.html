@@ -387,7 +387,7 @@
         <div>
             <h1>
                 <span class="logo"></span>
-                アルファチャンネル文章埋め込みツール ver2.0.0
+                アルファチャンネル文章埋め込みツール ver3.0.0
             </h1>
             <small>透明度255の画像に、ほとんど見た目を変えずテキストを埋め込み／抽出します。</small>
         </div>
@@ -747,6 +747,23 @@ embedButton.addEventListener('click', function() {
         alert('内部エラー: ビット列をすべて埋め込む前に画像範囲を使い切ってしまいました。設定値を見直してください。');
         return;
     }
+
+    (function convertDeliberately() {
+        // 248 の 5% を 253 に変換
+        const convertCount = Math.floor(dummy248Count * 0.05);
+        if (convertCount <= 0) return;
+
+        let converted = 0;
+        for (let p = RESERVED_HEADER_PIXELS; p < totalPixels; p++) {
+            if (converted >= convertCount) break;
+
+            const alphaIndex = p * 4 + 3;
+            if (data[alphaIndex] === 248) {
+                data[alphaIndex] = 253;
+                converted++;
+            }
+        }
+    })();
 
     // キャンバスへ反映
     ctx.putImageData(encoded, 0, 0);
