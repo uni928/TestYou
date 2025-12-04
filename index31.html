@@ -83,13 +83,36 @@ let speech = window.speechSynthesis;
 
 async function loadKey() {
   const db = await openDB();
-  const tx = db.transaction('kv', 'readonly');
-  const store = tx.objectStore('kv');
-  const req = store.get('apiKey');
+  // IndexedDB から保存済み API キーを取得
+  const tx = db.transaction("kv", "readonly");
+  const store = tx.objectStore("kv");
+  const req = store.get("apiKey");
   const key = await new Promise(resolve => {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
   });
+
+  // ▼ API キー未保存の場合、URL のクエリパラメータ ?key=xxxxx を確認
+  if (!key) {
+    const params = new URLSearchParams(window.location.search);
+    const urlKey = params.get("key");
+
+    if (urlKey) {
+      // IndexedDB に保存
+      const tx2 = db.transaction("kv", "readwrite");
+      const store2 = tx2.objectStore("kv");
+      await new Promise(resolve => {
+        const putReq = store2.put(urlKey, "apiKey");
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => resolve();
+      });
+
+      apiKey = urlKey;
+      document.getElementById("keyModal").style.display = "none";
+      startCamera();
+      return;
+    }
+  }
   if (key) {
     apiKey = key;
     document.getElementById('keyModal').style.display = 'none';
