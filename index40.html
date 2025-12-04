@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ChatGPTログ抽出（あなた/ChatGPT・ユーザーのみ抽出対応）</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --card:#ffffff;
+    --gray:#e5e7eb;
+    --gray-text:#374151;
+    --green:#d1fae5;
+    --green-text:#065f46;
+    --ink:#111827;
+    --shadow:0 8px 20px rgba(0,0,0,.12);
+  }
+  body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";color:var(--ink);}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px;transition:max-width .2s ease;}
+  .title{font-size:20px;font-weight:700;margin:8px 0 16px;}
+  .grid{display:grid;gap:16px;grid-template-columns:1fr;transition:grid-template-columns .2s ease;}
+  @media (min-width:1024px){ .grid{grid-template-columns:1.2fr .8fr} }
+  .card{background:var(--card);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:16px}
+  textarea, input[type="text"]{
+    width:100%;box-sizing:border-box;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    border:1px solid #d1d5db;border-radius:12px;padding:10px;background:#fff;outline:none
+  }
+  textarea{min-height:320px;resize:vertical}
+  .controls{display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .btn{
+    border:0;border-radius:12px;padding:10px 14px;background:#111827;color:#fff;cursor:pointer;font-weight:600
+  }
+  .btn.small{padding:6px 10px;line-height:1}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .muted{color:#6b7280;font-size:12px}
+
+  /* ===== リスト表示エリア ===== */
+  .chatlist{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-height:400px;
+    position:relative;
+  }
+  .bubble{
+    padding:10px;
+    border-radius:12px;
+    word-wrap:break-word;
+    word-break:break-word;
+    white-space:pre-wrap;
+    transition:transform .12s ease;
+  }
+  .bubble.user{
+    align-self:flex-end;
+    background:var(--green);
+    color:var(--green-text);
+    border-top-right-radius:6px;
+    cursor:pointer;
+    width:min(420px, calc(100% - 32px)); /* 右に見切れにくい幅 */
+  }
+  .bubble.user[data-clickable="false"]{cursor:default}
+  .bubble.user:hover{filter:brightness(.98)}
+  .bubble.assistant{
+    align-self:flex-start;
+    background:var(--gray);
+    color:var(--gray-text);
+    border-top-left-radius:6px;
+    max-width:min(560px, calc(100% - 24px)); /* 見切れ防止 */
+  }
+  .role{display:block;font-size:12px;font-weight:700;margin-bottom:4px;opacity:.8}
+  .empty{padding:12px;border:1px dashed #d1d5db;border-radius:12px;color:#6b7280;background:#fafafa}
+  .kpi{display:flex;gap:12px;align-items:center;margin:8px 0 0;font-size:12px;color:#6b7280}
+  .kpi-right{display:flex;gap:8px;align-items:center}
+  mark{padding:0 .15em;border-radius:4px}
+
+  /* === 左下ドック（ユーザーのみ抽出ON時にクリックで表示） === */
+  .assistant-dock{
+    position:fixed;
+    left:16px;
+    bottom:16px;
+    max-width:min(560px, calc(100% - 32px));
+    z-index:100;
+  }
+  .assistant-card{
+    background:var(--gray);
+    color:var(--gray-text);
+    border-radius:14px;
+    border-top-left-radius:6px;
+    padding:12px;
+    box-shadow:var(--shadow);
+  }
+  .assistant-card .head{
+    font-size:12px;font-weight:700;opacity:.8;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .assistant-card .close{
+    margin-left:auto;
+    background:#000; color:#fff; border:none; border-radius:999px;
+    width:22px;height:22px;line-height:22px;text-align:center;cursor:pointer;font-size:14px;
+    opacity:.7;
+  }
+  .assistant-card .close:hover{opacity:1}
+  .assistant-card .body{white-space:pre-wrap;word-break:break-word;}
+
+  /* === 拡大表示（＋） === */
+  body.expand-chat .wrap{max-width:100vw}
+  body.expand-chat .grid{grid-template-columns:1fr}
+  body.expand-chat .grid .left{display:none}
+  body.expand-chat .grid .right{min-height:calc(100vh - 120px)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">ChatGPTログ抽出ツール（自分の発言だけ抽出・クリックで左下に回答表示）</div>
+
+    <div class="grid">
+      <!-- 左：入力 -->
+      <section class="card left">
+        <label for="source"><b>① チャット履歴をここに貼り付け</b>（Ctrl+A → Ctrl+C でコピー）</label>
+        <textarea id="source" placeholder="例：
+あなた: こんにちは！この前の件ですが…
+ChatGPT: こんにちは！もちろん、続きは…
+あなた: では○○を△△にして…
+ChatGPT: 承知しました。手順は……"></textarea>
+
+        <div class="controls">
+          <div class="row" style="flex:1 1 auto">
+            <input id="q" type="text" placeholder="② 検索語（この語を含むやり取りだけを抽出）">
+          </div>
+          <button id="run" class="btn">③ 実行</button>
+          <button id="clear" class="btn" style="background:#6b7280">クリア</button>
+        </div>
+
+        <details>
+          <summary>使い方メモ</summary>
+          <div class="muted">
+            ・貼り付けたテキストを <b>「あなた:」</b> を境に分割し、各「あなた:」に続く <b>「ChatGPT:」</b> をひも付けます。<br>
+            ・「自分の発言だけ抽出する」にチェックすると、右に <b>あなたの発言だけ</b> を並べ、クリックすると <b>左下ドック</b>に ChatGPT の回答を表示（再クリックで閉じる）。<br>
+            ・未チェックでは、あなた→ChatGPT のペアを通常表示。検索語は両方に部分一致でハイライトします。
+          </div>
+        </details>
+      </section>
+
+      <!-- 右：出力 -->
+      <section class="card right">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b>結果</b>
+          <div class="kpi-right">
+            <button id="toggleExpand" class="btn small" aria-pressed="true" title="チャット欄を元に戻す">−</button>
+            <label style="display:flex;align-items:center;gap:6px; user-select:none; margin-left:8px;">
+              <input id="onlyUser" type="checkbox" checked> 自分の発言だけ抽出する
+            </label>
+            <div class="kpi"><span id="count">0 件</span></div>
+          </div>
+        </div>
+
+        <div id="out" class="chatlist" style="margin-top:8px">
+          <div class="empty">ここに抽出結果が表示されます。</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 左下ドック（ユーザーのみ抽出ON時に使用） -->
+  <div id="assistantDock" class="assistant-dock" hidden>
+    <div class="assistant-card">
+      <div class="head">
+        <span>ChatGPT</span>
+        <button class="close" title="閉じる" aria-label="閉じる">×</button>
+      </div>
+      <div class="body" id="assistantBody"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = (sel)=>document.querySelector(sel);
+  const source = $('#source');
+  const q = $('#q');
+  const run = $('#run');
+  const clearBtn = $('#clear');
+  const out = $('#out');
+  const count = $('#count');
+  const toggleBtn = $('#toggleExpand');
+  // デフォルトで拡大状態（＋が押された状態）にする
+  document.body.classList.add('expand-chat');
+  toggleBtn.textContent = '−';
+  toggleBtn.title = 'チャット欄を元に戻す';
+  toggleBtn.setAttribute('aria-pressed', 'true');
+  const onlyUser = $('#onlyUser');
+  const dock = $('#assistantDock');
+  const dockBody = $('#assistantBody');
+  const dockClose = dock.querySelector('.close');
+
+  function escapeHTML(s){
+    return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+  function escapeRegExp(s){
+    return s.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+  }
+
+  // 「あなた:」→直後の「ChatGPT:」を1セットに抽出
+  function parsePairs(text){
+    const t = text.replace(/\r\n?/g, '\n');
+    const youRe = /^あなた:\s*/gm;
+    const youStarts = [];
+    let m;
+    while((m = youRe.exec(t)) !== null){
+      youStarts.push({ index: m.index, len: m[0].length });
+    }
+    const pairs = [];
+    for(let i = 0; i < youStarts.length; i++){
+      const { index, len } = youStarts[i];
+      const blockStart = index + len;
+      const blockEnd   = (i + 1 < youStarts.length) ? youStarts[i+1].index : t.length;
+      const block = t.slice(blockStart, blockEnd);
+      const gptMatch = block.match(/^ChatGPT:\s*/m);
+      if(!gptMatch) continue;
+      const gptIndex = block.search(/^ChatGPT:\s*/m);
+      const user = block.slice(0, gptIndex).trim();
+      const assistant = block.slice(gptIndex + gptMatch[0].length).trim();
+      if(user.length || assistant.length) pairs.push({ user, assistant });
+    }
+    return pairs;
+  }
+
+  function highlight(text, needle){
+    if(!needle) return escapeHTML(text);
+    try{
+      const re = new RegExp(escapeRegExp(needle), 'g');
+      return escapeHTML(text).replace(re, m=>`<mark>${escapeHTML(m)}</mark>`);
+    }catch(e){
+      return escapeHTML(text);
+    }
+  }
+
+  // ====== 表示：あなたのみ（クリックで左下ドックに差し込み。再クリックで閉じる） ======
+  function renderUsersOnly(pairs, needle){
+    out.innerHTML = '';
+    if(pairs.length === 0){
+      out.innerHTML = `<div class="empty">一致するやり取りはありませんでした。</div>`;
+      count.textContent = '0 件';
+      dock.hidden = true;
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    pairs.forEach((p, i)=>{
+      const u = document.createElement('div');
+      u.className = 'bubble user';
+      u.innerHTML = `<span class="role">あなた:</span>${highlight(p.user, needle)}`;
+      u.tabIndex = 0;
+      u.setAttribute('role', 'button');
+      u.setAttribute('aria-expanded', 'false');
+      u.dataset.index = String(i);
+
+      function toggleDock(){
+        // すでに開いているChatGPT吹き出しがこの発言の直後にある場合 → 閉じる
+        const next = u.nextElementSibling;
+        if (next && next.classList.contains('assistant') && next.dataset.for === String(i)) {
+          next.remove();
+          u.setAttribute('aria-expanded', 'false');
+          return;
+        }
+        // ChatGPT発言要素を生成して次の自分の発言の直前に挿入
+        const ass = document.createElement('div');
+        ass.className = 'bubble assistant';
+        ass.dataset.for = String(i);
+        ass.innerHTML = `<span class="role">ChatGPT:</span>${highlight(p.assistant, needle)}`;
+
+        // 次の自分の発言を探す
+        let insertPoint = u.nextElementSibling;
+        while (insertPoint && !insertPoint.classList.contains('user')) {
+          insertPoint = insertPoint.nextElementSibling;
+        }
+
+        if (insertPoint) {
+          out.insertBefore(ass, insertPoint);
+        } else {
+          out.appendChild(ass);
+        }
+
+        u.setAttribute('aria-expanded', 'true');
+      }
+      u.addEventListener('click', toggleDock);
+      u.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleDock(); } });
+
+      frag.appendChild(u);
+    });
+    out.appendChild(frag);
+    count.textContent = `${pairs.length} 件`;
+  }
+
+  // ====== 表示：通常（あなた→ChatGPT の順に並べる） ======
+  function renderAll(pairs, needle){
+    out.innerHTML = '';
+    if(pairs.length === 0){
+      out.innerHTML = `<div class="empty">一致するやり取りはありませんでした。</div>`;
+      count.textContent = '0 件';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    pairs.forEach((p)=>{
+      const u = document.createElement('div');
+      u.className = 'bubble user';
+      u.setAttribute('data-clickable', 'false');
+      u.innerHTML = `<span class="role">あなた:</span>${highlight(p.user, needle)}`;
+      const a = document.createElement('div');
+      a.className = 'bubble assistant';
+      a.innerHTML = `<span class="role">ChatGPT:</span>${highlight(p.assistant, needle)}`;
+      frag.appendChild(u);
+      frag.appendChild(a);
+    });
+    out.appendChild(frag);
+    count.textContent = `${pairs.length} 件`;
+    dock.hidden = true; // 通常表示ではドックは使用しない
+  }
+
+  function runSearch(){
+    const text = source.value || '';
+    const needle = q.value || '';
+    const pairs = parsePairs(text);
+    const hits = !needle ? pairs : pairs.filter(p =>
+      p.user.includes(needle) || p.assistant.includes(needle)
+    );
+    if(onlyUser.checked){
+      renderUsersOnly(hits, needle);
+    }else{
+      renderAll(hits, needle);
+    }
+  }
+
+  run.addEventListener('click', runSearch);
+  q.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ runSearch(); }});
+  clearBtn.addEventListener('click', ()=>{ q.value = ''; runSearch(); q.focus(); });
+  onlyUser.addEventListener('change', runSearch);
+
+  // 左下ドックを閉じる
+  dockClose.addEventListener('click', ()=>{ dock.hidden = true; dock.removeAttribute('data-for'); });
+
+  // ＋／− で右側をワイドに
+  toggleBtn.addEventListener('click', ()=>{
+    const expanded = document.body.classList.toggle('expand-chat');
+    toggleBtn.textContent = expanded ? '−' : '＋';
+    toggleBtn.title = expanded ? 'チャット欄を元に戻す' : 'チャット欄を広げる';
+    toggleBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+  });
+
+  // ★ ここに入力内容を初期値として埋め込み（generator から注入）
+  const initial = `
+あなた:
+画像に関して、見た目をほとんど変えずに文章を埋め込むサイト（html）を作成頂けますか？ 
+見た目にこだわって下さい。 
+localstrage や indexeddb の保存は必要ありません。 
+透明度が全て 255 でない画像は読み込み不可ダイアログを出して下さい。
+透明度 255 を 0～7下げて、下がっている数字を解析してデータを埋め込みます。
+最初の 5 ピクセルは文字数情報を格納して下さい。(0～32767文字)
+1 ピクセル当たり 8 の情報を埋め込むという事です。
+サイトに入れたい文章と画像を入れると、出力画像がダウンロードされます。
+出力した画像を文章抽出機能に入れると文章が抽出されます。
+文章量が画像に格納しきれない場合はエラーダイアログを出して下さい。
+
+ChatGPT:
+
+思考時間: 2m 27s
+こちらでどうでしょう？
+1枚のHTMLだけで完結する、見た目重視のテキスト埋め込み／抽出ツールです。
+
+透明度255以外の画像には「埋め込み時」にエラーダイアログ
+
+α=255→255−(0〜7) にして3bit/ピクセル（8状態）で情報埋め込み
+
+先頭5ピクセル＝15bitで文字数(0〜32767)を格納
+
+1文字＝16bit（UTF-16コード）
+
+容量オーバー時はダイアログ表示
+
+出力画像はPNGでダウンロード可能
+
+出力画像を右側の「文章抽出」から読み込めば文字列復元
+
+コピペして stegano_alpha.html などの名前で保存して使えます。
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>アルファチャンネル文章埋め込みツール</title>
+<style>
+    :root {
+        color-scheme: dark light;
+        --bg: #0f172a;
+        --bg-soft: #111827;
+        --card: #111827;
+        --accent: #38bdf8;
+        --accent-soft: rgba(56,189,248,0.1);
+        --border: rgba(148,163,184,0.5);
+        --text-main: #e5e7eb;
+        --text-sub: #9ca3af;
+        --danger: #f97373;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, #1e293b, #020617 60%);
+        color: var(--text-main);
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        padding: 24px;
+    }
+    .app {
+        max-width: 1200px;
+        width: 100%;
+        background: radial-gradient(circle at top right, rgba(56,189,248,0.1), rgba(15,23,42,0.98));
+        border-radius: 24px;
+        box-shadow:
+            0 24px 60px rgba(15,23,42,0.8),
+            0 0 0 1px rgba(148,163,184,0.2);
+        padding: 20px 24px 24px;
+        backdrop-filter: blur(18px);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid rgba(148,163,184,0.3);
+        padding-bottom: 10px;
+    }
+    header h1 {
+        font-size: 20px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        letter-spacing: 0.04em;
+    }
+    header h1 span.logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 20%, #e5e7eb, #38bdf8 35%, #0f172a 70%);
+        box-shadow: 0 0 20px rgba(56,189,248,0.7);
+    }
+    header small {
+        font-size: 11px;
+        color: var(--text-sub);
+    }
+    .badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 1px solid rgba(148,163,184,0.5);
+        color: var(--text-sub);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #22c55e, #4ade80);
+        box-shadow: 0 0 8px rgba(52,211,153,0.9);
+    }
+    main {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+        gap: 18px;
+    }
+    @media (max-width: 900px) {
+        main { grid-template-columns: minmax(0,1fr); }
+    }
+    .card {
+        background: linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.96));
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        padding: 14px 14px 16px;
+        box-shadow:
+            0 14px 30px rgba(15,23,42,0.85),
+            0 0 0 1px rgba(15,23,42,0.9) inset;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        overflow: hidden;
+    }
+    .card::before {
+        content: "";
+        position: absolute;
+        inset: -40%;
+        background: radial-gradient(circle at 0 0, rgba(56,189,248,0.09), transparent 55%);
+        mix-blend-mode: screen;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
+    }
+    .card-header h2 {
+        margin: 0;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .card-header h2 span.icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 20%, #38bdf8, #0f172a 80%);
+        box-shadow: 0 0 12px rgba(56,189,248,0.8);
+        font-size: 12px;
+    }
+    .card-header small {
+        color: var(--text-sub);
+        font-size: 11px;
+    }
+    .field-label {
+        font-size: 11px;
+        color: var(--text-sub);
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+    .field-label span.hint {
+        font-size: 10px;
+        opacity: 0.85;
+    }
+    textarea {
+        width: 100%;
+        min-height: 120px;
+        max-height: 200px;
+        resize: vertical;
+        border-radius: 10px;
+        border: 1px solid rgba(148,163,184,0.6);
+        padding: 10px 12px;
+        font-size: 13px;
+        font-family: inherit;
+        background: rgba(15,23,42,0.9);
+        color: var(--text-main);
+        outline: none;
+        box-shadow: 0 0 0 1px rgba(15,23,42,0.9);
+        transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(56,189,248,0.2), 0 0 0 1px rgba(15,23,42,0.9) inset;
+        background: rgba(15,23,42,0.96);
+    }
+    textarea[readonly] {
+        opacity: 0.95;
+    }
+    .image-drop {
+        border-radius: 14px;
+        border: 1px dashed rgba(148,163,184,0.7);
+        padding: 10px 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        cursor: pointer;
+        background: rgba(15,23,42,0.9);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .image-drop:hover {
+        border-style: solid;
+        border-color: rgba(56,189,248,0.7);
+        background: radial-gradient(circle at top left, rgba(56,189,248,0.06), rgba(15,23,42,0.95));
+        box-shadow: 0 0 0 1px rgba(15,23,42,0.95) inset, 0 0 24px rgba(56,189,248,0.25);
+    }
+    .image-drop-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 12px;
+        background: radial-gradient(circle at 30% 20%, rgba(56,189,248,0.7), rgba(15,23,42,1));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 20px rgba(15,23,42,0.9);
+        flex-shrink: 0;
+        font-size: 18px;
+    }
+    .image-drop-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 12px;
+    }
+    .image-drop-text span.main {
+        font-weight: 500;
+    }
+    .image-drop-text span.sub {
+        font-size: 11px;
+        color: var(--text-sub);
+    }
+    .image-drop input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+    .status-line {
+        font-size: 11px;
+        color: var(--text-sub);
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+    }
+    .status-line strong {
+        font-weight: 500;
+        color: var(--accent);
+    }
+    .status-line .error {
+        color: var(--danger);
+    }
+    .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    button, .btn-link {
+        border-radius: 999px;
+        border: 1px solid rgba(148,163,184,0.7);
+        background: radial-gradient(circle at 30% 20%, rgba(56,189,248,0.16), rgba(15,23,42,1));
+        color: var(--text-main);
+        font-size: 12px;
+        padding: 7px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        outline: none;
+        box-shadow: 0 10px 24px rgba(15,23,42,0.9);
+        transition: transform 0.12s ease, box-shadow 0.12s ease, border 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    button span.icon, .btn-link span.icon {
+        font-size: 14px;
+    }
+    button.primary {
+        border-color: rgba(56,189,248,0.9);
+        background: radial-gradient(circle at 30% 20%, #38bdf8, #0f172a 80%);
+        box-shadow:
+            0 18px 35px rgba(15,23,42,0.95),
+            0 0 22px rgba(56,189,248,0.7);
+    }
+    button:hover, .btn-link:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 18px 35px rgba(15,23,42,0.95),
+            0 0 20px rgba(56,189,248,0.35);
+        border-color: rgba(56,189,248,0.9);
+    }
+    button:active, .btn-link:active {
+        transform: translateY(0);
+        box-shadow: 0 10px 20px rgba(15,23,42,0.9);
+    }
+    button:disabled {
+        opacity: 0.5;
+        cursor: default;
+        transform: none;
+        box-shadow: 0 10px 18px rgba(15,23,42,0.9);
+    }
+    .btn-link {
+        opacity: 0.4;
+        pointer-events: none;
+    }
+    .btn-link.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .canvas-wrap {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(148,163,184,0.5);
+        background: radial-gradient(circle at top, rgba(15,23,42,0.9), #020617 60%);
+        padding: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 250px;
+        position: relative;
+    }
+    canvas {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 10px;
+        background: #020617;
+    }
+    .canvas-placeholder {
+        font-size: 12px;
+        color: var(--text-sub);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
+    }
+    .canvas-placeholder-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        border: 1px dashed rgba(148,163,184,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.8;
+    }
+    .info-line {
+        font-size: 10px;
+        color: var(--text-sub);
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+    }
+    .info-pill {
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(148,163,184,0.5);
+        font-size: 10px;
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+    }
+    .info-pill span.dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #38bdf8, #22c55e);
+    }
+    footer {
+        font-size: 10px;
+        color: var(--text-sub);
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    footer span strong {
+        font-weight: 500;
+        color: var(--accent);
+    }
+</style>
+</head>
+<body>
+<div class="app">
+    <header>
+        <div>
+            <h1>
+                <span class="logo"></span>
+                アルファチャンネル文章埋め込みツール
+            </h1>
+            <small>透明度255の画像に、ほとんど見た目を変えずテキストを埋め込み／抽出します。</small>
+        </div>
+        <div class="badge">
+            <span class="badge-dot"></span>
+            α 255 → 255 − (0〜7) / 1ピクセル 3bit
+        </div>
+    </header>
+
+    <main>
+        <!-- 左：埋め込み -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2><span class="icon">✎</span> 文章を画像に埋め込む</h2>
+                    <small>透明度がすべて255の画像のみ使用可能</small>
+                </div>
+            </div>
+
+            <div>
+                <div class="field-label">
+                    <span>文章入力</span>
+                    <span class="hint">最大 32767 文字 / UTF-16 1文字=16bit で埋め込み</span>
+                </div>
+                <textarea id="inputText" placeholder="ここに埋め込みたい文章を入力してください。改行や日本語もそのまま保存されます。"></textarea>
+            </div>
+
+            <div>
+                <div class="field-label">
+                    <span>画像の選択</span>
+                    <span class="hint">PNG推奨（JPEGも可） / 完全不透明(α=255)のみ埋め込み可能</span>
+                </div>
+                <label class="image-drop">
+                    <div class="image-drop-icon">🖼</div>
+                    <div class="image-drop-text">
+                        <span class="main">画像ファイルを選択</span>
+                        <span class="sub">クリックして選択（またはここにドラッグ＆ドロップ）</span>
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*">
+                </label>
+            </div>
+
+            <div class="status-line">
+                <span id="imageStatus">画像はまだ読み込まれていません。</span>
+                <span id="capacityInfo">格納可能文字数: 0 文字</span>
+            </div>
+
+            <div class="btn-row">
+                <button class="primary" id="embedButton">
+                    <span class="icon">◆</span> 文章を埋め込んで画像を生成
+                </button>
+                <a id="downloadLink" class="btn-link" href="#" download="embedded.png">
+                    <span class="icon">⬇</span> 埋め込み済み画像をダウンロード
+                </a>
+            </div>
+
+            <div class="info-line">
+                <span id="encodeStatus">操作待ちです。</span>
+                <span class="info-pill">
+                    <span class="dot"></span>
+                    <span>先頭 5 ピクセルに文字数 / 残りに本文を格納</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- 右：プレビュー & 抽出 -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2><span class="icon">🔍</span> 埋め込み画像のプレビューと文章抽出</h2>
+                    <small>出力画像を読み込めば、埋め込んだ文章を復元できます。</small>
+                </div>
+            </div>
+
+            <div class="canvas-wrap">
+                <canvas id="canvas"></canvas>
+                <div id="canvasPlaceholder" class="canvas-placeholder">
+                    <div class="canvas-placeholder-icon">◆</div>
+                    <div>ここに画像のプレビューが表示されます。</div>
+                    <div style="font-size:11px;">埋め込み前の確認にも、抽出時の読み込みにも同じキャンバスを使用します。</div>
+                </div>
+            </div>
+
+            <div class="status-line">
+                <span id="canvasInfo">キャンバス未使用</span>
+                <span id="decodeStatus">文章抽出はまだ行われていません。</span>
+            </div>
+
+            <div>
+                <div class="field-label">
+                    <span>文章抽出結果</span>
+                    <span class="hint">右上の「抽出」ボタンで、キャンバス上の画像から文字列を復元します。</span>
+                </div>
+                <textarea id="outputText" readonly placeholder="ここに抽出した文章が表示されます。"></textarea>
+            </div>
+
+            <div class="btn-row">
+                <button id="extractButton">
+                    <span class="icon">🔎</span> キャンバス上の画像から文章を抽出
+                </button>
+                <button id="copyExtractedButton">
+                    <span class="icon">📋</span> 抽出した文章をコピー
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <span>透明度チェック: <strong>埋め込み時</strong> に全ピクセル α=255 か検証します。</span>
+        <span>1ピクセルあたり <strong>3bit (=8状態)</strong> / 画像サイズに応じて最大文字数が変わります。</span>
+    </footer>
+</div>
+
+<script>
+(function() {
+    const imageInput = document.getElementById(\`imageInput\`);
+    const canvas = document.getElementById(\`canvas\`);
+    const ctx = canvas.getContext(\`2d\`);
+    const canvasPlaceholder = document.getElementById(\`canvasPlaceholder\`);
+
+    const inputText = document.getElementById(\`inputText\`);
+    const outputText = document.getElementById(\`outputText\`);
+
+    const embedButton = document.getElementById(\`embedButton\`);
+    const extractButton = document.getElementById(\`extractButton\`);
+    const copyExtractedButton = document.getElementById(\`copyExtractedButton\`);
+    const downloadLink = document.getElementById(\`downloadLink\`);
+
+    const imageStatus = document.getElementById(\`imageStatus\`);
+    const capacityInfo = document.getElementById(\`capacityInfo\`);
+    const encodeStatus = document.getElementById(\`encodeStatus\`);
+    const decodeStatus = document.getElementById(\`decodeStatus\`);
+    const canvasInfo = document.getElementById(\`canvasInfo\`);
+
+    let originalImage = null;      // アップロードした生画像
+    let originalImageData = null;  // α=255確認済みの元ImageData
+
+    // キャンバスのプレースホルダ表示切り替え
+    function updateCanvasPlaceholder() {
+        if (canvas.width > 0 && canvas.height > 0) {
+            canvasPlaceholder.style.display = \`none\`;
+        } else {
+            canvasPlaceholder.style.display = \`flex\`;
+        }
+    }
+
+    // 画像から最大格納文字数を計算
+    function updateCapacityInfo() {
+        if (!originalImageData) {
+            capacityInfo.textContent = \`格納可能文字数: 0 文字\`;
+            return;
+        }
+        const totalPixels = originalImageData.width * originalImageData.height;
+        if (totalPixels <= 5) {
+            capacityInfo.textContent = \`格納可能文字数: 0 文字（画像が小さすぎます）\`;
+            return;
+        }
+        const availablePixels = totalPixels - 5;  // 先頭5ピクセルは文字数
+        const capacityBits = availablePixels * 3; // 1ピクセル3bit
+        const maxChars = Math.floor(capacityBits / 16); // 1文字16bit (UTF-16)
+        capacityInfo.textContent = \`格納可能文字数: \` + maxChars + \` 文字\`;
+    }
+
+    // 画像読み込み
+    imageInput.addEventListener(\`change\`, function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const img = new Image();
+            img.onload = function() {
+                originalImage = img;
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                imageStatus.textContent = \`画像読み込み済み: \` + img.width + \` × \` + img.height + \` px\`;
+                canvasInfo.textContent = \`キャンバス: \` + img.width + \` × \` + img.height + \` px (オリジナル表示中)\`;
+                encodeStatus.textContent = \`文章を入力して「文章を埋め込んで画像を生成」を押してください。\`;
+                decodeStatus.textContent = \`出力画像をここで表示した状態で抽出できます。\`;
+
+                updateCapacityInfo();
+                updateCanvasPlaceholder();
+                downloadLink.classList.remove(\`active\`);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // α=255のチェック（埋め込み時のみ使用）
+    function checkAllAlphaFull(imageData) {
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const a = data[i + 3];
+            if (a !== 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // 文章埋め込み処理
+    embedButton.addEventListener(\`click\`, function() {
+        if (!originalImageData) {
+            alert(\`先に画像を読み込んでください。\`);
+            return;
+        }
+
+        const text = inputText.value;
+        if (!text) {
+            alert(\`埋め込みたい文章を入力してください。\`);
+            return;
+        }
+        if (text.length > 32767) {
+            alert(\`文字数が多すぎます。最大 32767 文字までです。\`);
+            return;
+        }
+
+        // α=255チェック
+        if (!checkAllAlphaFull(originalImageData)) {
+            alert(\`透明度がすべて 255 の画像のみ使用できます。\\n透過部分や半透明部分を含まない画像を選択してください。\`);
+            return;
+        }
+
+        const width = originalImageData.width;
+        const height = originalImageData.height;
+        const totalPixels = width * height;
+        if (totalPixels <= 5) {
+            alert(\`画像が小さすぎます。先頭5ピクセルに文字数を格納するため、もっと大きな画像を使用してください。\`);
+            return;
+        }
+
+        const availablePixels = totalPixels - 5;
+        const capacityBits = availablePixels * 3; // 1px=3bit
+        const neededBits = text.length * 16;      // 1文字16bit
+
+        if (neededBits > capacityBits) {
+            alert(\`この画像には文章を格納しきれません。\\nもっと大きな画像を使用するか、文章量を減らしてください。\`);
+            return;
+        }
+
+        // 元データを複製
+        const encoded = ctx.createImageData(originalImageData);
+        encoded.data.set(originalImageData.data);
+
+        // ビット列を組み立て
+        const bits = [];
+        const len = text.length;
+
+        // 先頭15bit: 文字数 (0〜32767)
+        for (let i = 14; i >= 0; i--) {
+            bits.push((len >> i) & 1);
+        }
+
+        // 本文: 1文字16bit (UTF-16)
+        for (let i = 0; i < text.length; i++) {
+            const code = text.charCodeAt(i) & 0xFFFF;
+            for (let b = 15; b >= 0; b--) {
+                bits.push((code >> b) & 1);
+            }
+        }
+
+        // ビット列を先頭ピクセルから順にαに埋め込む
+        let bitIndex = 0;
+        const data = encoded.data;
+        for (let p = 0; p < totalPixels && bitIndex < bits.length; p++) {
+            let value = 0; // 0〜7
+            for (let k = 0; k < 3; k++) {
+                const bit = (bitIndex < bits.length) ? bits[bitIndex++] : 0;
+                value = (value << 1) | bit;
+            }
+            const alphaIndex = p * 4 + 3;
+            data[alphaIndex] = 255 - value; // αを255から0〜7下げる
+        }
+
+        // キャンバスへ反映
+        ctx.putImageData(encoded, 0, 0);
+        updateCanvasPlaceholder();
+
+        // ダウンロードリンクを有効化
+        const url = canvas.toDataURL(\`image/png\`);
+        downloadLink.href = url;
+        downloadLink.download = \`embedded.png\`;
+        downloadLink.classList.add(\`active\`);
+
+        encodeStatus.textContent = \`文章の埋め込みが完了しました。ダウンロードボタンから画像を保存できます。\`;
+        canvasInfo.textContent = \`キャンバス: \` + width + \` × \` + height + \` px (埋め込み済み画像表示中)\`;
+        alert(\`文章の埋め込みが完了しました。ダウンロードボタンから画像を保存してください。\`);
+    });
+
+    // 抽出処理
+    extractButton.addEventListener(\`click\`, function() {
+        if (!canvas.width || !canvas.height) {
+            alert(\`先に画像を読み込むか、埋め込み済み画像をキャンバスに表示してください。\`);
+            return;
+        }
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const totalPixels = width * height;
+        if (totalPixels < 5) {
+            alert(\`画像が小さすぎて、埋め込まれた情報を抽出できません。\`);
+            return;
+        }
+
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // 先頭5ピクセル（15bit）から文字数を復元
+        const headerBits = [];
+        for (let p = 0; p < 5; p++) {
+            const alpha = data[p * 4 + 3];
+            let diff = 255 - alpha; // 0〜7 のはず
+            if (diff < 0) diff = 0;
+            if (diff > 7) {
+                alert(\`この画像からは正しい形式でデータを読み取れません（α値が範囲外です）。\`);
+                return;
+            }
+            for (let b = 2; b >= 0; b--) {
+                headerBits.push((diff >> b) & 1);
+            }
+        }
+
+        // 15bit → 文字数
+        let length = 0;
+        for (let i = 0; i < 15; i++) {
+            length = (length << 1) | (headerBits[i] || 0);
+        }
+        if (length === 0) {
+            outputText.value = \`\`;
+            decodeStatus.textContent = \`文字数 0 のため、抽出結果は空です。\`;
+            alert(\`埋め込まれた文章はありません（文字数 0）。\`);
+            return;
+        }
+        if (length > 32767) {
+            alert(\`文字数情報が不正です。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        const availablePixels = totalPixels - 5;
+        const capacityBits = availablePixels * 3;
+        const neededBits = length * 16;
+        if (neededBits > capacityBits) {
+            alert(\`格納されている文字数情報が、画像の容量を超えています。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        // 本文ビット列を読み取り
+        const bitsNeeded = neededBits;
+        const charBits = [];
+        for (let p = 5; p < totalPixels && charBits.length < bitsNeeded; p++) {
+            const alpha = data[p * 4 + 3];
+            let diff = 255 - alpha;
+            if (diff < 0) diff = 0;
+            if (diff > 7) {
+                alert(\`この画像からは正しい形式でデータを読み取れません（α値が範囲外です）。\`);
+                return;
+            }
+            for (let b = 2; b >= 0 && charBits.length < bitsNeeded; b--) {
+                charBits.push((diff >> b) & 1);
+            }
+        }
+
+        if (charBits.length < bitsNeeded) {
+            alert(\`画像から十分なデータを読み取れませんでした。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        // 16bit 単位で文字復元
+        let result = \`\`;
+        for (let i = 0; i < length; i++) {
+            let code = 0;
+            for (let b = 0; b < 16; b++) {
+                code = (code << 1) | charBits[i * 16 + b];
+            }
+            result += String.fromCharCode(code);
+        }
+
+        outputText.value = result;
+        decodeStatus.textContent = \`文字数 \` + length + \` 文字を抽出しました。\`;
+        alert(\`文章の抽出が完了しました。\`);
+    });
+
+    // 抽出結果コピー
+    copyExtractedButton.addEventListener(\`click\`, function() {
+        if (!outputText.value) {
+            alert(\`コピーする文章がありません。\`);
+            return;
+        }
+        outputText.select();
+        try {
+            document.execCommand(\`copy\`);
+            window.getSelection().removeAllRanges();
+            alert(\`抽出した文章をクリップボードにコピーしました。\`);
+        } catch (e) {
+            alert(\`コピーに失敗しました。手動で選択してコピーしてください。\`);
+        }
+    });
+
+    // 初期状態
+    updateCanvasPlaceholder();
+    updateCapacityInfo();
+})();
+<\/script>
+</body>
+</html>
+もし「先頭5ピクセルはヘッダ用に別処理をしたい」「1文字あたりのbit数を変えたい」など仕様を微調整したくなったら、そのままこのコードをベースに調整もできます 👍
+
+あなた:
+思ったより文字数を格納出来たため、文字数情報を最初の 5 ピクセルではなく、最初の 7 ピクセルにして、格納できる情報量を増やす修正差分を下さい。
+ChatGPT:
+
+思考時間: 50s
+@@
+-                <div class="field-label">
+-                    <span>文章入力</span>
+-                    <span class="hint">最大 32767 文字 / UTF-16 1文字=16bit で埋め込み</span>
+-                </div>
++                <div class="field-label">
++                    <span>文章入力</span>
++                    <span class="hint">最大 2,097,151 文字（理論値） / UTF-16 1文字=16bit で埋め込み</span>
++                </div>
+@@
+-                <span class="info-pill">
+-                    <span class="dot"></span>
+-                    <span>先頭 5 ピクセルに文字数 / 残りに本文を格納</span>
+-                </span>
++                <span class="info-pill">
++                    <span class="dot"></span>
++                    <span>先頭 7 ピクセルに文字数 / 残りに本文を格納</span>
++                </span>
+@@
+-    // 画像から最大格納文字数を計算
++    // 画像から最大格納文字数を計算
+     function updateCapacityInfo() {
+         if (!originalImageData) {
+             capacityInfo.textContent = \`格納可能文字数: 0 文字\`;
+             return;
+         }
+         const totalPixels = originalImageData.width * originalImageData.height;
+-        if (totalPixels <= 5) {
+-            capacityInfo.textContent = \`格納可能文字数: 0 文字（画像が小さすぎます）\`;
++        // 先頭7ピクセルは文字数情報用に使用
++        if (totalPixels <= 7) {
++            capacityInfo.textContent = \`格納可能文字数: 0 文字（画像が小さすぎます）\`;
+             return;
+         }
+-        const availablePixels = totalPixels - 5;  // 先頭5ピクセルは文字数
++        const availablePixels = totalPixels - 7;  // 先頭7ピクセルは文字数
+         const capacityBits = availablePixels * 3; // 1ピクセル3bit
+         const maxChars = Math.floor(capacityBits / 16); // 1文字16bit (UTF-16)
+         capacityInfo.textContent = \`格納可能文字数: \` + maxChars + \` 文字\`;
+@@
+-        if (text.length > 32767) {
+-            alert(\`文字数が多すぎます。最大 32767 文字までです。\`);
++        // 先頭7ピクセル＝21bitで表現可能な理論最大値は 2^21 - 1 = 2,097,151
++        if (text.length > 2097151) {
++            alert(\`文字数が多すぎます。理論上の最大値 2,097,151 文字を超えています。\`);
+             return;
+         }
+@@
+-        const totalPixels = width * height;
+-        if (totalPixels <= 5) {
+-            alert(\`画像が小さすぎます。先頭5ピクセルに文字数を格納するため、もっと大きな画像を使用してください。\`);
+-            return;
+-        }
+-
+-        const availablePixels = totalPixels - 5;
++        const totalPixels = width * height;
++        if (totalPixels <= 7) {
++            alert(\`画像が小さすぎます。先頭7ピクセルに文字数を格納するため、もっと大きな画像を使用してください。\`);
++            return;
++        }
++
++        const availablePixels = totalPixels - 7;
+         const capacityBits = availablePixels * 3; // 1px=3bit
+         const neededBits = text.length * 16;      // 1文字16bit
+@@
+-        // ビット列を組み立て
++        // ビット列を組み立て
+         const bits = [];
+         const len = text.length;
+ 
+-        // 先頭15bit: 文字数 (0〜32767)
+-        for (let i = 14; i >= 0; i--) {
++        // 先頭21bit: 文字数 (0〜2,097,151)
++        for (let i = 20; i >= 0; i--) {
+             bits.push((len >> i) & 1);
+         }
+@@
+-        // 本文ビット列を読み取り
++        // 本文ビット列を読み取り
+@@
+-    // 抽出処理
++    // 抽出処理
+     extractButton.addEventListener(\`click\`, function() {
+         if (!canvas.width || !canvas.height) {
+             alert(\`先に画像を読み込むか、埋め込み済み画像をキャンバスに表示してください。\`);
+             return;
+         }
+ 
+         const width = canvas.width;
+         const height = canvas.height;
+         const totalPixels = width * height;
+-        if (totalPixels < 5) {
++        if (totalPixels < 7) {
+             alert(\`画像が小さすぎて、埋め込まれた情報を抽出できません。\`);
+             return;
+         }
+@@
+-        // 先頭5ピクセル（15bit）から文字数を復元
++        // 先頭7ピクセル（21bit）から文字数を復元
+         const headerBits = [];
+-        for (let p = 0; p < 5; p++) {
++        for (let p = 0; p < 7; p++) {
+             const alpha = data[p * 4 + 3];
+             let diff = 255 - alpha; // 0〜7 のはず
+             if (diff < 0) diff = 0;
+@@
+-        // 15bit → 文字数
++        // 21bit → 文字数
+         let length = 0;
+-        for (let i = 0; i < 15; i++) {
++        for (let i = 0; i < 21; i++) {
+             length = (length << 1) | (headerBits[i] || 0);
+         }
+         if (length === 0) {
+@@
+-        if (length > 32767) {
++        if (length > 2097151) {
+             alert(\`文字数情報が不正です。データが壊れている可能性があります。\`);
+             return;
+         }
+ 
+-        const availablePixels = totalPixels - 5;
++        const availablePixels = totalPixels - 7;
+         const capacityBits = availablePixels * 3;
+         const neededBits = length * 16;
+@@
+-        const bitsNeeded = neededBits;
+-        const charBits = [];
+-        for (let p = 5; p < totalPixels && charBits.length < bitsNeeded; p++) {
++        const bitsNeeded = neededBits;
++        const charBits = [];
++        for (let p = 7; p < totalPixels && charBits.length < bitsNeeded; p++) {
+             const alpha = data[p * 4 + 3];
+             let diff = 255 - alpha;
+             if (diff < 0) diff = 0;
+@@
+-    // 初期状態
++    // 初期状態
+     updateCanvasPlaceholder();
+     updateCapacityInfo();
+ })();
+
+あなた:
+ちなみに png であり zip である形式がネット上にありますが、この方法は実装できそうですか？
+一旦実装はせずに実装できそうか教えて下さい。
+ChatGPT:
+
+思考時間: 32s
+結論から言うと、「PNG なのに ZIP でもある」形式は、今の仕組みでも“理屈としては”実装可能です。ただし、
+
+対応してくれる解凍ソフト／ライブラリに依存する
+
+画像編集ツールで「上書き保存」した瞬間に ZIP 部分が消える
+
+ブラウザ側の実装も少しトリッキーになる
+
+といった注意点はあります。
+
+どういう仕組みで PNG & ZIP 両対応が可能か
+ざっくりいうと、PNG と ZIP がそれぞれ
+
+PNG：先頭の「シグネチャ＋チャンク列」が正しければ OK。IEND チャンクの後ろに余計なバイトがあっても、基本的に無視される仕様。
+
+ZIP：末尾にある「中央ディレクトリと終端レコード」を読めれば OK。先頭にゴミバイト（前置きデータ）があっても、割と許容されることが多い。
+
+という性質を利用して、
+
+まず通常どおり PNG 画像（あなたのα埋め込み済み画像）を生成
+
+その PNG バイナリの 末尾（IEND の後）に ZIP ファイルの中身をまるごと追加
+
+1つのファイルとして保存
+
+…というだけで、
+
+PNG として開く → 最初の PNG 部分だけ見てくれるので、普通の画像として表示される
+
+ZIP として開く → 多くの解凍ソフトは末尾側から ZIP の終端を探すので、先頭 PNG 部分を「前置きデータ」としてスルーして、ちゃんと解凍できる
+
+という 「ポリグロット（多重形式）ファイル」 が成立します。
+
+今のツールと組み合わせるイメージ
+あなたのツールはすでに：
+
+canvas.toBlob / toDataURL で PNG を生成
+
+その中の アルファチャンネルに文章を埋め込む
+
+という流れですよね。
+
+ここに「ZIP としても読めるようにする」だけなら、
+
+PNG を Blob / ArrayBuffer として取得
+
+JSZip などのライブラリで ZIP をメモリ上で生成
+
+new Blob([pngArrayBuffer, zipArrayBuffer]) のように単純連結
+
+その Blob を download リンクに載せる（拡張子は .png のままでも OK）
+
+という形で、実装自体は十分現実的です。
+
+PNG 部分（画像の見た目・α埋め込み）は一切壊さないので、
+
+画像の見た目は今まで通りほぼ変わらない
+
+画像の内部には α埋め込みのテキスト
+
+さらに、ファイルの末尾側には ZIP としてまとめた別データ
+
+という「二重に隠し場所がある」状態にできます。
+
+実際にやる場合の注意点
+実装自体は「技術的には可能」ですが、実用を考えると次のあたりは注意が必要です。
+
+1. 解凍ソフト／ライブラリの対応状況
+多くの解凍ソフトは「先頭にゴミがついていても解凍できる」仕様ですが、
+すべてのソフトがそうとは限りません。
+
+Web 上で JSZip などを使って解凍する場合は、あらかじめ「前置きデータ付き ZIP」対応かどうか確認が必要です。
+
+2. 画像として編集・再保存すると ZIP 部分が消える
+画像編集ソフト（ペイントツールなど）で開いて「名前を付けて保存」すると、
+
+PNG 部分だけを読み込んで再エンコード
+
+→ 末尾に付けた ZIP 部分は丸ごと捨てられる
+
+なので、「ZIP 部分まで含めて保持したいファイル」はオリジナルをそのままコピー保存しておく運用が必須です。
+
+3. ブラウザダウンロード時の MIME / 拡張子
+ブラウザからダウンロードさせるときは、拡張子 .png を付けておけば画像ビューアでは普通に開けます。
+
+「ZIPとして開いてほしい」場合は、ユーザー側でリネーム（.zip）してもらう、あるいは説明を入れておく必要があります。
+
+4. セキュリティ的な見え方
+ファイルの中に ZIP を二重に仕込めるので、「マルウェア的な使われ方」をされると嫌われる可能性もあります。
+
+自分の用途としては「暗号化済みパスワード・メモ・設定ファイルをまとめて zip に入れておいて隠す」みたいな、ホワイトな利用をきちんと明記しておくと安心です。
+
+まとめ：実装できそうか？
+技術的には十分実装可能
+
+PNG は「末尾の余分なバイトを無視」する
+
+ZIP は「末尾のエントリを探す」実装が多く、先頭の PNG 部分は前置きデータとして見逃してくれる
+
+ブラウザ上でも JSZip などを使えば、PNG バイナリに ZIP を後付けして1ファイルにまとめられる
+
+ただし
+
+解凍ツールの相性
+
+画像編集後に ZIP 部分が消える問題
+
+セキュリティ的な「怪しさ」の説明
+
+などの運用面の注意が必要です。
+
+なので、ご質問に対する答えとしては、
+
+「はい、今の α ステガノグラフィの仕組みと組み合わせても、PNG かつ ZIP のポリグロットファイルを作ることは現実的に実装可能です。ただし、互換性と運用上の注意はしっかり説明しておく必要があります。」
+
+という感じになります 👍
+
+あなた:
+PNG：先頭の「シグネチャ＋チャンク列」が正しければ OK。IEND チャンクの後ろに余計なバイトがあっても、基本的に無視される仕様。
+
+を利用して、文章を埋め込むことはできますか？
+ChatGPT:
+
+思考時間: 19s
+できます 👍
+PNG の「IEND の後ろは無視される」という性質を使えば、画素データを一切いじらずにテキストを埋め込むことができます。
+
+ざっくり言うと：
+「ちゃんとした PNG のあとに、自分だけが分かるおまけデータをくっつける」
+
+PNG ビューアは、
+
+先頭のシグネチャ
+
+その後のチャンク列（IHDR, IDAT, IEND など）
+
+だけを見て描画します。
+IEND チャンクが終わった“後ろ”に何かバイト列が付いていても、たいていはそのまま無視します。
+
+なので、
+
+普通に PNG を作る（キャンバスから toBlob など）
+
+その PNG バイト列の 末尾（IENDの直後）に、独自フォーマットでテキストのバイト列を追加する
+
+それを1つのファイルとしてダウンロード
+
+というやり方で、
+
+画像ビューア：問題なく PNG として表示
+
+自分のツール：末尾の“おまけ部分”を読んでテキスト復元
+
+という構成にできます。
+
+埋め込みのイメージ（ロジックだけ）
+例えばこういう独自フォーマットを決めておきます：
+
+末尾側に
+
+先頭4バイト：魔法文字列 "TXT1"
+
+次の4バイト：テキスト長（32bit整数）
+
+その後：UTF-8でエンコードしたテキスト本体
+
+を付け足す、など。
+
+エンコード側の流れ（概念）：
+
+キャンバスから PNG Blob を作る
+
+ArrayBuffer に読み込む
+
+テキストを UTF-8 に変換して Uint8Array にする
+
+"TXT1" + 長さ(4バイト) + テキストバイト列 を作る
+
+[pngBytes, extraBytes] を連結して、新しい Blob をダウンロード
+
+デコード側の流れ（概念）：
+
+ファイルを ArrayBuffer として読み込む
+
+配列の末尾から 4バイト×2（マーカー＋長さ）を読み取る
+
+マーカーが "TXT1" なら有効とみなす
+
+長さ分だけ前に戻ってテキストバイト列を取り出し、UTF-8としてデコード
+
+こうすれば、PNG の仕様を破らずに、末尾の空きスペースを「テキスト専用セクション」として使えることになります。
+
+あなたの今の α ステガノグラフィとの違い
+この方法のメリット
+画素データ（RGB/α）を一切変更しない
+→ 画像は完全にビットレベルで元のまま（見た目も完全一致）
+
+末尾のサイズ分だけ、比較的大量のテキストを付け足せる
+→ ピクセル数に依存しない（実質、ファイルサイズ次第）
+
+デメリット・注意点
+「ステガノグラフィ」というより、単なる“後ろに荷物をぶら下げたファイル” なので、
+
+バイナリエディタで見れば一発で分かる
+
+PNG最適化ツールや再保存時に後ろの余分データを全部削除されることがある
+
+一部の厳しめのツールや検査では「末尾に余計なデータが付いている」と警告される場合もある
+
+対して、今の α値を0〜7だけ下げて3bit/ピクセルで埋め込む方式は、
+
+ファイルの構造としては完全に“普通のPNG”
+
+画像編集で保存されない限りは、末尾に何も付かない
+
+解析するには「どのチャンネルのどのビットが意味を持っているか」を知らないと読めない
+
+という意味で、
+「わかる人しか解析できない」「PNG最適化にも比較的強い」 という強みがあります。
+
+結論
+IEND の後ろに余分バイトを付けてテキストを埋め込むことは「技術的には十分可能」です。
+
+実装も、Blob/ArrayBuffer を扱うだけなので、今のツールに追加すること自体は難しくありません。
+
+ただし「隠す」という観点では
+
+αチャンネル方式 → 画素に埋め込む、本格ステガノグラフィ寄り
+
+IEND末尾方式 → ファイル末尾にデータをぶら下げる、やや見つかりやすい
+
+という性質の違いがあります。
+
+「画質・見た目は絶対に一切変えたくない」「ファイルの末尾に文字列をくっつけるだけでいい」という用途なら、
+IEND の後ろにテキストをくっつけて使う方式も十分アリです 👍
+
+あなた:
+頂いたコードの有効範囲を 2 広げて、248 253 を無効な値として、全体の分布が不自然にならないように、画像の範囲を超えないように散りばめる修正をお願いできますか？
+248 253 の数はなるべく一致しないようにして下さい。
+修正すべきメソッドだけ下さい。
+ChatGPT:
+
+思考時間: 3m 58s
+了解です！
+「有効範囲を2広げて（0〜9に拡張）」「α=248, 253 を“無効（ダミー）値”として散りばめる」「248と253の数はなるべく一致させない」という条件で、必要なメソッド部分だけ修正コードをお渡しします。
+
+① 先頭に追加する定数（1カ所だけ追加）
+まず、<script> 内の先頭あたりに、次の定数定義を追加してください。
+
+// アルファ値 diff（255 - α）用のテーブル
+// 0〜9 のうち 2,7 はダミー用に予約し、残りで 3bit(0〜7) を表現
+const DIFF_TABLE = [0, 1, 3, 4, 5, 6, 8, 9]; // 有効値
+const INVALID_DIFF_1 = 2; // α = 253
+const INVALID_DIFF_2 = 7; // α = 248
+
+const RESERVED_HEADER_PIXELS = 7; // 先頭7ピクセルで文字数(21bit)
+const DUMMY_RATIO = 0.1;          // ダミー(248/253)を入れる最大割合（10%）
+ここから下が、「修正すべきメソッド」です。
+
+② updateCapacityInfo() の差し替え
+// 画像から最大格納文字数を計算
+function updateCapacityInfo() {
+    if (!originalImageData) {
+        capacityInfo.textContent = \`格納可能文字数: 0 文字\`;
+        return;
+    }
+    const totalPixels = originalImageData.width * originalImageData.height;
+
+    if (totalPixels <= RESERVED_HEADER_PIXELS) {
+        capacityInfo.textContent = \`格納可能文字数: 0 文字（画像が小さすぎます）\`;
+        return;
+    }
+
+    const availablePixels = totalPixels - RESERVED_HEADER_PIXELS; // ヘッダ以外
+    const maxDummyPixels = Math.floor(availablePixels * DUMMY_RATIO);
+    const effectivePixels = availablePixels - maxDummyPixels; // 実際にデータに使うピクセル数
+    const capacityBits = effectivePixels * 3;                  // 1ピクセル3bit
+    const maxChars = Math.floor(capacityBits / 16);            // 1文字16bit (UTF-16)
+
+    capacityInfo.textContent = \`格納可能文字数: \` + maxChars + \` 文字（ダミー埋め込みを考慮した概算）\`;
+}
+③ 埋め込み処理（embedButton の click リスナー）差し替え
+// 文章埋め込み処理
+embedButton.addEventListener(\`click\`, function() {
+    if (!originalImageData) {
+        alert(\`先に画像を読み込んでください。\`);
+        return;
+    }
+
+    const text = inputText.value;
+    if (!text) {
+        alert(\`埋め込みたい文章を入力してください。\`);
+        return;
+    }
+    // 先頭7ピクセル＝21bitで表現可能な理論最大値は 2^21 - 1 = 2,097,151
+    if (text.length > 2097151) {
+        alert(\`文字数が多すぎます。理論上の最大値 2,097,151 文字を超えています。\`);
+        return;
+    }
+
+    // α=255チェック
+    if (!checkAllAlphaFull(originalImageData)) {
+        alert(\`透明度がすべて 255 の画像のみ使用できます。\\n透過部分や半透明部分を含まない画像を選択してください。\`);
+        return;
+    }
+
+    const width = originalImageData.width;
+    const height = originalImageData.height;
+    const totalPixels = width * height;
+    if (totalPixels <= RESERVED_HEADER_PIXELS) {
+        alert(\`画像が小さすぎます。先頭7ピクセルに文字数を格納するため、もっと大きな画像を使用してください。\`);
+        return;
+    }
+
+    const availablePixels = totalPixels - RESERVED_HEADER_PIXELS;
+    const maxDummyPixels = Math.floor(availablePixels * DUMMY_RATIO);
+    const effectivePixels = availablePixels - maxDummyPixels;
+    const capacityBits = effectivePixels * 3;     // 実際にデータに使えるビット数
+    const neededBits = text.length * 16 + 21;     // 文字数(21bit) + 本文(16bit×文字数)
+
+    if (neededBits > capacityBits) {
+        alert(\`この画像には文章を格納しきれません。\\n（ダミー値の埋め込みを考慮すると容量オーバーです）\\nもっと大きな画像を使用するか、文章量を減らしてください。\`);
+        return;
+    }
+
+    // 元データを複製
+    const encoded = ctx.createImageData(originalImageData);
+    encoded.data.set(originalImageData.data);
+
+    // ビット列を組み立て（先頭21bit:文字数 + 本文）
+    const bits = [];
+    const len = text.length;
+
+    // 先頭21bit: 文字数 (0〜2,097,151)
+    for (let i = 20; i >= 0; i--) {
+        bits.push((len >> i) & 1);
+    }
+
+    // 本文: 1文字16bit (UTF-16)
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i) & 0xFFFF;
+        for (let b = 15; b >= 0; b--) {
+            bits.push((code >> b) & 1);
+        }
+    }
+
+    const data = encoded.data;
+    let bitIndex = 0;
+    let dummyCount = 0;
+    const maxDummy = maxDummyPixels;
+    let dummy248Count = 0;
+    let dummy253Count = 0;
+
+    for (let p = 0; p < totalPixels; p++) {
+        const alphaIndex = p * 4 + 3;
+
+        // 先頭7ピクセルはヘッダ＋先頭データとして必ず有効値を使う（ダミーは入れない）
+        if (p < RESERVED_HEADER_PIXELS) {
+            let value = 0;
+            for (let k = 0; k < 3; k++) {
+                const bit = (bitIndex < bits.length) ? bits[bitIndex++] : 0;
+                value = (value << 1) | bit;
+            }
+            const diff = DIFF_TABLE[value]; // 0〜9のうち 2,7 を避けた値
+            data[alphaIndex] = 255 - diff;
+            continue;
+        }
+
+        // ここから先は、ビットが残っている間だけエンコード対象
+        if (bitIndex < bits.length) {
+            let useDummy = false;
+            if (dummyCount < maxDummy) {
+                // 10%程度の確率でダミー値を挿入（ただし上限まで）
+                if (Math.random() < DUMMY_RATIO) {
+                    useDummy = true;
+                }
+            }
+
+            if (useDummy) {
+                // ダミー値: α=248 or 253（diff=7 or 2）を散りばめる
+                let alphaValue;
+                if (dummy248Count === dummy253Count) {
+                    // 同数ならランダム
+                    if (Math.random() < 0.5) {
+                        alphaValue = 248;
+                        dummy248Count++;
+                    } else {
+                        alphaValue = 253;
+                        dummy253Count++;
+                    }
+                } else if (dummy248Count < dummy253Count) {
+                    alphaValue = 248;
+                    dummy248Count++;
+                } else {
+                    alphaValue = 253;
+                    dummy253Count++;
+                }
+                data[alphaIndex] = alphaValue;
+                dummyCount++;
+            } else {
+                // 通常の3bitデータを書き込む
+                let value = 0;
+                for (let k = 0; k < 3; k++) {
+                    const bit = (bitIndex < bits.length) ? bits[bitIndex++] : 0;
+                    value = (value << 1) | bit;
+                }
+                const diff = DIFF_TABLE[value]; // 0〜9のうち 2,7 を避けた値
+                data[alphaIndex] = 255 - diff;
+            }
+        } else {
+            // もう埋め込むビットがない場合は、元のα値のまま放置
+            // （encoded.data はすでに originalImageData.data をコピー済み）
+        }
+    }
+
+    // 念のため、全ビットが使い切られているかチェック
+    if (bitIndex < bits.length) {
+        alert(\`内部エラー: ビット列をすべて埋め込む前に画像範囲を使い切ってしまいました。設定値を見直してください。\`);
+        return;
+    }
+
+    // キャンバスへ反映
+    ctx.putImageData(encoded, 0, 0);
+    updateCanvasPlaceholder();
+
+    // ダウンロードリンクを有効化
+    const url = canvas.toDataURL(\`image/png\`);
+    downloadLink.href = url;
+    downloadLink.download = \`embedded.png\`;
+    downloadLink.classList.add(\`active\`);
+
+    encodeStatus.textContent = \`文章の埋め込みが完了しました。ダウンロードボタンから画像を保存できます。\`;
+    canvasInfo.textContent = \`キャンバス: \` + width + \` × \` + height + \` px (埋め込み済み画像表示中)\`;
+    alert(\`文章の埋め込みが完了しました。ダウンロードボタンから画像を保存してください。\`);
+});
+④ 抽出処理（extractButton の click リスナー）差し替え
+// 抽出処理
+extractButton.addEventListener(\`click\`, function() {
+    if (!canvas.width || !canvas.height) {
+        alert(\`先に画像を読み込むか、埋め込み済み画像をキャンバスに表示してください。\`);
+        return;
+    }
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const totalPixels = width * height;
+    if (totalPixels < RESERVED_HEADER_PIXELS) {
+        alert(\`画像が小さすぎて、埋め込まれた情報を抽出できません。\`);
+        return;
+    }
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    // 先頭7ピクセル（21bit）から文字数を復元
+    const headerBits = [];
+    for (let p = 0; p < RESERVED_HEADER_PIXELS; p++) {
+        const alpha = data[p * 4 + 3];
+        let diff = 255 - alpha;
+
+        if (diff < 0) diff = 0;
+        // ヘッダにダミー値が出てきたら不正
+        if (diff === INVALID_DIFF_1 || diff === INVALID_DIFF_2) {
+            alert(\`ヘッダ領域に無効な値が含まれています。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        const value = DIFF_TABLE.indexOf(diff);
+        if (value === -1) {
+            alert(\`ヘッダの形式が不正です。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        for (let b = 2; b >= 0; b--) {
+            headerBits.push((value >> b) & 1);
+        }
+    }
+
+    // 21bit → 文字数
+    let length = 0;
+    for (let i = 0; i < 21; i++) {
+        length = (length << 1) | (headerBits[i] || 0);
+    }
+
+    if (length === 0) {
+        outputText.value = \`\`;
+        decodeStatus.textContent = \`文字数 0 のため、抽出結果は空です。\`;
+        alert(\`埋め込まれた文章はありません（文字数 0）。\`);
+        return;
+    }
+    if (length > 2097151) {
+        alert(\`文字数情報が不正です。データが壊れている可能性があります。\`);
+        return;
+    }
+
+    const availablePixels = totalPixels - RESERVED_HEADER_PIXELS;
+    const capacityBits = availablePixels * 3; // 上限チェックとしては従来のままで十分
+    const neededBits = length * 16;
+    if (neededBits > capacityBits) {
+        alert(\`格納されている文字数情報が、画像の容量を超えています。データが壊れている可能性があります。\`);
+        return;
+    }
+
+    // 本文ビット列を読み取り（ダミー値は無視）
+    const bitsNeeded = neededBits;
+    const charBits = [];
+    for (let p = RESERVED_HEADER_PIXELS; p < totalPixels && charBits.length < bitsNeeded; p++) {
+        const alpha = data[p * 4 + 3];
+        let diff = 255 - alpha;
+        if (diff < 0) diff = 0;
+
+        // ダミー値(248,253)に対応する diff=7,2 はスキップ
+        if (diff === INVALID_DIFF_1 || diff === INVALID_DIFF_2) {
+            continue;
+        }
+
+        const value = DIFF_TABLE.indexOf(diff);
+        if (value === -1) {
+            alert(\`本文領域に無効な値が含まれています。データが壊れている可能性があります。\`);
+            return;
+        }
+
+        for (let b = 2; b >= 0 && charBits.length < bitsNeeded; b--) {
+            charBits.push((value >> b) & 1);
+        }
+    }
+
+    if (charBits.length < bitsNeeded) {
+        alert(\`画像から十分なデータを読み取れませんでした。データが壊れている可能性があります。\`);
+        return;
+    }
+
+    // 16bit 単位で文字復元
+    let result = \`\`;
+    for (let i = 0; i < length; i++) {
+        let code = 0;
+        for (let b = 0; b < 16; b++) {
+            code = (code << 1) | charBits[i * 16 + b];
+        }
+        result += String.fromCharCode(code);
+    }
+
+    outputText.value = result;
+    decodeStatus.textContent = \`文字数 \` + length + \` 文字を抽出しました。\`;
+    alert(\`文章の抽出が完了しました。\`);
+});
+これで、
+
+有効な diff 範囲を 0〜9 に拡張
+
+そのうち diff=2（α=253） / diff=7（α=248）を「無効値（ダミー）」として使用
+
+ダミー値は画像範囲内で 10%程度までに抑えつつ、248 / 253 の数が極力一致しないよう制御
+
+復号時はダミーをスキップし、有効値だけから3bit単位で復元
+
+という仕様になります。
+
+もし「ダミーの割合をもう少し増やしたい／減らしたい」「248と253の比率をもっと偏らせたい」などあれば、DUMMY_RATIO や dummy 選択ロジックを微調整していきましょう。
+
+あなた:
+出力メソッドに 248 の数の 5% を 253 に変える機能を追加して下さい。
+修正すべきメソッドだけ下さい。
+ChatGPT:
+了解しました！
+「出力後に、α=248（ダミー diff=7）のうち約 5% を α=253（diff=2）へ変換する」
+という“後処理”を 埋め込みメソッドの最後に追加します。
+
+以下に、修正すべきメソッド（＝埋め込み処理 embedButton の click リスナー）だけを掲載します。
+全体ではなく、このメソッド部分だけ差し替えてください。
+
+◆ 修正後：埋め込みメソッド（embedButton の click リスナー）
+// 文章埋め込み処理
+embedButton.addEventListener(\`click\`, function() {
+    if (!originalImageData) {
+        alert(\`先に画像を読み込んでください。\`);
+        return;
+    }
+
+    const text = inputText.value;
+    if (!text) {
+        alert(\`埋め込みたい文章を入力してください。\`);
+        return;
+    }
+    if (text.length > 2097151) {
+        alert(\`文字数が多すぎます。理論上の最大値 2,097,151 文字を超えています。\`);
+        return;
+    }
+
+    // α=255チェック
+    if (!checkAllAlphaFull(originalImageData)) {
+        alert(\`透明度がすべて 255 の画像のみ使用できます。\`);
+        return;
+    }
+
+    const width = originalImageData.width;
+    const height = originalImageData.height;
+    const totalPixels = width * height;
+    if (totalPixels <= RESERVED_HEADER_PIXELS) {
+        alert(\`画像が小さすぎます。\`);
+        return;
+    }
+
+    const availablePixels = totalPixels - RESERVED_HEADER_PIXELS;
+    const maxDummyPixels = Math.floor(availablePixels * DUMMY_RATIO);
+    const effectivePixels = availablePixels - maxDummyPixels;
+    const capacityBits = effectivePixels * 3;
+    const neededBits = text.length * 16 + 21;
+
+    if (neededBits > capacityBits) {
+        alert(\`この画像には文章を格納しきれません。\`);
+        return;
+    }
+
+    // ImageData コピー
+    const encoded = ctx.createImageData(originalImageData);
+    encoded.data.set(originalImageData.data);
+
+    // ビット列生成（21bit 文字数 + 本文 16bit×文字数）
+    const bits = [];
+    const len = text.length;
+    for (let i = 20; i >= 0; i--) bits.push((len >> i) & 1);
+
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i) & 0xFFFF;
+        for (let b = 15; b >= 0; b--) bits.push((code >> b) & 1);
+    }
+
+    const data = encoded.data;
+    let bitIndex = 0;
+    let dummyCount = 0;
+    let dummy248Count = 0;
+    let dummy253Count = 0;
+
+    // ピクセル単位の埋め込み
+    for (let p = 0; p < totalPixels; p++) {
+        const alphaIndex = p * 4 + 3;
+
+        // 先頭7ピクセルは有効値のみ
+        if (p < RESERVED_HEADER_PIXELS) {
+            let value = 0;
+            for (let k = 0; k < 3; k++) {
+                const bit = (bitIndex < bits.length ? bits[bitIndex++] : 0);
+                value = (value << 1) | bit;
+            }
+            const diff = DIFF_TABLE[value];
+            data[alphaIndex] = 255 - diff;
+            continue;
+        }
+
+        // 本文
+        if (bitIndex < bits.length) {
+            let useDummy = false;
+
+            if (dummyCount < maxDummyPixels) {
+                if (Math.random() < DUMMY_RATIO) useDummy = true;
+            }
+
+            if (useDummy) {
+                // ダミー値（248 or 253）
+                let alphaValue;
+
+                if (dummy248Count === dummy253Count) {
+                    alphaValue = (Math.random() < 0.5 ? 248 : 253);
+                } else if (dummy248Count < dummy253Count) {
+                    alphaValue = 248;
+                } else {
+                    alphaValue = 253;
+                }
+
+                if (alphaValue === 248) dummy248Count++;
+                else dummy253Count++;
+
+                data[alphaIndex] = alphaValue;
+                dummyCount++;
+            } else {
+                // 通常ビット格納
+                let value = 0;
+                for (let k = 0; k < 3; k++) {
+                    const bit = (bitIndex < bits.length ? bits[bitIndex++] : 0);
+                    value = (value << 1) | bit;
+                }
+                const diff = DIFF_TABLE[value];
+                data[alphaIndex] = 255 - diff;
+            }
+        }
+    }
+
+    /* ─────────────────────────────────────────────
+       ★ NEW ★ ダミー再調整処理：
+       「248 の数の 5% を 253 に変換する」
+       （埋め込み完了後に実行）
+    ───────────────────────────────────────────── */
+    (function convertDeliberately() {
+        // 248 の 5% を 253 に変換
+        const convertCount = Math.floor(dummy248Count * 0.05);
+        if (convertCount <= 0) return;
+
+        let converted = 0;
+        for (let p = RESERVED_HEADER_PIXELS; p < totalPixels; p++) {
+            if (converted >= convertCount) break;
+
+            const alphaIndex = p * 4 + 3;
+            if (data[alphaIndex] === 248) {
+                data[alphaIndex] = 253;
+                converted++;
+            }
+        }
+    })();
+    /* ─────────────────────────────────────────── */
+
+    // キャンバスに反映
+    ctx.putImageData(encoded, 0, 0);
+    updateCanvasPlaceholder();
+
+    // ダウンロード準備
+    const url = canvas.toDataURL(\`image/png\`);
+    downloadLink.href = url;
+    downloadLink.download = \`embedded.png\`;
+    downloadLink.classList.add(\`active\`);
+
+    encodeStatus.textContent = \`文章の埋め込みが完了しました。\`;
+    canvasInfo.textContent = \`キャンバス: \` + width + \` × \` + height + \` px (埋め込み済み画像)\`;
+    alert(\`文章の埋め込みが完了しました。\`);
+});
+◆ 追加された処理（要点）
+以下が今回の追加処理です：
+
+(function convertDeliberately() {
+    const convertCount = Math.floor(dummy248Count * 0.05);
+    if (convertCount <= 0) return;
+
+    let converted = 0;
+    for (let p = RESERVED_HEADER_PIXELS; p < totalPixels; p++) {
+        if (converted >= convertCount) break;
+
+        const alphaIndex = p * 4 + 3;
+        if (data[alphaIndex] === 248) {
+            data[alphaIndex] = 253;
+            converted++;
+        }
+    }
+})();
+● 248 が X 個あれば
+→ その 5% を 253 に置換
+→ 248 と 253 の出現バランスを崩す
+→ 解析時に「比率が合わない」ため法則を見抜きづらくなる
+
+こうして、さらに解析耐性を高めています。
+
+必要であれば、
+
+置換割合を動的に調整する
+
+ランダムな位置だけに偏らせる
+
+分布が均一になるよう再配置する
+
+なども最適化できますのでお知らせください！
+
+`;
+  source.value = initial;
+  runSearch();
+})();
+</script>
+</body>
+</html>
