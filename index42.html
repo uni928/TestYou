@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>【12時入園・混雑日】東京ディズニーランド1日モデルプラン</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card-bg: #ffffff;
+      --accent: #ff7f50;
+      --accent-soft: #ffe2d4;
+      --text-main: #333;
+      --text-sub: #666;
+      --border-soft: #dde2f0;
+      --shadow-soft: 0 4px 12px rgba(0,0,0,0.06);
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+                   "Yu Gothic", "Meiryo", sans-serif;
+      background: radial-gradient(circle at top, #ffe7f1 0, #f5f7fb 40%, #f5f7fb 100%);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 20px 16px 8px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      margin: 0 0 8px;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto 40px;
+      padding: 0 12px 24px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
+    .badge span.icon {
+      font-size: 1rem;
+    }
+
+    .hero-card {
+      background: rgba(255,255,255,0.9);
+      border-radius: 24px;
+      padding: 16px 16px 18px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.8);
+    }
+
+    .hero-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      align-items: baseline;
+    }
+
+    .hero-title small {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      font-weight: 500;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 0;
+      font-size: 0.8rem;
+    }
+
+    .chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f0f3ff;
+      border: 1px solid #dde2f0;
+      color: #445;
+    }
+
+    .notice {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      background: #fff9e8;
+      border-radius: 12px;
+      padding: 8px 10px;
+      border: 1px solid #ffe2a3;
+    }
+
+    h2.section-title {
+      font-size: 1.1rem;
+      margin: 18px 2px 8px;
+      border-left: 4px solid var(--accent);
+      padding-left: 8px;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .two-column {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      header h1 {
+        font-size: 1.2rem;
+      }
+      .hero-title {
+        font-size: 1.15rem;
+      }
+    }
+
+    /* タイムライン */
+    .timeline {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid var(--border-soft);
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px dashed #e0e4f0;
+    }
+
+    .timeline-item:last-child {
+      border-bottom: none;
+    }
+
+    .time {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #445;
+      display: flex;
+      align-items: center;
+    }
+
+    .time span {
+      background: #f0f3ff;
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid #d7def8;
+    }
+
+    .timeline-content-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .timeline-content-title .label {
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: #f5f5ff;
+      color: #555;
+      border: 1px solid #e0e4ff;
+    }
+
+    .timeline-content-body {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    .timeline-content-body ul {
+      padding-left: 1.1rem;
+      margin: 4px 0 0;
+    }
+
+    .timeline-content-body li {
+      margin: 2px 0;
+    }
+
+    /* ショー紹介カード */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      padding: 10px 12px 12px;
+      border: 1px solid var(--border-soft);
+    }
+
+    .card h3 {
+      margin: 0 0 4px;
+      font-size: 0.95rem;
+    }
+
+    .badge-small {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      background: #f6f7ff;
+      border: 1px solid #e0e3ff;
+      color: #555;
+      margin-right: 4px;
+    }
+
+    .card dl {
+      margin: 6px 0 0;
+      font-size: 0.8rem;
+    }
+
+    .card dt {
+      font-weight: 600;
+      float: left;
+      clear: left;
+      width: 4em;
+      color: #555;
+    }
+
+    .card dd {
+      margin: 0 0 2px 4.5em;
+      color: #555;
+    }
+
+    .card p {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin: 6px 0 0;
+    }
+
+    .tips-list {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      padding-left: 1.1rem;
+      margin: 6px 0 0;
+    }
+
+    .tips-list li {
+      margin: 2px 0;
+    }
+
+    /* フッター */
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #999;
+      padding: 10px 0 0;
+    }
+
+    a {
+      color: #2374ff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">
+      <span class="icon">🏰</span>
+      <span>東京ディズニーランド モデルプラン</span>
+    </div>
+    <h1>12時入園・混雑日の1日おすすめプラン</h1>
+    <p>「ショーもパレードも、アトラクションも」できるだけバランスよく楽しみたい方向けのサンプルコースです。</p>
+  </header>
+
+  <div class="container">
+    <section class="hero-card">
+      <div class="hero-title">
+        12:00入園から閉園までのモデルコース
+        <small>（目安：土日・祝日など混雑日）</small>
+      </div>
+      <div class="hero-tags">
+        <span class="chip">入園時間：12:00〜</span>
+        <span class="chip">想定：大人2〜3名</span>
+        <span class="chip">ショー重視</span>
+        <span class="chip">公式アプリ利用</span>
+      </div>
+      <div class="notice">
+        ※ショー・パレード・花火の<strong>実際の公演時間や実施有無</strong>は、来園日前に必ず
+        <a href="https://www.tokyodisneyresort.jp/tdl/show.html" target="_blank" rel="noopener">東京ディズニーリゾート公式サイト</a>
+        または公式アプリの「ショースケジュール」でご確認ください。
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">1日の流れ（タイムライン）</h2>
+      <div class="two-column">
+        <!-- タイムライン -->
+        <div class="timeline" aria-label="1日のモデルスケジュール">
+          <div class="timeline-item">
+            <div class="time"><span>12:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                入園＆アプリ設定・エントリー受付
+                <span class="label">最優先</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>入園したら、公式アプリを開き、同行者のチケットを連携。</li>
+                  <li><strong>エントリー受付（抽選）</strong>で<br>
+                    ・ミッキーのマジカルミュージックワールド<br>
+                    ・クラブマウスビート（観たい場合）<br>
+                    などのショーに申し込み。</li>
+                  <li>同時に、アトラクションの待ち時間もざっくりチェックしておきます。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>12:15</span></div>
+            <div>
+              <div class="timeline-content-title">
+                早めランチ（ワールドバザール周辺）
+                <span class="label">休憩</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>ワールドバザールやトゥモローランドのレストランでランチ。</li>
+                  <li>モバイルオーダー対応店舗があれば、アプリから注文すると待ち時間短縮に。</li>
+                  <li>この時間に、<strong>昼パレードやショーの開始時間</strong>を確認し、逆算して動きます。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>13:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                人気アトラクションを1〜2つ
+                <span class="label">アトラクション</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>待ち時間を見ながら、比較的並びやすいアトラクションへ。</li>
+                  <li>例：プーさんのハニーハント、バズ・ライトイヤーのアストロブラスター、モンスターズ・インク“ライド＆ゴーシーク！”など。</li>
+                  <li>「絶対乗りたいもの」を1つ決めて、そこを軸に行動すると迷いにくいです。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>15:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                昼パレード「ディズニー・ハーモニー・イン・カラー」鑑賞
+                <span class="label">パレード</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>開始の<strong>30〜45分前</strong>を目安に、パレードルート沿いに場所取り。</li>
+                  <li>シンデレラ城前〜プラザ周辺は人気ですが、少しルート終盤側にずらすと座りやすい場合も。</li>
+                  <li>ショーやアトラクションの時間と被らないよう、公式スケジュールを必ず確認しておきましょう。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>16:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                抽選当選時：ミッキーのマジカルミュージックワールド
+                <span class="label">ショー</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>エントリー受付で当選していれば、指定された時間に<strong>ファンタジーランド・フォレストシアター</strong>へ。</li>
+                  <li>開演の少し前には会場付近に着くように移動し、トイレなどは先に済ませておきます。</li>
+                  <li>外れてしまった場合は、周辺のアトラクション（ホーンテッドマンション、イッツ・ア・スモールワールド等）やショップを楽しむ時間に。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>17:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                夕方の散策＆軽めのアトラクション
+                <span class="label">ゆったり</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>ウエスタンランド〜ファンタジーランドを中心に、待ち時間が短めのアトラクションを狙います。</li>
+                  <li>暗くなってくる時間帯なので、シンデレラ城やワールドバザールのライトアップ写真タイムにも◎</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>18:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                早めのディナー
+                <span class="label">食事</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>ナイトパレード前はレストランが混みやすいので、やや早めに夕食を済ませるのがおすすめ。</li>
+                  <li>テーブルサービスにこだわらず、カウンターサービス＋軽食（ポップコーン・チュロス等）を組み合わせると短時間で済ませられます。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>19:00</span></div>
+            <div>
+              <div class="timeline-content-title">
+                ナイトパレード「エレクトリカルパレード・ドリームライツ」待機
+                <span class="label">ナイトパレード</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>公演時間の<strong>30〜45分前</strong>を目安に、パレードルート沿いで待機。</li>
+                  <li>写真や動画を撮りたい場合は、フロートが正面から来る方向・背景の明るさも確認しておくと◎</li>
+                  <li>有料のディズニー・プレミアアクセスを利用すると、鑑賞エリアが指定される日もあります。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>20:30</span></div>
+            <div>
+              <div class="timeline-content-title">
+                花火「スカイ・フル・オブ・カラーズ」鑑賞（または季節花火）
+                <span class="label">花火</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>シンデレラ城が見える場所か、ウエスタンランド〜ファンタジーランドの開けた場所から鑑賞。</li>
+                  <li>季節イベント期間は、別名のスペシャル花火になることもあります。</li>
+                  <li>風の状況などで当日中止になる場合もあるので、アナウンスにも注意。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="time"><span>21:00〜</span></div>
+            <div>
+              <div class="timeline-content-title">
+                ラストスパート：空いているアトラクション＆お土産
+                <span class="label">締めくくり</span>
+              </div>
+              <div class="timeline-content-body">
+                <ul>
+                  <li>閉園1時間前くらいから、待ち時間が短くなるアトラクションが増えてきます。</li>
+                  <li>どうしても乗りたかったアトラクションが空いていればラストチャンスに。</li>
+                  <li>ワールドバザールでお土産を買い、最後にシンデレラ城をバックに記念撮影して終了！</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 補足＆コツ -->
+        <aside>
+          <h2 class="section-title">混雑日を楽しむ3つのコツ</h2>
+          <div class="card">
+            <h3>1. 「やりたいこと」を3つに絞る</h3>
+            <ul class="tips-list">
+              <li>例：①マジカルミュージックワールドを見る ②昼パレードを見る ③エレクトリカルパレードを見る</li>
+              <li>この3つを軸に、空き時間でアトラクションやグリーティングを追加していくイメージで。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>2. ショー系は「エントリー受付」を最優先</h3>
+            <ul class="tips-list">
+              <li>対象ショーは、入園後すぐに公式アプリからエントリー受付を済ませておきましょう。</li>
+              <li>エントリーは各施設1日1回のみなので、「本命ショー」から先に申し込むのがおすすめです。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>3. パレード時間に「移動しすぎない」</h3>
+            <ul class="tips-list">
+              <li>ショー・パレード時間帯は一部エリアが通行規制されます。</li>
+              <li>開始30分前くらいには「しばらく動かない場所」に落ち着いておくと、ロスが少なくなります。</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">おすすめショー＆イベント紹介</h2>
+      <p style="font-size:0.8rem; color:#666; margin:4px 2px 10px;">
+        ※公演内容・鑑賞方法は変更になる場合があります。最新情報は公式サイト・公式アプリでご確認ください。
+      </p>
+      <div class="cards">
+        <article class="card">
+          <h3>ディズニー・ハーモニー・イン・カラー（昼パレード）</h3>
+          <div>
+            <span class="badge-small">場所：パレードルート</span>
+            <span class="badge-small">屋外</span>
+          </div>
+          <dl>
+            <dt>特徴</dt><dd>ディズニー映画の仲間たちがカラフルなフロートで登場するレギュラー昼パレード。</dd>
+            <dt>鑑賞</dt><dd>自由鑑賞（場所取り制）。開始30〜45分前を目安に待機すると安心です。</dd>
+            <dt>所要</dt><dd>通過時間はエリアによって約20分前後。</dd>
+          </dl>
+          <p>シンデレラ城を背景にした写真を撮りたい場合はプラザ周辺、ゆったり見たい場合はルート終盤側も候補に。</p>
+        </article>
+
+        <article class="card">
+          <h3>ミッキーのマジカルミュージックワールド</h3>
+          <div>
+            <span class="badge-small">場所：ファンタジーランド・フォレストシアター</span>
+            <span class="badge-small">屋内</span>
+          </div>
+          <dl>
+            <dt>特徴</dt><dd>ミッキーたちと名曲がたっぷり楽しめる、本格的なシアターショー。</dd>
+            <dt>鑑賞</dt><dd>公式アプリの<strong>エントリー受付（抽選）</strong>対象。ディズニー・プレミアアクセス対象回がある日も。</dd>
+            <dt>所要</dt><dd>約25分＋入退場でトータル40〜50分ほど見込み。</dd>
+          </dl>
+          <p>混雑日でも天候に左右されずに楽しめるので、12時入園ならまず最初にエントリーしておきたい1本です。</p>
+        </article>
+
+        <article class="card">
+          <h3>クラブマウスビート</h3>
+          <div>
+            <span class="badge-small">場所：トゥモローランド・ショーベース</span>
+            <span class="badge-small">屋内</span>
+          </div>
+          <dl>
+            <dt>特徴</dt><dd>ノリの良い音楽とダンスで盛り上がるステージショー。</dd>
+            <dt>鑑賞</dt><dd>基本的に<strong>全公演エントリー受付（抽選）</strong>のみでの鑑賞となります。</dd>
+            <dt>所要</dt><dd>約25分程度。</dd>
+          </dl>
+          <p>ミッキーたちのハイテンションなパフォーマンスを楽しみたい方に。マジカルミュージックワールドと合わせて、どちらか1本当たればラッキーくらいの気持ちで。</p>
+        </article>
+
+        <article class="card">
+          <h3>東京ディズニーランド・エレクトリカルパレード・ドリームライツ</h3>
+          <div>
+            <span class="badge-small">場所：パレードルート</span>
+            <span class="badge-small">ナイトパレード</span>
+          </div>
+          <dl>
+            <dt>特徴</dt><dd>色とりどりに光るフロートが登場する、夜の定番パレード。</dd>
+            <dt>鑑賞</dt><dd>自由鑑賞エリア＋ディズニー・プレミアアクセス対象エリア（実施日のみ）。</dd>
+            <dt>所要</dt><dd>パレード全体で約45分、1箇所の通過は15〜20分程度。</dd>
+          </dl>
+          <p>混雑日でも「これだけは見たい！」という方が多いので、早めに場所を決めてゆっくり待つのがおすすめです。</p>
+        </article>
+
+        <article class="card">
+          <h3>花火「スカイ・フル・オブ・カラーズ」ほか季節花火</h3>
+          <div>
+            <span class="badge-small">場所：パークワイド</span>
+            <span class="badge-small">夜空の花火</span>
+          </div>
+          <dl>
+            <dt>特徴</dt><dd>ディズニーソングに合わせて色とりどりの花火が夜空を彩ります。</dd>
+            <dt>鑑賞</dt><dd>パーク内の多くの場所から鑑賞可能（一部、建物で見えにくい場所あり）。</dd>
+            <dt>所要</dt><dd>約5分。</dd>
+          </dl>
+          <p>天候や季節イベントにより休止や別タイトルの花火になる場合があります。スケジュールと「本日の公演情報」アナウンスを確認しましょう。</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">リンク（公式情報）</h2>
+      <ul class="tips-list">
+        <li><a href="https://www.tokyodisneyresort.jp/tdl/show.html" target="_blank" rel="noopener">東京ディズニーランド｜パレード／ショー一覧</a></li>
+        <li><a href="https://www.tokyodisneyresort.jp/tdl/show/schedule/" target="_blank" rel="noopener">東京ディズニーランド｜パレード／ショー月間スケジュール</a></li>
+        <li><a href="https://www.tokyodisneyresort.jp/tdl/show/detail/895/" target="_blank" rel="noopener">ミッキーのマジカルミュージックワールド（公式）</a></li>
+        <li><a href="https://www.tokyodisneyresort.jp/tdl/show/detail/7800/" target="_blank" rel="noopener">スカイ・フル・オブ・カラーズ（公式）</a></li>
+      </ul>
+    </section>
+
+    <footer>
+      このページは個人による非公式のモデルプランです。実際の運営状況・スケジュールは東京ディズニーリゾート公式情報を必ずご確認ください。
+    </footer>
+  </div>
+</body>
+  </html>
