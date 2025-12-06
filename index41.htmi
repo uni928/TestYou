@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>スパワールドで快適宴会プラン</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --main: #007b8f;
+            --accent: #ffb347;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-main: #333;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            line-height: 1.7;
+        }
+        header {
+            background: linear-gradient(135deg, #0099aa, #00bcd4);
+            color: #fff;
+            padding: 40px 16px 32px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 1.8rem;
+        }
+        header p {
+            margin: 4px 0;
+            font-size: 0.95rem;
+        }
+        .tagline {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.8);
+            font-size: 0.8rem;
+        }
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h2::before {
+            content: "♨";
+            font-size: 1.2rem;
+        }
+        .points-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 8px 0 0;
+        }
+        .points-list li {
+            padding-left: 1.4em;
+            position: relative;
+            font-size: 0.95rem;
+        }
+        .points-list li::before {
+            content: "・";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* タイムライン */
+        .timeline {
+            position: relative;
+            margin: 10px 0 0;
+            padding-left: 10px;
+        }
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed #cfd6e3;
+        }
+        .step {
+            position: relative;
+            padding-left: 48px;
+            padding-bottom: 18px;
+        }
+        .step:last-child {
+            padding-bottom: 0;
+        }
+        .step-number {
+            position: absolute;
+            left: 10px;
+            top: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: var(--main);
+            color: #fff;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 3px #e0f3f6;
+        }
+        .step-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+        .step-tag {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: rgba(0, 123, 143, 0.08);
+            font-size: 0.75rem;
+            color: var(--main);
+        }
+        .step-body {
+            font-size: 0.9rem;
+            margin: 4px 0 0;
+        }
+
+        .highlight {
+            background: #fff7e8;
+            border-left: 4px solid var(--accent);
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .tips-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 4px 0 0;
+            font-size: 0.9rem;
+        }
+        .tips-list li {
+            padding-left: 1.4em;
+            position: relative;
+        }
+        .tips-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--main);
+            font-size: 0.75rem;
+            top: 4px;
+        }
+
+        footer {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 16px 28px;
+            font-size: 0.75rem;
+            color: #777;
+        }
+
+        @media (min-width: 768px) {
+            header h1 {
+                font-size: 2.1rem;
+            }
+            header p {
+                font-size: 1rem;
+            }
+            .card {
+                padding: 22px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>スパワールドで快適宴会プラン</h1>
+    <p>大改修された温泉と、ホカホカ館内着で語り合う一日</p>
+    <div class="tagline">温泉 × ごはん × おしゃべり × 通天閣</div>
+</header>
+
+<main>
+    <!-- スパワールド宴会が快適な理由 -->
+    <section class="card">
+        <h2>スパワールドの宴会が快適な理由</h2>
+        <p>
+            スパワールドの温泉が大改修されて、よりキレイで快適な空間に。<br>
+            さらに、体がホカホカに温まる館内着でくつろぎながら話せるので、
+            「飲み会」というより<strong>リラックスしながらゆっくり語り合う宴会</strong>にぴったりです。
+        </p>
+        <ul class="points-list">
+            <li>大改修された温泉でリフレッシュ＆リセット</li>
+            <li>ふんわり館内着で、湯上がりのポカポカが長続き</li>
+            <li>浴場・休憩スペース・食事がすべて館内で完結</li>
+            <li>最後は通天閣エリアで大阪らしい締めも楽しめる</li>
+        </ul>
+    </section>
+
+    <!-- 1日の流れ -->
+    <section class="card">
+        <h2>1日の流れ（モデルコース）</h2>
+        <div class="timeline">
+
+            <!-- スパワールド温泉1 -->
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-title">
+                    スパワールド温泉1
+                    <span class="step-tag">到着〜まず一風呂</span>
+                </div>
+                <p class="step-body">
+                    到着したら、まずは大改修された温泉へ。<br>
+                    広々とした浴槽や新しくなった設備で、移動の疲れをゆっくり洗い流します。<br>
+                    ここで一度しっかり温まっておくと、その後の時間もずっと体が楽になります。
+                </p>
+            </div>
+
+            <!-- ランチビュッフェ -->
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-title">
+                    スパワールド ランチビュッフェ
+                    <span class="step-tag">お腹を満たす宴会タイム</span>
+                </div>
+                <p class="step-body">
+                    お風呂上がりは、館内のランチビュッフェへ。<br>
+                    好きなものを少しずつ取りながら、気楽に「乾杯」。<br>
+                    席を自由に動きやすいスタイルなので、グループでの歓談にもぴったりです。
+                </p>
+            </div>
+
+            <!-- スパワールド温泉2 -->
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-title">
+                    スパワールド温泉2
+                    <span class="step-tag">食後のんびり第2ラウンド</span>
+                </div>
+                <p class="step-body">
+                    お腹が落ち着いたら、もう一度温泉へ。<br>
+                    サウナで整ったり、露天エリアでゆっくりおしゃべりしたり、<br>
+                    「第2部」は各自のペースでのんびり過ごします。
+                </p>
+            </div>
+
+            <!-- フードコート しゃべる -->
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-title">
+                    フードコートで少し購入してしゃべる
+                    <span class="step-tag">館内着でまったりトーク</span>
+                </div>
+                <p class="step-body">
+                    湯上がりのホカホカの体に、ふんわりした館内着が心地いい時間。<br>
+                    フードコートで軽くスイーツやドリンクを買って、テーブルを囲みながらゆったりトーク。<br>
+                    靴も脱いだまま、リラックスした空気で話がどんどん弾みます。
+                </p>
+            </div>
+
+            <!-- 通天閣 串かつだるま -->
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-title">
+                    帰りに 通天閣「串かつだるま」
+                    <span class="step-tag">大阪らしく締めの一軒</span>
+                </div>
+                <p class="step-body">
+                    スパワールドを満喫したあとは、通天閣エリアへ。<br>
+                    有名な「串かつだるま」でサクサクの串かつをつまみながら、<br>
+                    「今日は楽しかったね」と締めの一杯。<br>
+                    温泉で整っているので、無理せず程よい時間で解散できるのもポイントです。
+                </p>
+            </div>
+<div class="step">
+    <div class="step-number">★</div>
+    <div class="step-title">
+        1人あたりの予算目安
+        <span class="step-tag">合計イメージ</span>
+    </div>
+    <p class="step-body">
+        スパワールドでの入館から、館内の食事、そして帰りの串かつだるままでを含めると、<br>
+        1日の総額イメージは以下のようになります。
+        <br><br>
+        ・入館料：1,500円<br>
+        ・ランチビュッフェ：1,800円<br>
+        ・フードコート：400円（軽めのスイーツやドリンク）<br>
+        ・串かつだるま：2,000円（〆として軽く）<br>
+        <br>
+        <strong>▶ 合計：約 5,700円</strong><br>
+        温泉でゆったり過ごせて、食事も2回楽しめることを考えると、かなり満足度の高い内容です。
+    </p>
+</div>
+        </div>
+    </section>
+
+    <!-- ポイント・注意 -->
+    <section class="card">
+        <h2>快適に過ごすためのちょっとしたコツ</h2>
+        <div class="highlight">
+            <ul class="tips-list">
+                <li>タオルや館内着のレンタル状況・料金は事前に最新情報をチェックしておくと安心です。</li>
+                <li>温泉 → 食事 → 温泉の流れなので、水分補給をこまめに行いましょう。</li>
+                <li>通天閣・串かつだるまは時間帯によって混み合うことがあるので、余裕を持ったスケジュールがおすすめです。</li>
+            </ul>
+        </div>
+    </section>
+</main>
+
+<footer>
+    ※本ページは、スパワールドや各店舗の公式サイトではありません。<br>
+    ※内容・料金・営業状況などは実際と異なる場合があります。お出かけ前に公式情報をご確認ください。
+</footer>
+</body>
+</html>
