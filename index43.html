@@ -74,6 +74,16 @@
     background: #0062cc;
   }
 
+  #clearBtn {
+    background: #dc3545;
+    color: #fff;
+    margin-left: 8px;
+  }
+
+  #clearBtn:hover {
+    background: #b02a37;
+  }
+
   .note {
     font-size: 0.8rem;
     color: #555;
@@ -132,6 +142,12 @@
     font-size: 0.8rem;
     margin-top: 4px;
   }
+
+  #dbStatus {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 4px;
+  }
 </style>
 </head>
 <body>
@@ -140,7 +156,7 @@
   <h1>アルコール量比較ツール</h1>
   <div class="note">
     金額とアルコール度数・量から「1円あたりの純アルコール量（ml）」を計算し、値が大きい順に並べます。<br>
-    商品名と店名は任意です。
+    商品名と店名は任意です。データはブラウザの IndexedDB に保存されます。
   </div>
 
   <div class="form-row">
@@ -172,8 +188,9 @@
     </div>
 
     <div class="form-group" style="flex:0 0 auto;">
-      <button id="addBtn">追加</button>
+      <button id="addBtn" disabled>追加</button>
       <div id="error"></div>
+      <div id="dbStatus">データベース初期化中...</div>
     </div>
   </div>
 
@@ -184,7 +201,12 @@
 </div>
 
 <div class="card">
-  <div id="summary">登録件数: 0 件</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+    <div id="summary">登録件数: 0 件</div>
+    <div>
+      <button id="clearBtn">全削除</button>
+    </div>
+  </div>
   <table>
     <thead>
       <tr>
@@ -205,9 +227,113 @@
 </div>
 
 <script>
+  // ---- グローバル変数 ----
   const items = [];
+  let db = null;
+  const DB_NAME = "AlcoholCompareDB";
+  const DB_VERSION = 1;
+  const STORE_NAME = "items";
 
-  document.getElementById('addBtn').addEventListener('click', () => {
+  // ---- DB 初期化 ----
+  document.addEventListener("DOMContentLoaded", () => {
+    initDB();
+    setupEventHandlers();
+  });
+
+  function initDB() {
+    if (!("indexedDB" in window)) {
+      document.getElementById("dbStatus").textContent = "このブラウザは IndexedDB に対応していません（保存機能は無効）。";
+      document.getElementById("addBtn").disabled = false; // 保存なしで利用だけはできるように
+      return;
+    }
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      db = event.target.result;
+      document.getElementById("dbStatus").textContent = "データベース準備完了（自動保存されます）。";
+      document.getElementById("addBtn").disabled = false;
+      loadItemsFromDB();
+    };
+
+    request.onerror = (event) => {
+      console.error("IndexedDB error:", event.target.error);
+      document.getElementById("dbStatus").textContent = "データベースの初期化に失敗しました（保存機能は無効）。";
+      document.getElementById("addBtn").disabled = false; // 保存なしで利用だけはできるように
+    };
+  }
+
+  // ---- DB から全件読み込み ----
+  function loadItemsFromDB() {
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      items.length = 0;
+      req.result.forEach(item => items.push(item));
+      // 常に1円あたりの純アルコール量が高い順で表示
+      items.sort((a, b) => b.perYen - a.perYen);
+      renderTable();
+    };
+
+    req.onerror = (event) => {
+      console.error("loadItemsFromDB error:", event.target.error);
+    };
+  }
+
+  // ---- 1件保存（追加 or 上書き） ----
+  function saveItemToDB(item) {
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put(item);
+    req.onerror = (event) => {
+      console.error("saveItemToDB error:", event.target.error);
+    };
+  }
+
+  // ---- 全削除 ----
+  function clearAllFromDB() {
+    if (!db) {
+      // DB がないときはメモリ上だけクリア
+      items.length = 0;
+      renderTable();
+      return;
+    }
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.clear();
+    req.onsuccess = () => {
+      items.length = 0;
+      renderTable();
+    };
+    req.onerror = (event) => {
+      console.error("clearAllFromDB error:", event.target.error);
+    };
+  }
+
+  // ---- イベントハンドラセットアップ ----
+  function setupEventHandlers() {
+    document.getElementById("addBtn").addEventListener("click", onAddClick);
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      if (items.length === 0) return;
+      if (confirm("一覧をすべて削除しますか？（ブラウザに保存されているデータも削除されます）")) {
+        clearAllFromDB();
+      }
+    });
+  }
+
+  // ---- 追加ボタンクリック ----
+  function onAddClick() {
     const name  = document.getElementById('name').value.trim();
     const shop  = document.getElementById('shop').value.trim();
     const price = parseFloat(document.getElementById('price').value);
@@ -254,15 +380,20 @@
     // 1円あたりアルコール量が大きい順にソート
     items.sort((a, b) => b.perYen - a.perYen);
 
+    // 表示更新
     renderTable();
 
-    // 数値系だけクリア or フォーカス移動
+    // IndexedDB に保存
+    saveItemToDB(item);
+
+    // 数値系だけクリア & フォーカス移動
     document.getElementById('price').value = "";
     document.getElementById('volume').value = "";
     document.getElementById('abv').value = "";
     document.getElementById('price').focus();
-  });
+  }
 
+  // ---- テーブル描画 ----
   function renderTable() {
     const tbody = document.getElementById('listBody');
     tbody.innerHTML = "";
@@ -319,4 +450,4 @@
 </script>
 
 </body>
-  </html>
+      </html>
