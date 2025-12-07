@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>アルコール量比較ツール（1円あたりの純アルコール量）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 20px;
+    background: #f5f5f5;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    max-width: 900px;
+    margin-bottom: 16px;
+  }
+
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 140px;
+    min-width: 120px;
+  }
+
+  label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+  }
+
+  input[type="text"],
+  input[type="number"] {
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+  }
+
+  input[type="number"] {
+    text-align: right;
+  }
+
+  button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  #addBtn {
+    background: #007bff;
+    color: #fff;
+    margin-top: 18px;
+  }
+
+  #addBtn:hover {
+    background: #0062cc;
+  }
+
+  .note {
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  thead {
+    background: #e9ecef;
+  }
+
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: left;
+  }
+
+  th.num, td.num {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #fafafa;
+  }
+
+  .highlight {
+    background: #fff8e1;
+  }
+
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+    }
+    .form-group {
+      min-width: 100%;
+    }
+    table {
+      font-size: 0.8rem;
+    }
+  }
+
+  #summary {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    color: #444;
+  }
+
+  #error {
+    color: #d9534f;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>アルコール量比較ツール</h1>
+  <div class="note">
+    金額とアルコール度数・量から「1円あたりの純アルコール量（ml）」を計算し、値が大きい順に並べます。<br>
+    商品名と店名は任意です。
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="name">商品名（任意）</label>
+      <input type="text" id="name" placeholder="例：ビール350ml缶">
+    </div>
+
+    <div class="form-group">
+      <label for="shop">店名（任意）</label>
+      <input type="text" id="shop" placeholder="例：スーパーA店">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="price">金額（円）<span style="color:#d9534f;">*</span></label>
+      <input type="number" id="price" min="1" step="1" placeholder="例：198">
+    </div>
+
+    <div class="form-group">
+      <label for="volume">量（ml）<span style="color:#d9534f;">*</span></label>
+      <input type="number" id="volume" min="1" step="1" placeholder="例：350">
+    </div>
+
+    <div class="form-group">
+      <label for="abv">アルコール度数（％）<span style="color:#d9534f;">*</span></label>
+      <input type="number" id="abv" min="0" max="100" step="0.1" placeholder="例：5">
+    </div>
+
+    <div class="form-group" style="flex:0 0 auto;">
+      <button id="addBtn">追加</button>
+      <div id="error"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    ※ 純アルコール量 = 量(ml) × 度数(%) ÷ 100<br>
+    ※ 1円あたりの純アルコール量 = 純アルコール量 ÷ 金額
+  </div>
+</div>
+
+<div class="card">
+  <div id="summary">登録件数: 0 件</div>
+  <table>
+    <thead>
+      <tr>
+        <th>順位</th>
+        <th>商品名</th>
+        <th>店名</th>
+        <th class="num">金額（円）</th>
+        <th class="num">量（ml）</th>
+        <th class="num">度数（％）</th>
+        <th class="num">純アルコール量（ml）</th>
+        <th class="num">1円あたりの純アルコール量（ml/円）</th>
+      </tr>
+    </thead>
+    <tbody id="listBody">
+      <!-- ここに行が追加されます -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const items = [];
+
+  document.getElementById('addBtn').addEventListener('click', () => {
+    const name  = document.getElementById('name').value.trim();
+    const shop  = document.getElementById('shop').value.trim();
+    const price = parseFloat(document.getElementById('price').value);
+    const volume = parseFloat(document.getElementById('volume').value);
+    const abv   = parseFloat(document.getElementById('abv').value);
+    const errorEl = document.getElementById('error');
+    errorEl.textContent = "";
+
+    // バリデーション
+    if (isNaN(price) || isNaN(volume) || isNaN(abv)) {
+      errorEl.textContent = "金額・量・アルコール度数を入力してください。";
+      return;
+    }
+    if (price <= 0) {
+      errorEl.textContent = "金額は1円以上で入力してください。";
+      return;
+    }
+    if (volume <= 0) {
+      errorEl.textContent = "量は1ml以上で入力してください。";
+      return;
+    }
+    if (abv < 0 || abv > 100) {
+      errorEl.textContent = "アルコール度数は0〜100の範囲で入力してください。";
+      return;
+    }
+
+    // 計算
+    const pureAlcoholMl = volume * (abv / 100);    // 純アルコール量(ml)
+    const perYen = pureAlcoholMl / price;         // 1円あたりの純アルコール量
+
+    const item = {
+      id: Date.now() + Math.random(), // 一応ユニークID
+      name: name || "(名称未入力)",
+      shop: shop || "",
+      price,
+      volume,
+      abv,
+      pureAlcoholMl,
+      perYen
+    };
+
+    items.push(item);
+
+    // 1円あたりアルコール量が大きい順にソート
+    items.sort((a, b) => b.perYen - a.perYen);
+
+    renderTable();
+
+    // 数値系だけクリア or フォーカス移動
+    document.getElementById('price').value = "";
+    document.getElementById('volume').value = "";
+    document.getElementById('abv').value = "";
+    document.getElementById('price').focus();
+  });
+
+  function renderTable() {
+    const tbody = document.getElementById('listBody');
+    tbody.innerHTML = "";
+
+    items.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      if (index === 0) {
+        tr.classList.add('highlight'); // 1位を少し目立たせる
+      }
+
+      const rankCell = document.createElement('td');
+      rankCell.textContent = index + 1;
+
+      const nameCell = document.createElement('td');
+      nameCell.textContent = item.name;
+
+      const shopCell = document.createElement('td');
+      shopCell.textContent = item.shop;
+
+      const priceCell = document.createElement('td');
+      priceCell.textContent = item.price.toLocaleString();
+      priceCell.className = "num";
+
+      const volumeCell = document.createElement('td');
+      volumeCell.textContent = item.volume.toLocaleString();
+      volumeCell.className = "num";
+
+      const abvCell = document.createElement('td');
+      abvCell.textContent = item.abv.toFixed(1);
+      abvCell.className = "num";
+
+      const pureCell = document.createElement('td');
+      pureCell.textContent = item.pureAlcoholMl.toFixed(1);
+      pureCell.className = "num";
+
+      const perYenCell = document.createElement('td');
+      perYenCell.textContent = item.perYen.toFixed(4);
+      perYenCell.className = "num";
+
+      tr.appendChild(rankCell);
+      tr.appendChild(nameCell);
+      tr.appendChild(shopCell);
+      tr.appendChild(priceCell);
+      tr.appendChild(volumeCell);
+      tr.appendChild(abvCell);
+      tr.appendChild(pureCell);
+      tr.appendChild(perYenCell);
+      tbody.appendChild(tr);
+    });
+
+    const summary = document.getElementById('summary');
+    summary.textContent = `登録件数: ${items.length} 件`;
+  }
+</script>
+
+</body>
+  </html>
