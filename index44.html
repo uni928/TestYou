@@ -656,6 +656,16 @@ function openTemporaryChatWithDummyClick(url) {
 
       // 初期状態反映
       updateCounter();
+
+      // 起動時にテキストボックスへフォーカスを当てる
+      // （既に初期値が入っている場合も末尾にカーソルを置く）
+      textarea.focus();
+      try {
+        const len = textarea.value.length;
+        textarea.setSelectionRange(len, len);
+      } catch (e) {
+        // モバイル等で setSelectionRange が使えない場合は無視
+      }
     })();
   </script>
 </body>
