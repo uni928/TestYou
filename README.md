@@ -22,6 +22,8 @@
 
 [# 目の悪い人向け、比較的安全な方向を言う特化(要 ChatGPT API Key)](https://uni928.github.io/TestYou/index31.html)
 
+[# ChatGPT 添削効率化](https://uni928.github.io/TestYou/index44.html)
+
 テスト用
 
 ようです。
