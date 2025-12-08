@@ -611,11 +611,46 @@
 
       textarea.addEventListener("keydown", (e) => {
         // Ctrl+Enter でも実行
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          launchBtn.click(); // クリック扱いになる
-        }
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    const prefix = "下記の文章を添削頂けますか？\n\n";
+    const fullPrompt = prefix + text;
+
+    const url =
+      "https://chatgpt.com/?temporary-chat=true&prompt=" +
+      encodeURIComponent(fullPrompt);
+
+    // ダミー右クリック → 新しいタブを開く
+    openTemporaryChatWithDummyClick(url);
+  }
       });
+
+function dummyRightClick() {
+  const event = new MouseEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    button: 2,           // 右クリック
+    buttons: 2
+  });
+
+  document.dispatchEvent(event);
+}
+
+function openTemporaryChatWithDummyClick(url) {
+  // ダミー右クリック発火
+  dummyRightClick();
+
+  // 少し待ってからタブを開く（右クリックが反映された風に見せる）
+  setTimeout(() => {
+    window.open(url, "_blank", "noopener");
+  }, 30);
+}
+
 
       launchBtn.addEventListener("click", openTemporaryChat);
 
