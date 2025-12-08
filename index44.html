@@ -613,7 +613,7 @@
         // Ctrl+Enter でも実行
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
-          openTemporaryChat();
+          launchBtn.click(); // クリック扱いになる
         }
       });
 
