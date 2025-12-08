@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>一時チャット添削ランチャー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at top left, #a5b4fc 0, #6366f1 30%, #0f172a 70%);
+      --card-bg: rgba(15, 23, 42, 0.9);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --border-soft: rgba(148, 163, 184, 0.4);
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f97373;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      color: var(--text-main);
+      background: var(--bg-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E");
+      z-index: -1;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 920px;
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 820px) {
+      .shell {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      position: relative;
+      border-radius: 24px;
+      padding: 24px 24px 20px;
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), transparent 55%),
+                  var(--card-bg);
+      border: 1px solid var(--border-soft);
+      box-shadow:
+        0 18px 40px rgba(15, 23, 42, 0.8),
+        0 0 0 1px rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(30px) saturate(1.3);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -30%;
+      background: radial-gradient(circle at 10% -10%, rgba(59, 130, 246, 0.45), transparent 50%);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.15rem;
+      letter-spacing: 0.02em;
+    }
+
+    .title-pill {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(248, 250, 252, 0.55);
+      background: radial-gradient(circle at 30% 10%, #f9fafb, #e5e7eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: #1e293b;
+      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.8);
+    }
+
+    .title-text {
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent-soft), rgba(56, 189, 248, 0.03));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #e0f2fe;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+    }
+
+    .textarea-wrap {
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      max-height: 420px;
+      resize: vertical;
+      padding: 14px 14px 30px;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.96));
+      color: var(--text-main);
+      font: 0.95rem/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.9);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease,
+        background 0.15s ease, transform 0.1s ease;
+    }
+
+    textarea::placeholder {
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    textarea:focus {
+      border-color: rgba(56, 189, 248, 0.8);
+      box-shadow:
+        0 0 0 1px rgba(8, 47, 73, 0.4),
+        0 0 35px rgba(56, 189, 248, 0.35);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.98));
+      transform: translateY(-1px);
+    }
+
+    .textarea-footer {
+      position: absolute;
+      inset-block-end: 7px;
+      inset-inline: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .textarea-footer span {
+      pointer-events: auto;
+    }
+
+    .hint-pill {
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hint-pill kbd {
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      font-size: 0.7rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .stats-row strong {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .secondary-btn {
+      border-radius: 999px;
+      padding: 9px 14px;
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.7);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: default;
+    }
+
+    .secondary-btn svg {
+      width: 14px;
+      height: 14px;
+      opacity: 0.9;
+    }
+
+    button.launch-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
+      color: #0f172a;
+      box-shadow:
+        0 12px 30px rgba(56, 189, 248, 0.65),
+        0 0 0 1px rgba(15, 23, 42, 0.8);
+      transition: transform 0.11s ease, box-shadow 0.11s ease,
+        filter 0.11s ease, opacity 0.1s ease;
+    }
+
+    button.launch-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    button.launch-btn:hover {
+      transform: translateY(-1px) translateZ(0);
+      filter: brightness(1.06);
+      box-shadow:
+        0 18px 40px rgba(56, 189, 248, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 1);
+    }
+
+    button.launch-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 8px 20px rgba(56, 189, 248, 0.7),
+        0 0 0 1px rgba(15, 23, 42, 1);
+    }
+
+    button.launch-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow:
+        0 6px 16px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 1);
+      transform: none;
+    }
+
+    .side-panel {
+      position: relative;
+      border-radius: 24px;
+      padding: 22px 20px 18px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 60%),
+                  rgba(15, 23, 42, 0.9);
+      box-shadow:
+        0 18px 40px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(15, 23, 42, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      font-size: 0.8rem;
+    }
+
+    .side-heading {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .side-heading-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
+    }
+
+    .tip-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .tip-list li + li {
+      margin-top: 4px;
+    }
+
+    .hint-note {
+      padding: 10px 11px;
+      border-radius: 14px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .hint-note svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .mini-badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.96);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .toast {
+      position: fixed;
+      inset-inline: 0;
+      bottom: 18px;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .toast-inner {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(251, 113, 133, 0.85);
+      color: #fecaca;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.95);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .toast-inner.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-inner svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="noise-overlay"></div>
+
+  <main class="shell" aria-label="一時チャット用の文章添削ランチャー">
+    <!-- メインカード -->
+    <section class="card">
+      <header class="card-header">
+        <div class="title-group">
+          <div class="title">
+            <span class="title-pill">A</span>
+            <span class="title-text">一時チャット添削ランチャー</span>
+          </div>
+          <p class="subtitle">
+            添削したい文章を貼り付けて、ボタンを押すだけで
+            <strong>ブラウザ版 ChatGPT 一時チャット</strong>が立ち上がります。
+          </p>
+        </div>
+        <div class="badge" aria-label="一時チャットに最適化されています">
+          <span class="badge-dot"></span>
+          temporary chat / 校正用
+        </div>
+      </header>
+
+      <div class="textarea-wrap">
+        <textarea
+          id="text-input"
+          placeholder="ここに添削してほしい文章をそのまま貼り付けてください。&#10;&#10;例）&#10;本日はお時間頂きありがとうございました。以下、打ち合わせ内容を共有させて頂きます。..."
+          aria-label="添削したい文章"
+        ></textarea>
+        <div class="textarea-footer">
+          <span class="hint-pill">
+            <kbd>Enter</kbd> + <kbd>Ctrl</kbd> で実行
+          </span>
+          <span id="char-counter">0 文字</span>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <span>プロンプト先頭文:</span>
+        <span>
+          <strong>「下記の文章を添削頂けますか？」</strong>
+          が自動で追記されます
+        </span>
+      </div>
+
+      <div class="button-row">
+        <div class="secondary-btn" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 19h4M4 21h8M8 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          テキストを用意してから
+        </div>
+
+        <button class="launch-btn" id="launch-btn">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 19L19 5M9 5h10v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          一時チャットで添削を依頼する
+        </button>
+      </div>
+    </section>
+
+    <!-- サイドパネル -->
+    <aside class="side-panel" aria-label="使い方と注意">
+      <div>
+        <div class="side-heading">
+          <span class="side-heading-dot"></span>
+          <span>使い方</span>
+        </div>
+        <ul class="tip-list">
+          <li>添削したい文章を左のテキストボックスに貼り付けます。</li>
+          <li>「一時チャットで添削を依頼する」ボタンを押します。</li>
+          <li>ブラウザ版 ChatGPT が開き、プロンプトに文章がセットされます。</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="side-heading" style="margin-top: 4px;">
+          <span class="side-heading-dot" style="background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.3);"></span>
+          <span>一時チャットに送信される内容</span>
+        </div>
+        <p class="subtitle" style="margin: 4px 0 4px; font-size: 0.78rem;">
+          実際に ChatGPT に渡されるプロンプトは下記の形式になります。
+        </p>
+        <pre style="
+          margin: 0;
+          padding: 9px 11px;
+          border-radius: 14px;
+          background: #020617;
+          border: 1px solid rgba(15,23,42,0.9);
+          color: #e5e7eb;
+          font-size: 0.75rem;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+          white-space: pre-wrap;
+          ">
+下記の文章を添削頂けますか？
+
+（ここにあなたの文章）</pre>
+      </div>
+
+      <div class="hint-note">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M12 8v.01M11.4 11.4c.2-.26.48-.4.8-.4.6 0 1.1.48 1.1 1.2 0 .46-.18.8-.56 1.08l-.34.26c-.4.3-.6.62-.6 1.06V16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          一部の環境では、リンククリック時に OS が ChatGPT アプリを起動する場合があります。
+          <br />
+          このページは <strong>ブラウザ版で開くように通常の HTTPS リンク</strong> を使用しますが、
+          完全にアプリ起動を防ぐことはできません。
+        </div>
+      </div>
+
+      <div>
+        <div class="side-heading" style="margin-top: 2px;">
+          <span class="side-heading-dot" style="background:#fbbf24; box-shadow:0 0 0 3px rgba(251,191,36,0.3);"></span>
+          <span>小さな工夫</span>
+        </div>
+        <div class="badge-row">
+          <span class="mini-badge">行区切りはそのまま保持</span>
+          <span class="mini-badge">日本語も安全に URL エンコード</span>
+          <span class="mini-badge">元ページはタブに残る</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" aria-live="polite" aria-atomic="true">
+    <div class="toast-inner" id="toast">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4M12 16h.01M4.5 19h15L12 4.5 4.5 19z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      添削したい文章を入力してください。
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const textarea = document.getElementById("text-input");
+      const launchBtn = document.getElementById("launch-btn");
+      const counter = document.getElementById("char-counter");
+      const toast = document.getElementById("toast");
+
+      function updateCounter() {
+        const length = textarea.value.length;
+        counter.textContent = length + " 文字";
+        launchBtn.disabled = length === 0;
+      }
+
+      function showToast() {
+        if (!toast) return;
+        toast.classList.add("visible");
+        setTimeout(() => {
+          toast.classList.remove("visible");
+        }, 1900);
+      }
+
+      function openTemporaryChat() {
+        const text = textarea.value.trim();
+        if (!text) {
+          showToast();
+          textarea.focus();
+          return;
+        }
+
+        // ChatGPT ブラウザ版（temporary-chat=true 付き）
+        const baseUrl = "https://chatgpt.com/";
+        const prefix = "下記の文章を添削頂けますか？\n\n";
+        const fullPrompt = prefix + text;
+
+        const url =
+          baseUrl +
+          "?temporary-chat=true&prompt=" +
+          encodeURIComponent(fullPrompt);
+
+        // 元ページを残すため、新しいタブで開く
+        window.open(url, "_blank", "noopener");
+      }
+
+      textarea.addEventListener("input", updateCounter);
+
+      textarea.addEventListener("keydown", (e) => {
+        // Ctrl+Enter でも実行
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          openTemporaryChat();
+        }
+      });
+
+      launchBtn.addEventListener("click", openTemporaryChat);
+
+      // 初期状態反映
+      updateCounter();
+    })();
+  </script>
+</body>
+</html>
