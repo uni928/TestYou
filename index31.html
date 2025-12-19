@@ -201,7 +201,7 @@ async function captureAndDescribe() {
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           {
             role: "system",
@@ -232,7 +232,7 @@ async function captureAndDescribe() {
             ]
           }
         ],
-        max_tokens: 500
+        reasoning_effort: "minimal"
       })
     });
 
