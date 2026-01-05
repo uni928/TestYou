@@ -22,6 +22,8 @@
 
 [# 目の悪い人向け、比較的安全な方向を言う特化(要 ChatGPT API Key)](https://uni928.github.io/TestYou/index31.html)
 
+[# 目の悪い人向け、比較的安全な方向を言う特化(要 ChatGPT API Key)(料金が高くても速度優先Ver](https://uni928.github.io/TestYou/index45.html)
+
 [# アルコールを安く摂取するための購入効率化ツール](https://uni928.github.io/TestYou/index43.html)
 
 [# ChatGPT 添削効率化](https://uni928.github.io/TestYou/index44.html)
