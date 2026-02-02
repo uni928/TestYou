@@ -310,6 +310,38 @@
     }
   }
 
+  // --- 作成モードに survey を読み込んで復元する ---
+  function loadSurveyIntoCreate(obj) {
+    // obj が result形式（{s, a}）なら survey を抜き出す
+    let survey = obj;
+    if (obj && obj.s && Array.isArray(obj.a)) {
+      survey = obj.s;
+    }
+
+    if (!survey || !Array.isArray(survey.q)) return false;
+
+    // タイトル/説明をフォームに反映
+    document.getElementById("surveyTitle").value = survey.t || "";
+    document.getElementById("surveyDescription").value = survey.d || "";
+
+    // 質問を createQuestions 形式に変換（id を付与）
+    createQuestions = (survey.q || []).map((q) => {
+      const k = q.k || "t";
+      const item = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        k,
+        t: q.t || ""
+      };
+      if ((k === "r" || k === "c") && Array.isArray(q.o)) {
+        item.o = q.o.slice();
+      }
+      return item;
+    });
+
+    return true;
+  }
+
+
   // --- モード1: 作成 UI構築 ---
   function renderCreateQuestions() {
     const container = document.getElementById("questionsContainer");
@@ -774,18 +806,37 @@
     document.getElementById("modeView").style.display = "none";
 
     if (mode === "1") {
-      modeBadge.textContent = "作成モード (m=1)";
+modeBadge.textContent = "作成モード (m=1)";
       document.getElementById("modeCreate").style.display = "block";
-      infoArea.textContent = "このページでアンケートを設計し、回答用URLを生成します。";
 
-      // 質問が空なら、雛形として1問だけ用意
-      if (createQuestions.length === 0) {
-        createQuestions.push(createEmptyQuestion("r"));
-        createQuestions[0].t = "本イベントの総合的な満足度を教えてください。";
-        createQuestions[0].o = ["とても満足", "満足", "ふつう", "やや不満", "不満"];
-        createQuestions.push(createEmptyQuestion("t"));
-        createQuestions[1].t = "ご意見・ご要望があれば自由にご記入ください。";
+      // ★ ここが追加：d があればそれを読み込んで編集モードにする
+      let loaded = false;
+      if (dataParam) {
+        try {
+          const jsonStr = decompressFromBase64String(dataParam);
+          const obj = JSON.parse(jsonStr);
+          loaded = loadSurveyIntoCreate(obj);
+        } catch (e) {
+          console.error(e);
+          loaded = false;
+        }
       }
+
+      if (loaded) {
+        infoArea.textContent = "URL(dパラメータ)からアンケートを読み込みました。内容を編集して、再度「回答用URLを作成」できます。";
+      } else {
+        infoArea.textContent = "このページでアンケートを設計し、回答用URLを生成します。";
+
+        // 質問が空なら、雛形として1問だけ用意
+        if (createQuestions.length === 0) {
+          createQuestions.push(createEmptyQuestion("r"));
+          createQuestions[0].t = "本イベントの総合的な満足度を教えてください。";
+          createQuestions[0].o = ["とても満足", "満足", "ふつう", "やや不満", "不満"];
+          createQuestions.push(createEmptyQuestion("t"));
+          createQuestions[1].t = "ご意見・ご要望があれば自由にご記入ください。";
+        }
+      }
+
       renderCreateQuestions();
 
     } else if (mode === "2") {
