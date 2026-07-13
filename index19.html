@@ -649,6 +649,10 @@
             <span class="icon">◎</span>
             <span>QRコードを生成</span>
           </button>
+          <button id="shareUrlBtn" class="secondary-btn" type="button" disabled>
+            <span class="icon">🔗</span>
+            共有用URLをコピー
+          </button>
           <button id="clearBtn" class="secondary-btn" type="button">
             <span class="icon">✕</span>
             クリア
@@ -721,6 +725,7 @@
   <script>
     const urlInput = document.getElementById("urlInput");
     const generateBtn = document.getElementById("generateBtn");
+    const shareUrlBtn = document.getElementById("shareUrlBtn");
     const clearBtn = document.getElementById("clearBtn");
     const urlPreview = document.getElementById("urlPreview");
     const errorMsg = document.getElementById("errorMsg");
@@ -862,6 +867,50 @@
       document.body.removeChild(link);
     }
 
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+
+      return new Promise((resolve, reject) => {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        copied ? resolve() : reject(new Error("copy failed"));
+      });
+    }
+
+    function copyShareUrl() {
+      const value = urlInput.value.trim();
+      if (!value) {
+        setError("共有するURLを入力してください。");
+        return;
+      }
+
+      const shareUrl = new URL(window.location.href);
+      shareUrl.search = "";
+      shareUrl.hash = "";
+
+      // 仕様に合わせ、https:// より後ろの文字列を value に設定
+      const queryValue = value.replace(/^https:\/\//i, "");
+      shareUrl.searchParams.set("value", queryValue);
+
+      copyTextToClipboard(shareUrl.toString())
+        .then(() => {
+          setError("共有用URLをクリップボードにコピーしました。");
+        })
+        .catch(() => {
+          setError("共有用URLのコピーに失敗しました。");
+        });
+    }
+
     function copyDataUrl() {
       const canvas = getQrCanvas();
       if (!canvas) return;
@@ -891,7 +940,9 @@
       const value = urlInput.value;
       updatePreview(value);
       setError("");
-      generateBtn.disabled = value.trim().length === 0;
+      const isEmpty = value.trim().length === 0;
+      generateBtn.disabled = isEmpty;
+      shareUrlBtn.disabled = isEmpty;
     });
 
     urlInput.addEventListener("keydown", (e) => {
@@ -904,12 +955,14 @@
     });
 
     generateBtn.addEventListener("click", generateQr);
+    shareUrlBtn.addEventListener("click", copyShareUrl);
 
     clearBtn.addEventListener("click", () => {
       urlInput.value = "";
       updatePreview("");
       setError("");
       generateBtn.disabled = true;
+      shareUrlBtn.disabled = true;
       clearQr();
       urlInput.focus();
     });
@@ -920,6 +973,7 @@
         urlInput.value = url;
         updatePreview(url);
         generateBtn.disabled = !url.trim();
+        shareUrlBtn.disabled = !url.trim();
         setError("");
         urlInput.focus();
         urlInput.setSelectionRange(url.length, url.length);
@@ -945,6 +999,7 @@
       urlInput.value = initialUrl;
       updatePreview(initialUrl);
       generateBtn.disabled = false;
+      shareUrlBtn.disabled = false;
       setError("");
       generateQr();
     }
