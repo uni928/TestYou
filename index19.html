@@ -929,8 +929,28 @@
     downloadPngBtn.addEventListener("click", downloadPng);
     copyDataUrlBtn.addEventListener("click", copyDataUrl);
 
+    function setInitialValueFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const queryValue = params.get("value");
+
+      if (!queryValue) return;
+
+      const trimmedValue = queryValue.trim();
+      if (!trimmedValue) return;
+
+      const initialUrl = /^https?:\/\//i.test(trimmedValue)
+        ? trimmedValue
+        : `https://${trimmedValue.replace(/^\/\//, "")}`;
+
+      urlInput.value = initialUrl;
+      updatePreview(initialUrl);
+      generateBtn.disabled = false;
+      setError("");
+    }
+
     // 初期状態のQRコンテナを明示的にセット
     clearQr();
+    setInitialValueFromQuery();
   </script>
 </body>
 </html>
